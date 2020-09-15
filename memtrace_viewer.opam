@@ -1,0 +1,34 @@
+opam-version: "2.0"
+maintainer: "opensource@janestreet.com"
+authors: ["Jane Street Group, LLC <opensource@janestreet.com>"]
+homepage: "https://github.com/janestreet/memtrace_viewer"
+bug-reports: "https://github.com/janestreet/memtrace_viewer/issues"
+dev-repo: "git+https://github.com/janestreet/memtrace_viewer.git"
+doc: "https://ocaml.janestreet.com/ocaml-core/latest/doc/memtrace_viewer/index.html"
+license: "MIT"
+build: [
+  ["dune" "build" "-p" name "-j" jobs]
+]
+depends: [
+  "ocaml" {>= "4.07.0"}
+  "async_js"
+  "async_kernel"
+  "async_rpc_kernel"
+  "bonsai"
+  "core_kernel"
+  "incr_dom_keyboard"
+  "ppx_jane"
+  "async_rpc_websocket"
+  "virtual_dom"
+  "dune"              {>= "2.0.0"}
+  "js_of_ocaml-ppx"
+  "memtrace"
+  "ocaml-embed-file"
+]
+synopsis: "Interactive memory profiler based on Memtrace"
+description: "
+Processes traces produced by the Memtrace library and displays the
+top allocators in a table or flame graph. To help find space leaks,
+events can be filtered by lifetime, showing only allocations of
+objects that are still live at peak memory usage.
+"

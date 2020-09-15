@@ -1,0 +1,8 @@
+(library (name memtrace_viewer_native) (public_name memtrace_viewer.native)
+ (preprocess (pps ppx_jane -annotated-ignores))
+ (libraries memtrace_viewer_common memtrace async_rpc_websocket))
+
+(rule (targets embedded_files.ml embedded_files.mli)
+ (deps %{bin:ocaml-embed-file} ../../client/main.bc.js
+  ../../client/style.css)
+ (action (bash "%{deps} -output embedded_files")))

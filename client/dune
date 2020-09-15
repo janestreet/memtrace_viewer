@@ -1,0 +1,5 @@
+(executables (names main) (modes byte)
+ (libraries async_kernel async_js core_kernel bonsai.web
+  memtrace_viewer_common bonsai_simple_table incr_dom_keyboard
+  virtual_dom.input_widgets virtual_dom.svg)
+ (preprocess (pps js_of_ocaml-ppx ppx_jane)))

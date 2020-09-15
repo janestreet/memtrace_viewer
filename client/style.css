@@ -1,0 +1,309 @@
+:root {
+    --live-color: rgb(32, 133, 239);
+    --allocated-color: rgb(255, 128, 0);
+}
+#container{
+    display: grid;
+    margin-top: 1rem;
+    gap: 1rem;
+    grid-template:
+        "left middle filter" auto
+        "left middle details" 1fr
+        / minmax(17em,1fr) 2fr 2fr;
+}
+section {
+    padding: 0.5rem;
+}
+section:not(.borderless) {
+    border: 1px solid black;
+}
+h2 {
+    padding: 0.5rem;
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    text-align: center;
+    font-size: 1em;
+    background-color: rgba(256, 256, 256, 0.25);
+}
+ul.tab-bar {
+    display: inline-block;
+    list-style-type: none;
+    margin: 0;
+    margin-bottom: 0.5em;
+    padding: 0;
+}
+ul.tab-bar li {
+    display: inline;
+}
+ul.tab-bar button {
+    border: none;
+    background-color: rgba(256, 256, 256, 0.25);
+    cursor: pointer;
+    padding: 0.65em 1.6em;
+}
+ul.tab-bar li:first-child button {
+    border-top-left-radius: 0.5em;
+    border-bottom-left-radius: 0.5em;
+}
+ul.tab-bar li:last-child button {
+    border-top-right-radius: 0.5em;
+    border-bottom-right-radius: 0.5em;
+}
+ul.tab-bar li.selected button {
+    background-color: rgba(256, 256, 256, 0.75);
+}
+ul.tab-bar li:not(.selected) button:hover {
+    background-color: white;
+}
+#left-column{
+    grid-area:left;
+    display:grid;
+    grid-template:
+        "info" auto
+        "help" 1fr
+        / auto;
+    grid-gap: 1rem;
+}
+#info-panel{
+    grid-area: info;
+    background-color: #ded2f6;
+    overflow: overlay;
+}
+#help-panel{
+    grid-area: help;
+    background-color: aliceblue;
+}
+#middle-column{
+    grid-area: middle;
+    display: grid;
+    grid-template:
+        "zoom" auto
+        "main" 1fr
+        / auto;
+    grid-gap: 1rem;
+}
+#container.exploring-upwards #middle-column {
+    grid-template:
+        "main" auto
+        "zoom" 1fr
+        / auto;
+}
+#zoom-panel{
+    grid-area: zoom;
+    background-color: lightgoldenrodyellow;
+}
+#main-panel{
+    grid-area: main;
+    background-color: #D2DAF6;
+}
+#filter-panel{
+    grid-area:filter;
+    background-color:#BDF5BD;
+}
+#details-panel{
+    grid-area:details;
+    background-color:#F6CBC2;
+/*    height:100%; */
+}
+table, td, th {
+  border: 1px solid black;
+}
+td, th {
+  padding: 7px;
+}
+table {
+  border-collapse: collapse;
+}
+#help-panel table, #help-panel tr, #help-panel td {
+  border: none;
+}
+#table-panel > table {
+  min-width: 25em;
+  margin-left: auto;
+  margin-right: auto;
+}
+#table-panel > table td {
+  cursor: pointer;
+  user-select: none;
+}
+.flame-graph-container {
+  padding: 0.5rem;
+  border: 1px solid black;
+  background-color: white;
+  max-width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
+}
+.flame-graph-node {
+  cursor: pointer;
+  user-select: none;
+}
+.flame-graph-node.zoomed-into {
+  opacity: 0.5;
+}
+.flame-graph-node text {
+  font-size: 12px;
+}
+.flame-graph-node rect.flame-graph-node-color-box {
+  /* The rect is inside an embedded svg element, so it should take up the whole
+     thing */
+  width: 100%;
+  height: 100%;
+  stroke: transparent;
+}
+.flame-graph-node-focused rect.flame-graph-node-color-box {
+  fill: #F2D2F6 !important; /* override individual style */
+  /* We could do without the !important if Css_gen supported saying something like
+       <svg class="flame-graph-node" style="--flame-graph-node-color: #eef">
+     but it doesn't appear to allow setting variables from an inline style, so our
+     only choice is to set the fill color directly from an inline style, which means
+     overriding it here using !important. */
+  stroke: black;
+  stroke-width: 3;
+}
+#filter-graph-container {
+  text-align: center;
+}
+#filter-graph {
+  width: 500px;
+  height: 200px;
+}
+.graph-border {
+  stroke: black;
+  fill: white;
+}
+.graph-line {
+  fill: transparent;
+}
+.full-graph-line {
+  stroke: black;
+}
+.filtered-graph-line {
+  stroke: var(--live-color);
+}
+.graph-tick-mark {
+  stroke: black;
+}
+.graph-label {
+  font-size: 15px;
+  text-anchor: middle;
+}
+.graph-label.graph-label-long {
+  text-anchor: start;
+}
+.graph-allocated-range {
+  --graph-region-color: var(--allocated-color)
+}
+.graph-live-range {
+  --graph-region-color: var(--live-color)
+}
+.graph-region-bound {
+  stroke: var(--graph-region-color);
+  width: 2px;
+}
+.graph-region-interior {
+  stroke: none;
+  fill: var(--graph-region-color);
+  opacity: 0.25;
+}
+.graph-x-axis-label {
+  text-align: center;
+}
+table.range-table {
+  margin-left: 1.5em;
+}
+table.range-table, table.range-table tr, table.range-table td {
+  border: none;
+}
+table.range-table td {
+  padding: 3px 2px;
+}
+.swatch {
+  width: 1ex;
+  height: 1ex;
+  vertical-align: middle;
+  margin-right: 0.3em;
+}
+.swatch rect {
+  width: 100%;
+  height: 100%;
+}
+.swatch-bg {
+  stroke: none;
+  fill: white;
+}
+.swatch-border {
+  stroke-width: 2px;
+  stroke: var(--swatch-color);
+  fill: none;
+}
+.swatch-interior {
+  opacity: 0.25;
+  stroke: none;
+  fill: var(--swatch-color);
+}
+.allocated-swatch {
+  --swatch-color: var(--allocated-color);
+}
+.live-swatch {
+  --swatch-color: var(--live-color);
+}
+
+input.bound {
+  /* This keeps the "s" after the field from being vertically offset from other
+     text */
+  margin-bottom: -3px;
+}
+
+input.bound[type="number"] {
+  width: 7em;
+}
+
+input.bound[type="time"] {
+  /* Careful! This needs to accommodate the AM/PM depending on locale */
+  width: 10em;
+}
+
+input.bound[type="datetime-local"] {
+  /* Careful! This needs to accommodate the AM/PM depending on locale */
+  width: 20em;
+}
+
+.radio-list {
+  list-style-type: none;
+  padding-left: 1.5em;
+}
+
+.radio-list input {
+  margin-left: 0;
+  margin-right: 0.45em;
+}
+
+.checkbox-list {
+    list-style-type: none;
+    padding-left: 1.5em;
+}
+
+.checkbox-list input {
+    margin-left: 0;
+    margin-right: 0.45em;
+}
+
+.focused {
+  outline: 2px solid black;
+  background-color:#F2D2F6;
+}
+.last-loc {
+}
+.first-loc {
+  text-indent:1em;
+}
+.loc-in-file {
+  font-style: italic;
+}
+.total-allocations {
+  font-weight: bold;
+}
+.info-label {
+  font-weight: bold;
+}
