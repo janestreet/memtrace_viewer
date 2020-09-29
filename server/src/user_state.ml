@@ -5,7 +5,7 @@ open Memtrace_viewer_common
 let default_frequency = 0.005
 let default_error = 0.0001
 let default_direction = Filter.default.direction
-let graph_size = 100
+let graph_size = 450
 
 let time_ns_of_memtrace_timestamp ts =
   Int64.(1000L * (ts |> Memtrace.Trace.Timestamp.to_int64))

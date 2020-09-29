@@ -2,6 +2,12 @@ open! Core_kernel
 open Memtrace
 open Memtrace_viewer_common
 
+module Event = struct
+  type t =
+    | Event of Trace.Event.t
+    | End
+end
+
 let time_span_of_timedelta time =
   let us = time |> Trace.Timedelta.to_int64 in
   Int64.(us * 1000L) |> Int63.of_int64_exn |> Time_ns.Span.of_int63_ns
@@ -78,7 +84,10 @@ let create ~trace ~filter =
 let iter { trace; interesting; deferred; collect_on_promotion } ?parse_backtraces f =
   let deferring = Obj_id.Table.create () in
   let collected_early = Obj_id.Hash_set.create () in
+  let last_time = ref Time_ns.Span.zero in
   Trace.Reader.iter trace ?parse_backtraces (fun time event ->
+    let time = time |> time_span_of_timedelta in
+    last_time := time;
     match event with
     | (Alloc { obj_id; _ } | Promote obj_id | Collect obj_id)
       when not (interesting obj_id) -> ()
@@ -89,15 +98,24 @@ let iter { trace; interesting; deferred; collect_on_promotion } ?parse_backtrace
         ~data:(Trace.Event.Alloc { alloc with is_major = true })
     | Promote obj_id when collect_on_promotion ->
       Hash_set.strict_add_exn collected_early obj_id;
-      f time (Trace.Event.Collect obj_id)
+      f time (Event.Event (Collect obj_id))
     | Promote obj_id when deferred obj_id ->
       (match Obj_id.Table.find_and_remove deferring obj_id with
        | None ->
          raise
            (Not_found_s
               [%message "Missing deferred object" ~obj_id:((obj_id :> int) : int)])
-       | Some event -> f time event)
+       | Some event -> f time (Event event))
     | Collect obj_id when collect_on_promotion && Hash_set.mem collected_early obj_id ->
       Hash_set.remove collected_early obj_id
-    | _ -> f time event)
+    | _ -> f time (Event event));
+  f !last_time End
+;;
+
+let bytes_of_nsamples ~trace:{ trace; _ } nsamples =
+  let { Memtrace.Trace.Info.sample_rate; word_size; _ } =
+    Memtrace.Trace.Reader.info trace
+  in
+  let nwords = Float.of_int nsamples /. sample_rate in
+  Float.of_int word_size *. nwords |> Byte_units.of_bytes_float_exn
 ;;

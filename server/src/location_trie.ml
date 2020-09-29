@@ -85,15 +85,16 @@ let count ~trace ~loc_cache ~error ~direction =
   let seen = Location.Table.create () in
   Filtered_trace.iter trace (fun _time ev ->
     match ev with
-    | Alloc
-        { obj_id = _
-        ; length = _
-        ; nsamples
-        ; is_major = _
-        ; backtrace_buffer
-        ; backtrace_length
-        ; common_prefix = _
-        } ->
+    | Event
+        (Alloc
+           { obj_id = _
+           ; length = _
+           ; nsamples
+           ; is_major = _
+           ; backtrace_buffer
+           ; backtrace_length
+           ; common_prefix = _
+           }) ->
       let trace = ref [] in
       Location.Table.clear seen;
       (* Note that [backtrace_buffer] is in inverted order (main first), so [trace] ends
@@ -113,8 +114,9 @@ let count ~trace ~loc_cache ~error ~direction =
         | Explore_upwards_from_main -> List.rev !trace
       in
       Loc_hitters.insert hhh trace nsamples
-    | Promote _ -> ()
-    | Collect _ -> ());
+    | Event (Promote _) -> ()
+    | Event (Collect _) -> ()
+    | End -> ());
   hhh
 ;;
 
