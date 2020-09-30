@@ -1,2 +1,2 @@
-(executables (names main) (public_names memtrace_viewer_server)
+(executables (names main) (public_names memtrace-viewer)
  (libraries memtrace_viewer_native) (preprocess (pps ppx_jane)))
