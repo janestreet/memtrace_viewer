@@ -1,18 +1,33 @@
-module Ranges : sig
-  type t =
-    { live_range : Time_range.t
-    ; allocated_range : Time_range.t
-    }
-  [@@deriving sexp, bin_io, equal]
-end
+open! Core_kernel
 
 type direction =
   | Explore_downwards_from_allocations
   | Explore_upwards_from_main
 [@@deriving sexp, bin_io, equal]
 
+module String_relation : sig
+  type t =
+    | Equals
+    | Contains
+  [@@deriving sexp, bin_io, equal]
+end
+
+module Location_predicate : sig
+  type t =
+    | Defname_related of
+        { relation : String_relation.t
+        ; rhs : string
+        }
+  [@@deriving sexp, bin_io, equal]
+end
+
 type t =
-  { ranges : Ranges.t
+  { allocated_range : Range.Time_ns_span.t
+  ; collected_range : Range.Time_ns_span.Or_empty.t
+  ; size_range : Range.Byte_units.t
+  ; required_locations : Location_predicate.t list
+  ; forbidden_locations : Location_predicate.t list
+  ; hidden_locations : Location_predicate.t list
   ; direction : direction
   ; include_minor_heap : bool
   ; include_major_heap : bool
@@ -21,4 +36,4 @@ type t =
 
 val default : t
 val is_default : t -> bool
-val always_true : t -> bool
+val is_always_true : t -> bool

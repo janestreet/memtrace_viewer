@@ -8,12 +8,7 @@ module type Button = sig
   val title : t -> string option
 end
 
-type 'a t
-
-val view : _ t -> Vdom.Node.t
-val value : 'a t -> 'a
-val changing : _ t -> bool
-val reset_changing : _ t -> Vdom.Event.t
+type 'a t = 'a And_view.t
 
 val component
   :  (module Button with type t = 'a)

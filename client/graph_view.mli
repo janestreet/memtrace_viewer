@@ -1,5 +1,6 @@
 open! Core_kernel
 open! Bonsai_web
+open Memtrace_viewer_common
 
 module Series : sig
   type t
@@ -15,7 +16,7 @@ end
 module Region : sig
   type t
 
-  val create : ?css_class:string -> Time_ns.Span.t option -> Time_ns.Span.t option -> t
+  val create : ?css_class:string -> Range.Time_ns_span.Or_empty.t -> t
 end
 
 module Time_view : sig

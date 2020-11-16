@@ -7,7 +7,7 @@ module Zoom_state = struct
 end
 
 let zoom_state_holder =
-  State_holder.component ~initial:{ Zoom_state.zoom = None } (module Zoom_state)
+  Bonsai.state [%here] (module Zoom_state) ~default_model:{ Zoom_state.zoom = None }
 ;;
 
 module Tab = struct
@@ -96,18 +96,18 @@ let component ~(data : Data.t Bonsai.Value.t) : t Bonsai.Computation.t =
   let open Bonsai.Let_syntax in
   let%sub zoom_state_holder = zoom_state_holder in
   let tab_panel_input =
-    let%map { current = { zoom }; _ } = zoom_state_holder
+    let%map { zoom }, _ = zoom_state_holder
     and data = data in
     { Tab.Input.data; zoom }
   in
   let%sub tab_panel = Tab_panel.component (module Tab) tab_panel_input in
   return
-    (let%map zoom_state_holder = zoom_state_holder
+    (let%map zoom_state, set_zoom_state = zoom_state_holder
      and view, { Tab.Result.key_handler; focus; fix_focus } = tab_panel in
      let view = Vdom.Node.section [ Vdom.Attr.id "main-panel" ] [ view ] in
      let set_zoom new_zoom =
-       Vdom.Event.Many [ zoom_state_holder.set { zoom = new_zoom }; fix_focus ]
+       Vdom.Event.Many [ set_zoom_state { zoom = new_zoom }; fix_focus ]
      in
-     let { Zoom_state.zoom } = zoom_state_holder.current in
+     let { Zoom_state.zoom } = zoom_state in
      { view; key_handler; focus; zoom; set_zoom })
 ;;

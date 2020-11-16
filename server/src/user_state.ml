@@ -38,23 +38,26 @@ let info_of_trace_info
 module Initial = struct
   type t =
     { trace : Memtrace.Trace.Reader.t
+    ; loc_cache : Location.Cache.t
     ; graph : Data.Graph.t
     ; trie : Data.Trie.t
     ; info : Data.Info.t
     }
 
   let of_trace trace =
-    let filtered_trace = Filtered_trace.create ~trace ~filter:Filter.default in
+    let loc_cache = Location.Cache.create ~trace () in
+    let filtered_trace = Filtered_trace.create ~trace ~loc_cache ~filter:Filter.default in
     let graph = Graph.build ~trace:filtered_trace ~size:graph_size in
     let trie =
       Location_trie.build
         ~trace:filtered_trace
+        ~loc_cache
         ~error:default_error
         ~frequency:default_frequency
         ~direction:default_direction
     in
     let info = info_of_trace_info (Memtrace.Trace.Reader.info trace) in
-    { trace; graph; trie; info }
+    { trace; loc_cache; graph; trie; info }
   ;;
 end
 
@@ -64,17 +67,18 @@ type t =
   }
 [@@deriving fields]
 
-let compute ~initial_state:Initial.{ trace; trie; graph; info } ~filter =
+let compute ~initial_state:Initial.{ trace; loc_cache; trie; graph; info } ~filter =
   let total_allocations_unfiltered = Data.Trie.total_allocations trie in
   let Filter.{ direction; _ } = filter in
   let trie, filtered_graph =
     if Filter.is_default filter
     then trie, None
     else (
-      let filtered_trace = Filtered_trace.create ~trace ~filter in
+      let filtered_trace = Filtered_trace.create ~trace ~loc_cache ~filter in
       let trie =
         Location_trie.build
           ~trace:filtered_trace
+          ~loc_cache
           ~error:default_error
           ~frequency:default_frequency
           ~direction

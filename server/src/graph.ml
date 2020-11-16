@@ -11,12 +11,11 @@ let full_graph_and_max_time ~trace : (Time_ns.Span.t * Byte_units.t) list * Time
   let max_time = ref Time_ns.Span.zero in
   Filtered_trace.iter trace (fun time event ->
     (match event with
-     | Event (Alloc { obj_id; nsamples; _ }) ->
-       let size = nsamples |> Filtered_trace.bytes_of_nsamples ~trace in
+     | Alloc { obj_id; size; _ } ->
        Obj_id.Table.add_exn objects ~key:obj_id ~data:{ size };
        total_size := Byte_units.(!total_size + size)
-     | Event (Promote _) -> ()
-     | Event (Collect obj_id) ->
+     | Promote _ -> ()
+     | Collect obj_id ->
        let obj_info = Obj_id.Table.find_exn objects obj_id in
        Obj_id.Table.remove objects obj_id;
        total_size := Byte_units.(!total_size - obj_info.size)

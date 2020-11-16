@@ -8,23 +8,13 @@ module type Button = sig
   val title : t -> string option
 end
 
-type 'a t =
-  { view : Vdom.Node.t
-  ; value : 'a
-  ; changing : bool
-  ; reset_changing : Vdom.Event.t
-  }
-[@@deriving fields]
+type 'a t = 'a And_view.t
 
 let component (type a) (module Button : Button with type t = a) ~name ~initial_value =
   let open Bonsai.Let_syntax in
-  let%sub changing = Changing.component (module Button) ~initial_value in
+  let%sub state = Bonsai.state [%here] (module Button) ~default_model:initial_value in
   return
-    (let%map changing = changing in
-     let value = Changing.value changing in
-     let set_value = Changing.set_value changing in
-     let reset_changing = Changing.set_changing changing false in
-     let changing = Changing.changing changing in
+    (let%map value, set_value = state in
      let open Vdom in
      let render_item button =
        let selected = Button.equal button value in
@@ -53,5 +43,5 @@ let component (type a) (module Button : Button with type t = a) ~name ~initial_v
      let view =
        Node.ul [ Attr.class_ "radio-list" ] (List.map ~f:render_item Button.all)
      in
-     { view; value; changing; reset_changing })
+     { And_view.view; value })
 ;;

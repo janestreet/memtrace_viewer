@@ -6,28 +6,6 @@ module Node_svg = Virtual_dom_svg.Node
 module Attr_svg = Virtual_dom_svg.Attr
 open Memtrace_viewer_common
 
-module Ranges = struct
-  type t =
-    { allocated : Range_input.t
-    ; live : Range_input.t
-    }
-end
-
-let ranges ~(graph : Data.Graph.t Bonsai.Value.t) ~start_time ~time_view
-  : Ranges.t Bonsai.Computation.t
-  =
-  let open Bonsai.Let_syntax in
-  let initial_value = Time_range.all in
-  let max_x = Data.Graph.max_x <$> graph in
-  let range = Range_input.component ~initial_value ~max:max_x ~start_time ~time_view in
-  let%sub allocated = range in
-  let%sub live = range in
-  return
-    (let%map allocated = allocated
-     and live = live in
-     { Ranges.allocated; live })
-;;
-
 module Direction_button = struct
   type t = Filter.direction =
     | Explore_downwards_from_allocations
@@ -58,40 +36,11 @@ let direction_list : Filter.direction Radio_list.t Bonsai.Computation.t =
     ~initial_value:Explore_downwards_from_allocations
 ;;
 
-module Heap_filter = struct
-  type t =
-    { include_minor_heap : Checkbox.t
-    ; include_major_heap : Checkbox.t
-    }
-
-  let view { include_minor_heap; include_major_heap } =
-    Node.ul
-      [ Attr.class_ "checkbox-list" ]
-      [ Node.li [] [ Checkbox.view include_minor_heap ]
-      ; Node.li [] [ Checkbox.view include_major_heap ]
-      ]
-  ;;
-end
-
-let heap_filter : Heap_filter.t Bonsai.Computation.t =
-  let open Bonsai.Let_syntax in
-  let%sub include_minor_heap =
-    Checkbox.component ~label:"Include minor heap" ~initial_value:true
-  in
-  let%sub include_major_heap =
-    Checkbox.component ~label:"Include major heap" ~initial_value:true
-  in
-  return
-    (let%map include_minor_heap = include_minor_heap
-     and include_major_heap = include_major_heap in
-     { Heap_filter.include_minor_heap; include_major_heap })
-;;
-
 let graph_view
       ~graph
       ~filtered_graph
       ~allocated_range
-      ~live_range
+      ~collected_range
       ~start_time
       ~time_view
       ~set_time_view
@@ -100,11 +49,9 @@ let graph_view
   let open Bonsai.Let_syntax in
   let width = 500 in
   let height = 200 in
-  let series_and_regions =
+  let series =
     let%map graph = graph
-    and filtered_graph = filtered_graph
-    and allocated_range = allocated_range
-    and live_range = live_range in
+    and filtered_graph = filtered_graph in
     let max_x =
       match filtered_graph with
       | None -> Data.Graph.max_x graph
@@ -142,19 +89,20 @@ let graph_view
     let filtered_series =
       Option.map ~f:(series_of_data_graph "filtered-graph-line") filtered_graph
     in
-    let series = List.filter_opt [ filtered_series; Some full_series ] in
-    let region_of_range css_class range : Graph_view.Region.t option =
-      if Time_range.covers range ~lower:Time_ns.Span.zero ~upper:(Data.Graph.max_x graph)
-      then None
-      else Some (Graph_view.Region.create ~css_class range.lower_bound range.upper_bound)
-    in
-    let allocated_region = region_of_range "graph-allocated-range" allocated_range in
-    let live_region = region_of_range "graph-live-range" live_range in
-    let regions = List.filter_opt [ allocated_region; live_region ] in
-    series, regions
+    List.filter_opt [ filtered_series; Some full_series ]
   in
-  let series = fst <$> series_and_regions in
-  let regions = snd <$> series_and_regions in
+  let regions =
+    let%map allocated_range = allocated_range
+    and collected_range = collected_range in
+    let region_of_range css_class range : Graph_view.Region.t =
+      Graph_view.Region.create ~css_class range
+    in
+    let allocated_region =
+      region_of_range "graph-allocated-range" (Non_empty allocated_range)
+    in
+    let collected_region = region_of_range "graph-collected-range" collected_range in
+    [ allocated_region; collected_region ]
+  in
   let width = Bonsai.Value.return width in
   let height = Bonsai.Value.return height in
   Graph_view.component
@@ -167,134 +115,97 @@ let graph_view
     ~set_time_view
 ;;
 
-let button
-      ~server_state
-      ~inject_outgoing
-      ~ranges:{ Ranges.allocated; live }
-      ~direction
-      ~heap_filter:{ Heap_filter.include_minor_heap; include_major_heap }
-  =
-  let on_submit =
-    let outgoing_action : Memtrace_viewer_common.Action.t =
-      let ranges : Filter.Ranges.t =
-        { allocated_range = Range_input.range allocated
-        ; live_range = Range_input.range live
-        }
-      in
-      let direction : Filter.direction = Radio_list.value direction in
-      let include_minor_heap = Checkbox.value include_minor_heap in
-      let include_major_heap = Checkbox.value include_major_heap in
-      Set_filter { ranges; direction; include_minor_heap; include_major_heap }
-    in
-    Vdom.Event.Many
-      [ Vdom.Event.Prevent_default (* don't do a real HTML submit! *)
-      ; Range_input.reset_changing allocated
-      ; Range_input.reset_changing live
-      ; Radio_list.reset_changing direction
-      ; Checkbox.reset_changing include_minor_heap
-      ; Checkbox.reset_changing include_major_heap
-      ; inject_outgoing outgoing_action
-      ]
-  in
-  let server_is_up = Server_state.Status.is_up Server_state.(server_state.status) in
-  let something_is_changing =
-    Radio_list.changing direction
-    || Range_input.changing allocated
-    || Range_input.changing live
-    || Checkbox.changing include_minor_heap
-    || Checkbox.changing include_major_heap
-  in
-  let heap_filters_not_both_false =
-    Checkbox.value include_minor_heap || Checkbox.value include_major_heap
-  in
-  let enabled = server_is_up && something_is_changing && heap_filters_not_both_false in
-  let view =
-    Node.input
-      (* Don't actually put an onclick handler on the button; just return the handler to
-         be used as the form's onsubmit instead, thus getting Enter key behavior for free
-      *)
-      ([ Attr.type_ "submit"
-       ; Attr.value "Apply"
-       ; Attr.title "Set current filter and redraw views"
-       ]
-       @ if not enabled then [ Attr.disabled ] else [])
-      []
-  in
-  view, on_submit
-;;
+module Submission_handling = struct
+  type t =
+    { button : Vdom.Node.t
+    ; on_submit : Vdom.Event.t
+    }
 
-let button ~ranges ~direction ~heap_filter ~server_state ~inject_outgoing
-  : (Vdom.Node.t * Vdom.Event.t) Bonsai.Computation.t
-  =
-  let open Bonsai.Let_syntax in
-  return
-    (let%map server_state = server_state
-     and inject_outgoing = inject_outgoing
-     and ranges = ranges
-     and direction = direction
-     and heap_filter = heap_filter in
-     button ~server_state ~inject_outgoing ~ranges ~direction ~heap_filter)
-;;
+  let component ~server_state ~inject_outgoing ~filter =
+    let open Bonsai.Let_syntax in
+    return
+      (let%map server_state = server_state
+       and inject_outgoing = inject_outgoing
+       and filter = filter in
+       let do_submit =
+         match filter with
+         | Some filter ->
+           inject_outgoing (Action.Set_filter filter)
+         | None -> Vdom.Event.Ignore
+       in
+       let on_submit =
+         Vdom.Event.Many
+           [ Vdom.Event.Prevent_default (* don't do a real HTML submit! *); do_submit ]
+       in
+       let server_is_up = Server_state.Status.is_up Server_state.(server_state.status) in
+       let filter_is_valid = Option.is_some filter in
+       let enabled = server_is_up && filter_is_valid in
+       let button =
+         Node.input
+           (* Don't actually put an onclick handler on the button; just return the handler
+              to be used as the form's onsubmit instead, thus getting Enter key behavior
+              for free
+           *)
+           ([ Attr.type_ "submit"
+            ; Attr.value "Apply"
+            ; Attr.title "Set current filter and redraw views"
+            ]
+            @ if not enabled then [ Attr.disabled ] else [])
+           []
+       in
+       { button; on_submit })
+  ;;
+end
 
 let panel
       ~server_state
-      ~time_view
       ~filtered_allocations
-      ~allocated_nodes
-      ~live_nodes
-      ~range_size
+      ~(filter : Filter.t)
+      ~filter_clauses
       ~graph_node
       ~direction_list_node
-      ~heap_filter_node
       ~button_node
       ~on_submit
   =
   let allocations_line =
     match filtered_allocations with
-    | None -> Node.none
+    | None -> Util.placeholder_svg
     | Some bytes ->
       Node.p
         [ Attr.class_ "total-allocations" ]
         [ Node.textf "Filtered allocations: %s" (bytes |> Byte_units.Short.to_string) ]
   in
-  let range_rows ~header ~prefix ~inputs:(lower_input, upper_input) =
-    let swatch_class = String.concat [ prefix; "-swatch" ] in
-    let swatch =
-      Node_svg.svg
-        [ Attr.classes [ "swatch"; swatch_class ] ]
-        [ Node_svg.rect [ Attr.class_ "swatch-bg" ] []
-        ; Node_svg.rect [ Attr.class_ "swatch-interior" ] []
-        ; Node_svg.rect [ Attr.class_ "swatch-border" ] []
-        ]
-    in
-    let header_cells = [ Node.td [] [ swatch ]; Node.td [] [ Node.text header ] ] in
-    let sec_node =
-      match time_view with
-      | Graph_view.Time_view.Elapsed_seconds -> Node.td [] [ Node.text "s" ]
-      | Wall_time -> Node.none
-    in
-    match range_size with
-    | Range_input.Size.Small ->
-      [ Node.tr
-          []
-          (header_cells
-           @ [ Node.td [] [ lower_input ]
-             ; sec_node
-             ; Node.td [] [ Node.text "and" ]
-             ; Node.td [] [ upper_input ]
-             ; sec_node
-             ])
+  let swatch swatch_class =
+    Node_svg.svg
+      [ Attr.classes [ "swatch"; swatch_class ] ]
+      [ Node_svg.rect [ Attr.class_ "swatch-bg" ] []
+      ; Node_svg.rect [ Attr.class_ "swatch-interior" ] []
+      ; Node_svg.rect [ Attr.class_ "swatch-border" ] []
       ]
-    | Large ->
-      [ Node.tr [] (header_cells @ [ Node.td [] [ lower_input ]; sec_node ])
-      ; Node.tr
-          []
-          [ Node.td [] []
-          ; Node.td [] [ Node.text "and" ]
-          ; Node.td [] [ upper_input ]
-          ; sec_node
-          ]
-      ]
+  in
+  let region_legend_text =
+    let phrase swatch_class desc range =
+      if Range.Time_ns_span.is_all range
+      then None
+      else Some [ Node.text " "; swatch swatch_class; Node.textf "%s in this range" desc ]
+    in
+    let allocated_phrase = phrase "allocated-swatch" "allocated" filter.allocated_range in
+    let collected_phrase =
+      match filter.collected_range with
+      | Non_empty range -> phrase "collected-swatch" "collected" range
+      | Empty -> Some [ Node.textf " never collected" ]
+    in
+    let initial_fragment = Node.text "Showing objects that are" in
+    match allocated_phrase, collected_phrase with
+    | None, None -> []
+    | Some phrase, None | None, Some phrase -> initial_fragment :: phrase
+    | Some phrase1, Some phrase2 ->
+      List.concat [ [ initial_fragment ]; phrase1; [ Node.text " and" ]; phrase2 ]
+  in
+  let region_legend =
+    if List.is_empty region_legend_text
+    then Util.placeholder_div
+    else Node.p [] region_legend_text
   in
   let connection_lost_message =
     match server_state with
@@ -314,20 +225,8 @@ let panel
            all work correcly *)
         Attr.on_keydown (fun _ -> Vdom.Event.Stop_propagation)
       ]
-      [ Node.p [] [ Node.text "Only show allocations:" ]
-      ; Node.table
-          [ Attr.class_ "range-table" ]
-          (List.concat
-             [ range_rows
-                 ~header:"Live somewhere between"
-                 ~prefix:"live"
-                 ~inputs:live_nodes
-             ; range_rows
-                 ~header:"Occurring between"
-                 ~prefix:"allocated"
-                 ~inputs:allocated_nodes
-             ])
-      ; heap_filter_node
+      [ region_legend
+      ; And_view.view filter_clauses
       ; Node.p [] [ Node.text "Explore:" ]
       ; direction_list_node
       ; Node.div [] [ button_node; connection_lost_message ]
@@ -348,7 +247,7 @@ let panel
 ;;
 
 let time_view_holder =
-  State_holder.component (module Graph_view.Time_view) ~initial:Elapsed_seconds
+  Bonsai.state [%here] (module Graph_view.Time_view) ~default_model:Elapsed_seconds
 ;;
 
 let component
@@ -362,65 +261,79 @@ let component
   =
   let open Bonsai.Let_syntax in
   let%sub time_view_holder = time_view_holder in
-  let time_view =
-    let%map time_view_holder = time_view_holder in
-    time_view_holder.current
+  let time_view = Bonsai.Value.map ~f:fst time_view_holder in
+  let set_time_view = Bonsai.Value.map ~f:snd time_view_holder in
+  let max_time =
+    let%map graph = graph in
+    Data.Graph.max_x graph
   in
-  let set_time_view =
-    let%map time_view_holder = time_view_holder in
-    time_view_holder.set
-  in
-  let%sub ranges = ranges ~graph ~start_time ~time_view in
+  let%sub filter_clauses = Filter_editor.component ~max_time ~start_time ~time_view in
   let%sub direction = direction_list in
-  let%sub heap_filter = heap_filter in
-  let allocated_range =
-    let%map ranges = ranges in
-    Range_input.range ranges.allocated
+  let filter_spec : Filter_spec.t Bonsai.Value.t =
+    let%map filter_clauses = filter_clauses
+    and direction = direction in
+    Filter_spec.{ clauses = filter_clauses.value; direction = direction.value }
   in
-  let live_range =
-    let%map ranges = ranges in
-    Range_input.range ranges.live
+  (* If the filter is incomplete (that is, there are blank entries), we don't want to
+     enable Apply but we do want to show as much of the filter as makes sense. This is
+     especially important because otherwise adding a new clause would cause the displayed
+     filter (e.g., the ranges in the graph) to disappear.
+
+     (We could instead use a component that remembers the last valid filter, but that's
+     rather involved. We would want something (more or less) of type
+
+     [is_valid:('a -> bool) -> 'a Bonsai.Value.t -> 'a Bonsai.Computation.t]
+
+     but that won't work because Bonsai computations are pure---it can't store the
+     last known valid input as a side effect. It could instead be in the style of a
+     state machine:
+
+     [is_valid:('a -> bool) -> ('a * ('a -> Vdom.Event.t)) Bonsai.Computation.t]
+
+     but now, to fire that event, all the components in the filter editor would have to
+     support an on_changed event, which is a much more painful workaround than just
+     having this [to_filter_allow_incomplete] function.) *)
+  let filter_to_display =
+    Bonsai.Value.map ~f:Filter_spec.to_filter_allow_incomplete filter_spec
+  in
+  let complete_filter = Bonsai.Value.map ~f:Filter_spec.to_filter filter_spec in
+  let allocated_range =
+    let%map filter_to_display = filter_to_display in
+    filter_to_display.allocated_range
+  in
+  let collected_range =
+    let%map filter_to_display = filter_to_display in
+    filter_to_display.collected_range
   in
   let%sub graph_view =
     graph_view
       ~graph
       ~filtered_graph
       ~allocated_range
-      ~live_range
+      ~collected_range
       ~start_time
       ~time_view
       ~set_time_view
   in
-  let%sub button =
-    button ~ranges ~direction ~heap_filter ~server_state ~inject_outgoing
+  let%sub submission_handling =
+    Submission_handling.component ~server_state ~inject_outgoing ~filter:complete_filter
   in
   return
-    (let%map ranges = ranges
+    (let%map filter = filter_to_display
      and direction = direction
-     and time_view = time_view
-     and heap_filter = heap_filter
+     and filter_clauses = filter_clauses
      and graph_node = graph_view
-     and button_node, on_submit = button
+     and { button = button_node; on_submit } = submission_handling
      and server_state = server_state
      and filtered_allocations = filtered_allocations in
-     let { Ranges.allocated; live } = ranges in
-     let allocated_nodes =
-       Range_input.lower_input allocated, Range_input.upper_input allocated
-     in
-     let live_nodes = Range_input.lower_input live, Range_input.upper_input live in
-     let range_size = Range_input.size allocated in
-     let direction_list_node = Radio_list.view direction in
-     let heap_filter_node = Heap_filter.view heap_filter in
+     let direction_list_node = direction.view in
      panel
        ~server_state
-       ~time_view
        ~filtered_allocations
-       ~allocated_nodes
-       ~live_nodes
-       ~range_size
+       ~filter
+       ~filter_clauses
        ~graph_node
        ~direction_list_node
-       ~heap_filter_node
        ~button_node
        ~on_submit)
 ;;

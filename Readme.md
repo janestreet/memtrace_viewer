@@ -1,6 +1,3 @@
-"Memtrace viewer"
-=================
-
 # Memtrace viewer
 
 OCaml now has runtime support for statistical memory profiling. Given
@@ -19,6 +16,6 @@ with the Memtrace library.
 
 ## Tutorial
 
-- [Making a Trace with Memtrace](docs/tutorial-tracing.md)
-- [Finding Memory Leaks with the Memtrace Viewer](docs/tutorial-viewer.md)
-- [Case study: Memory growth in `jtv`](docs/tutorial-jtv-case-study.md)
+See [this blog
+post](https://blog.janestreet.com/finding-memory-leaks-with-memtrace/)
+for instructions on how to use memtrace viewer.

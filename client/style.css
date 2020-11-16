@@ -1,6 +1,7 @@
 :root {
-    --live-color: rgb(32, 133, 239);
-    --allocated-color: rgb(255, 128, 0);
+    --allocated-color: rgb(32, 133, 239);
+    --live-color: rgb(255, 128, 0); /* currently vestigial */
+    --collected-color: rgb(255, 0, 0);
 }
 #container{
     display: grid;
@@ -179,7 +180,7 @@ table {
   stroke: black;
 }
 .filtered-graph-line {
-  stroke: var(--live-color);
+  stroke: var(--allocated-color);
 }
 .graph-tick-mark {
   stroke: black;
@@ -197,6 +198,11 @@ table {
 .graph-live-range {
   --graph-region-color: var(--live-color)
 }
+
+.graph-collected-range {
+  --graph-region-color: var(--collected-color)
+}
+
 .graph-region-bound {
   stroke: var(--graph-region-color);
   width: 2px;
@@ -248,6 +254,9 @@ table.range-table td {
 .live-swatch {
   --swatch-color: var(--live-color);
 }
+.collected-swatch {
+  --swatch-color: var(--collected-color);
+}
 
 input.bound {
   /* This keeps the "s" after the field from being vertically offset from other
@@ -287,6 +296,14 @@ input.bound[type="datetime-local"] {
 .checkbox-list input {
     margin-left: 0;
     margin-right: 0.45em;
+}
+
+.clauses {
+    list-style-type: none;
+}
+
+.clauses li:first-child .conjunction {
+    display: none;
 }
 
 .focused {
