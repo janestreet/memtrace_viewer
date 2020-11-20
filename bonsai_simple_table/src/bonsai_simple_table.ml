@@ -461,6 +461,8 @@ module Make (Row : Row) (Col_id : Id) = struct
   include T
 
   let bonsai =
-    Bonsai.Arrow.With_incr.of_module (module T) ~default_model:(Model.create ())
+    Bonsai.Arrow_deprecated.With_incr.of_module
+      (module T)
+      ~default_model:(Model.create ())
   ;;
 end

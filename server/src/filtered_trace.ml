@@ -191,7 +191,7 @@ end = struct
       holds_somewhere_from 0
     in
     let interesting = List.for_all ~f:holds_somewhere t.required_locations in
-    let forbidden () = List.for_all ~f:holds_somewhere t.forbidden_locations in
+    let forbidden () = List.exists ~f:holds_somewhere t.forbidden_locations in
     interesting && not (forbidden ())
   ;;
 end

@@ -106,7 +106,7 @@ module type S = sig
       }
   end
 
-  val bonsai : (Input.t, Result.t) Bonsai.Arrow.t
+  val bonsai : (Input.t, Result.t) Bonsai.Arrow_deprecated.t
 end
 
 module type Bonsai_simple_table = sig
