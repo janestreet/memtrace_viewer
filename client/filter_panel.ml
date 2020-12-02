@@ -216,7 +216,7 @@ let panel
     Node.create
       "form"
       [ Attr.id "filter-form"
-      ; Attr.on "submit" (fun _ -> on_submit)
+      ; Attr.on_submit (fun _ -> on_submit)
       ; (* Browser-level validation isn't our friend - it rejects numeric inputs if the
            user inputs too many digits (as decided by the step) *)
         Attr.create "novalidate" ""
