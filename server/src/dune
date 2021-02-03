@@ -1,6 +1,6 @@
 (library (name memtrace_viewer_native) (public_name memtrace_viewer.native)
- (preprocess (pps ppx_jane -annotated-ignores))
- (libraries memtrace_viewer_common memtrace async_rpc_websocket))
+ (libraries memtrace_viewer_common memtrace async_rpc_websocket)
+ (preprocess (pps ppx_jane)))
 
 (rule (targets embedded_files.ml embedded_files.mli)
  (deps %{bin:ocaml-embed-file} ../../client/main.bc.js

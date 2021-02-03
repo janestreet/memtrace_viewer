@@ -76,13 +76,18 @@ module Event = struct
     match event with
     | Alloc
         { obj_id
-        ; is_major
+        ; source
         ; length
         ; nsamples
         ; backtrace_buffer
         ; backtrace_length
         ; common_prefix = _
         } ->
+      let is_major =
+        match source with
+        | Minor -> false
+        | Major | External -> true
+      in
       let single_allocation_size = length |> bytes_of_int_words ~trace in
       let size = nsamples |> bytes_of_nsamples ~trace in
       let backtrace =
@@ -247,7 +252,12 @@ let obj_ids_matching_filter ~trace ~loc_cache (filter : Filter.t) =
     in
     last_time := time;
     match event with
-    | Alloc { obj_id; length; is_major; backtrace_length; backtrace_buffer; _ } ->
+    | Alloc { obj_id; length; source; backtrace_length; backtrace_buffer; _ } ->
+      let is_major =
+        match source with
+        | Minor -> false
+        | Major | External -> true
+      in
       let deferring = (not is_major) && not filter.include_minor_heap in
       let definitely_wrong_heap = is_major && not filter.include_major_heap in
       let correct_size =
@@ -320,11 +330,11 @@ let iter
     match event with
     | (Alloc { obj_id; _ } | Promote obj_id | Collect obj_id)
       when not (interesting obj_id) -> ()
-    | Alloc ({ obj_id; is_major = false; _ } as alloc) when defer_minor_allocations ->
+    | Alloc ({ obj_id; source = Minor; _ } as alloc) when defer_minor_allocations ->
       Obj_id.Table.add_exn
         deferring
         ~key:obj_id
-        ~data:(Memtrace.Trace.Event.Alloc { alloc with is_major = true })
+        ~data:(Memtrace.Trace.Event.Alloc { alloc with source = Major })
     | Promote obj_id when collect_on_promotion ->
       Hash_set.strict_add_exn collected_early obj_id;
       f time (Event.Collect obj_id)
