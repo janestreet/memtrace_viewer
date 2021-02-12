@@ -296,7 +296,11 @@ module Make (Row : Row) (Col_id : Id) = struct
              focus_col :: data_cols
            in
            let rows = List.filter_map row_ids_in_order ~f:(Map.find rows) in
-           Ascii_table_kernel.draw columns rows ~limit_width_to:3000
+           Ascii_table_kernel.draw
+             columns
+             rows
+             ~limit_width_to:3000
+             ~prefer_split_on_spaces:false
            |> Option.value_exn
            |> Ascii_table_kernel.Screen.to_string
                 ~bars:`Unicode
@@ -349,7 +353,8 @@ module Make (Row : Row) (Col_id : Id) = struct
               List.fold
                 groups
                 ~init:([], [], [])
-                ~f:(fun (col_defn_tags, groups_row, col_headers_row)
+                ~f:(fun
+                     (col_defn_tags, groups_row, col_headers_row)
                      { group; cols_in_group }
                      ->
                        let num_cols = List.length cols_in_group in

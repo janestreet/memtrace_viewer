@@ -136,9 +136,10 @@ let allocations_col ~expanded_nodes =
   let render ({ percentage; backtrace } : Row.Id.t) (node : Row.t) =
     let entry = Data.Trie.Node.entry node in
     let allocations =
-      if Data.Backtrace.Reversed.Set.mem
-           expanded_nodes
-           (backtrace |> Data.Backtrace.Reversed.of_forward)
+      if
+        Data.Backtrace.Reversed.Set.mem
+          expanded_nodes
+          (backtrace |> Data.Backtrace.Reversed.of_forward)
       then Data.Entry.allocations_excluding_children entry
       else Data.Entry.allocations entry
     in

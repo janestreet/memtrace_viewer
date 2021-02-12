@@ -168,7 +168,8 @@ module Byte_units_as_point : Point with type t = Byte_units.t = struct
   include Byte_units
   include Byte_units.Stable.V2
 
-  include Quickcheckable.Of_quickcheckable
+  include
+    Quickcheckable.Of_quickcheckable
       (Int63)
       (struct
         type t = Byte_units.t
