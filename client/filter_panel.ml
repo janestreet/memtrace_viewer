@@ -6,36 +6,6 @@ module Node_svg = Virtual_dom_svg.Node
 module Attr_svg = Virtual_dom_svg.Attr
 open Memtrace_viewer_common
 
-module Direction_button = struct
-  type t = Filter.direction =
-    | Explore_downwards_from_allocations
-    | Explore_upwards_from_main
-  [@@deriving sexp, equal, enumerate]
-
-  let label = function
-    | Explore_downwards_from_allocations -> "Downwards from allocations"
-    | Explore_upwards_from_main -> "Upwards from “main”"
-  ;;
-
-  let title = function
-    | Explore_downwards_from_allocations ->
-      Some
-        "Group allocations starting from allocation sites. Good for finding localized \
-         problems."
-    | Explore_upwards_from_main ->
-      Some
-        "Group allocations starting from the top-level “main” function. Good for \
-         seeing an overview of which parts of a program are allocating the most."
-  ;;
-end
-
-let direction_list : Filter.direction Radio_list.t Bonsai.Computation.t =
-  Radio_list.component
-    (module Direction_button)
-    ~name:"direction"
-    ~initial_value:Explore_downwards_from_allocations
-;;
-
 let graph_view
       ~graph
       ~filtered_graph
@@ -163,13 +133,12 @@ let panel
       ~(filter : Filter.t)
       ~filter_clauses
       ~graph_node
-      ~direction_list_node
       ~button_node
       ~on_submit
   =
   let allocations_line =
     match filtered_allocations with
-    | None -> Util.placeholder_svg
+    | None -> Util.placeholder_div
     | Some bytes ->
       Node.p
         [ Attr.class_ "total-allocations" ]
@@ -227,23 +196,18 @@ let panel
       ]
       [ region_legend
       ; And_view.view filter_clauses
-      ; Node.p [] [ Node.text "Explore:" ]
-      ; direction_list_node
       ; Node.div [] [ button_node; connection_lost_message ]
       ]
   in
-  let header_text = Vdom.Node.text "Filter" in
   let main_body =
     Vdom.Node.div
-      []
+      [ Vdom.Attr.id "filter-panel-body" ]
       [ allocations_line
       ; Vdom.Node.div [ Vdom.Attr.id "filter-graph-container" ] [ graph_node ]
       ; form
       ]
   in
-  Vdom.Node.section
-    [ Vdom.Attr.id "filter-panel" ]
-    [ Vdom.Node.h2 [] [ header_text ]; main_body ]
+  Panel.panel main_body ~title:"Filter" ~id:"filter-panel"
 ;;
 
 let time_view_holder =
@@ -268,11 +232,9 @@ let component
     Data.Graph.max_x graph
   in
   let%sub filter_clauses = Filter_editor.component ~max_time ~start_time ~time_view in
-  let%sub direction = direction_list in
   let filter_spec : Filter_spec.t Bonsai.Value.t =
-    let%map filter_clauses = filter_clauses
-    and direction = direction in
-    Filter_spec.{ clauses = filter_clauses.value; direction = direction.value }
+    let%map filter_clauses = filter_clauses in
+    Filter_spec.{ clauses = filter_clauses.value }
   in
   (* If the filter is incomplete (that is, there are blank entries), we don't want to
      enable Apply but we do want to show as much of the filter as makes sense. This is
@@ -320,20 +282,17 @@ let component
   in
   return
     (let%map filter = filter_to_display
-     and direction = direction
      and filter_clauses = filter_clauses
      and graph_node = graph_view
      and { button = button_node; on_submit } = submission_handling
      and server_state = server_state
      and filtered_allocations = filtered_allocations in
-     let direction_list_node = direction.view in
      panel
        ~server_state
        ~filtered_allocations
        ~filter
        ~filter_clauses
        ~graph_node
-       ~direction_list_node
        ~button_node
        ~on_submit)
 ;;

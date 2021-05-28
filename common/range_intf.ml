@@ -4,22 +4,17 @@ module type Point = sig
   type t [@@deriving sexp, bin_io, equal, compare, quickcheck]
 end
 
-module Bound = struct
-  type 'a t =
-    | No_bound
-    | Open of 'a
-    | Closed of 'a
-  [@@deriving sexp, bin_io, equal, quickcheck]
+module type Bound = sig
+  type 'a t [@@deriving sexp, bin_io, equal, quickcheck]
 end
 
-module type Range = sig
+module type S = sig
   module Point : Point
+  module Bound : Bound
 
-  type t =
-    { lower_bound : Point.t Bound.t
-    ; upper_bound : Point.t Bound.t
-    }
-  [@@deriving sexp, bin_io, equal, quickcheck]
+  type 'a range
+  type 'a or_empty
+  type t = Point.t range [@@deriving sexp, bin_io, equal, quickcheck]
 
   val range : Point.t Bound.t -> Point.t Bound.t -> t
   val all : t
@@ -41,10 +36,7 @@ module type Range = sig
   val disjoint : t -> t -> bool
 
   module Or_empty : sig
-    type nonrec t =
-      | Non_empty of t
-      | Empty
-    [@@deriving sexp, bin_io, equal, quickcheck]
+    type nonrec t = Point.t or_empty [@@deriving sexp, bin_io, equal, quickcheck]
 
     val range : Point.t Bound.t -> Point.t Bound.t -> t
     val all : t
@@ -64,13 +56,35 @@ module type Range = sig
   val inter_opt : t -> t -> t option
 end
 
-module type S = sig
-  module Bound = Bound
+module type Range = sig
+  module Bound : sig
+    type 'a t =
+      | No_bound
+      | Open of 'a
+      | Closed of 'a
+    [@@deriving sexp, bin_io, equal, quickcheck]
+  end
+
+  type 'a t =
+    { lower_bound : 'a Bound.t
+    ; upper_bound : 'a Bound.t
+    }
+
+  module Or_empty : sig
+    type nonrec 'a t =
+      | Non_empty of 'a t
+      | Empty
+  end
 
   module type Point = Point
-  module type Range = Range
 
-  module Make (Point : Point) : Range with module Point = Point
-  module Time_ns_span : Range with type Point.t = Time_ns.Span.t
-  module Byte_units : Range with type Point.t = Byte_units.t
+  module type S =
+    S
+    with type 'a range := 'a t
+    with type 'a or_empty := 'a Or_empty.t
+    with module Bound := Bound
+
+  module Make (Point : Point) : S with module Point = Point
+  module Time_ns_span : S with type Point.t = Time_ns.Span.t
+  module Byte_units : S with type Point.t = Byte_units.t
 end

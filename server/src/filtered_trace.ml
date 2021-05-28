@@ -57,61 +57,6 @@ let bytes_of_nsamples ~trace nsamples =
   words *. (info.word_size |> Float.of_int) |> Byte_units.of_bytes_float_exn
 ;;
 
-module Event = struct
-  type t =
-    | Alloc of
-        { obj_id : Obj_id.t
-        ; is_major : bool
-        ; single_allocation_size : Byte_units.t
-        ; nsamples : int
-        ; size : Byte_units.t
-        ;
-          backtrace : Location.t list
-        }
-    | Promote of Obj_id.t
-    | Collect of Obj_id.t
-    | End
-
-  let of_memtrace_event ~trace ~loc_cache (event : Memtrace.Trace.Event.t) =
-    match event with
-    | Alloc
-        { obj_id
-        ; source
-        ; length
-        ; nsamples
-        ; backtrace_buffer
-        ; backtrace_length
-        ; common_prefix = _
-        } ->
-      let is_major =
-        match source with
-        | Minor -> false
-        | Major | External -> true
-      in
-      let single_allocation_size = length |> bytes_of_int_words ~trace in
-      let size = nsamples |> bytes_of_nsamples ~trace in
-      let backtrace =
-        let trace = ref [] in
-        let seen = Location.Table.create () in
-        (* Note that [backtrace_buffer] is in inverted order (main first), so [trace] ends
-           up uninverted (allocation first). *)
-        for i = 0 to backtrace_length - 1 do
-          let loc_code = backtrace_buffer.(i) in
-          let locs = Filtered_location_cache.locs_from_code loc_cache loc_code in
-          List.iter locs ~f:(fun loc ->
-            if not (Location.Table.mem seen loc)
-            then (
-              trace := loc :: !trace;
-              Location.Table.add_exn seen ~key:loc ~data:()))
-        done;
-        !trace
-      in
-      Alloc { obj_id; is_major; single_allocation_size; nsamples; size; backtrace }
-    | Promote obj_id -> Promote obj_id
-    | Collect obj_id -> Collect obj_id
-  ;;
-end
-
 module Cached_predicate : sig
   type t
 
@@ -165,7 +110,6 @@ end = struct
         ; allocated_range = _
         ; collected_range = _
         ; size_range = _
-        ; direction = _
         ; include_major_heap = _
         ; include_minor_heap = _
         } -> true
@@ -253,13 +197,21 @@ let obj_ids_matching_filter ~trace ~loc_cache (filter : Filter.t) =
     last_time := time;
     match event with
     | Alloc { obj_id; length; source; backtrace_length; backtrace_buffer; _ } ->
-      let is_major =
+      let deferring =
         match source with
-        | Minor -> false
-        | Major | External -> true
+        | Minor -> not filter.include_minor_heap
+        | Major | External -> false
       in
-      let deferring = (not is_major) && not filter.include_minor_heap in
-      let definitely_wrong_heap = is_major && not filter.include_major_heap in
+      let definitely_wrong_heap =
+        match source with
+        | Minor ->
+          (* Could become interesting later (when promoted), so it's only possibly wrong
+          *)
+          false
+        | Major -> not filter.include_major_heap
+        | External ->
+          not filter.include_major_heap
+      in
       let correct_size =
         should_record_allocation_of_size (length |> bytes_of_int_words ~trace) filter
       in
@@ -316,37 +268,364 @@ let create ~trace ~loc_cache ~filter =
   }
 ;;
 
-let iter
-      { trace; loc_cache; interesting; defer_minor_allocations; collect_on_promotion }
-      ?parse_backtraces
-      f
-  =
-  let deferring = Obj_id.Table.create () in
-  let collected_early = Obj_id.Hash_set.create () in
-  let last_time = ref Time_ns.Span.zero in
-  Memtrace.Trace.Reader.iter trace ?parse_backtraces (fun time event ->
-    let time = time |> time_span_of_timedelta in
-    last_time := time;
+module Event = struct
+  type t =
+    | Alloc of
+        { obj_id : Obj_id.t
+        ; source : Memtrace.Trace.Allocation_source.t
+        ; single_allocation_size : Byte_units.t
+        ; nsamples : int
+        ; size : Byte_units.t
+        ; backtrace_buffer : Location.t array
+        ; backtrace_length : int
+        ; common_prefix : int
+        }
+    | Promote of Obj_id.t
+    | Collect of Obj_id.t
+    | End
+end
+
+module Mode = struct
+  type t =
+    | Preserve_backtraces
+    | Preserve_times
+end
+
+module Interpreter : sig
+  type filtered_trace := t
+  type t
+
+  val create
+    :  filtered_trace:filtered_trace
+    -> callback:(Time_ns.Span.t -> Event.t -> unit)
+    -> mode:Mode.t
+    -> unit
+    -> t
+
+  val interpret_event : t -> Memtrace.Trace.Timedelta.t -> Memtrace.Trace.Event.t -> unit
+  val done_ : t -> unit
+end = struct
+  type filtered_trace = t
+
+  type t =
+    { filtered_trace : filtered_trace
+    ; callback : Time_ns.Span.t -> Event.t -> unit
+    ; mode : Mode.t
+    ; deferring : Memtrace.Trace.Event.t Obj_id.Table.t
+    ; collected_early : Obj_id.Hash_set.t
+    ; seen : Location.Hash_set.t
+    ; mutable seen_at_each_in_index : Location.t list array
+    ; mutable backtrace_buffer : Location.t array
+    ; mutable out_lengths : int array
+    ; mutable prev_in_length : int
+    ; mutable prev_out_length : int
+    ; mutable max_next_common_prefix : int
+    ; mutable last_time : Time_ns.Span.t
+    }
+
+  let create ~filtered_trace ~callback ~mode () =
+    { filtered_trace
+    ; callback
+    ; mode
+    ; deferring = Obj_id.Table.create ()
+    ; collected_early = Obj_id.Hash_set.create ()
+    ; seen = Location.Hash_set.create ()
+    ; seen_at_each_in_index = Array.create ~len:10 []
+    ; backtrace_buffer = Array.create ~len:10 Location.dummy
+    ; out_lengths = Array.create ~len:10 0
+    ; prev_in_length = 0
+    ; prev_out_length = 0
+    ; max_next_common_prefix = Int.max_value
+    ; last_time = Time_ns.Span.zero
+    }
+  ;;
+
+  let ensure_capacity array ~index ~default =
+    let len = index + 1 in
+    let old_len = Array.length array in
+    if old_len < len
+    then (
+      let new_len = max len (2 * old_len) in
+      let new_array = Array.create ~len:new_len default in
+      Array.blito ~src:array ~dst:new_array ();
+      new_array)
+    else array
+  ;;
+
+  (** The total number of out frames corresponding to the in frames in the interval
+      {v [i,j) v}. See [move] for how this is used. *)
+  let total_out_length t ~from_inc:i ~to_exc:j =
+    let ans = ref 0 in
+    for i = i to j - 1 do
+      ans := !ans + t.out_lengths.(i)
+    done;
+    !ans
+  ;;
+
+  (** How much to adjust an out cursor if the in cursor changes from i to j.
+
+      When we interpret an event, we have two buffers, one of which is a view of the other
+      but with some elements skipped and some elements expanded. To track the common
+      prefix, we have a cursor into each buffer:
+
+      {v
+        out lengths = [| 1 ; 0 ; 2     ; 3         ; 0 ; 0 ; 1 ; 0 ; 0 ; ... |]
+
+                                                     in cursor
+                                                         |
+                                                         v
+        in buffer   = [| a ; _ ; b     ; c         ; _ ; _ ; d ; _ ; _ ; ... |]
+
+                                                     out cursor
+                                                         |
+                                                         v
+        out buffer  = [| a ;     b ; b ; c ; c ; c ;         d ;             |]
+
+      v}
+
+      Here there's an underscore in the in buffer where an element is skipped
+      ([out_lengths.(i) = 0) and repeated entries in the out buffer where an element is
+      expanded ([out_lengths.(i) > 1]).
+
+      Since the out buffer is a view on the in buffer, for consistency, the arrows must
+      line up. Note that the out (bottom) cursor can be drawn anywhere within its "block",
+      because moving the in cursor anywhere in that range only changes how many elements
+      are skipped.
+
+      Say we're moving the in cursor like so:
+
+      {v
+        out lengths = [| 1 ; 0 ; 2     ; 3         ; 0 ; 0 ; 1 ; 0 ; 0 ; ... |]
+
+                         in cursor
+                             | ---------------------------
+                             v
+        in buffer   = [| a ; _ ; b     ; c         ; _ ; _ ; d ; _ ; _ ; ... |]
+
+                                                     out cursor
+                                                         |
+                                                         v
+        out buffer  = [| a ;     b ; b ; c ; c ; c ;     d ;             |]
+      v}
+
+      We want to move the out cursor to the same place. Thus [move t i j = -5], since
+      the out cursor needs to move left by five blocks.
+
+      In general, to move from [i] to [j], we total the lengths in the half-open
+      interval between them, then move that many spaces right if [i<j] or left if
+      [i>j]. The interval is always inclusive at the lower end and exclusive at the
+      higher end; if this seems arbitrary, we can redraw the above diagram with the
+      cursors pointing at borders rather than elements:
+
+      {v
+        out lengths = [| 1 ; 0 ; 2     ; 3         ; 0 ; 0 ; 1 ; 0 ; 0 ; ... |]
+
+                       in cursor = 1            old in cursor = 5
+                           | ---------------------------
+                           v
+        in buffer   = [| a ; _ ; b     ; c         ; _ ; _ ; d ; _ ; _ ; ... |]
+
+                                                   out cursor = 5
+                                                       |
+                                                       v
+        out buffer  = [| a ;     b ; b ; c ; c ; c ;         d ;             |]
+      v}
+
+      Now it's clear that we want to count the element on the right of the cursor only on
+      the low end. If we went from 5 to 0 instead, we would need to move the out cursor
+      all the way to 0 (so the 1 at index 0 is counted). If we went from 5 to 6 instead,
+      the out cursor would not move at all (so the 1 at index 6 is *not* counted).
+  *)
+  let move t ~from:i ~to_:j =
+    let magnitude = total_out_length t ~from_inc:(min i j) ~to_exc:(max i j) in
+    if i <= j then magnitude else ~-magnitude
+  ;;
+
+  let write_to_backtrace t ~index loc =
+    (* We could use the [growable_array] library to guard this, but that doesn't let us
+       get back the underlying array when producing an event. *)
+    t.backtrace_buffer
+    <- ensure_capacity t.backtrace_buffer ~index ~default:Location.dummy;
+    t.backtrace_buffer.(index) <- loc
+  ;;
+
+  let write_out_length t ~index len =
+    t.out_lengths <- ensure_capacity t.out_lengths ~index ~default:0;
+    t.out_lengths.(index) <- len
+  ;;
+
+  let write_seen_at t ~index seen =
+    t.seen_at_each_in_index <- ensure_capacity t.seen_at_each_in_index ~index ~default:[];
+    t.seen_at_each_in_index.(index) <- seen
+  ;;
+
+  let conv_event (t : t) (event : Memtrace.Trace.Event.t) : Event.t =
     match event with
-    | (Alloc { obj_id; _ } | Promote obj_id | Collect obj_id)
-      when not (interesting obj_id) -> ()
-    | Alloc ({ obj_id; source = Minor; _ } as alloc) when defer_minor_allocations ->
-      Obj_id.Table.add_exn
-        deferring
-        ~key:obj_id
-        ~data:(Memtrace.Trace.Event.Alloc { alloc with source = Major })
-    | Promote obj_id when collect_on_promotion ->
-      Hash_set.strict_add_exn collected_early obj_id;
-      f time (Event.Collect obj_id)
-    | Promote obj_id when defer_minor_allocations ->
-      (match Obj_id.Table.find_and_remove deferring obj_id with
-       | None ->
-         raise
-           (Not_found_s
-              [%message "Missing deferred object" ~obj_id:((obj_id :> int) : int)])
-       | Some event -> f time (event |> Event.of_memtrace_event ~trace ~loc_cache))
-    | Collect obj_id when collect_on_promotion && Hash_set.mem collected_early obj_id ->
-      Hash_set.remove collected_early obj_id
-    | _ -> f time (event |> Event.of_memtrace_event ~trace ~loc_cache));
-  f !last_time Event.End
+    | Alloc
+        { obj_id
+        ; source
+        ; length
+        ; nsamples
+        ; backtrace_buffer = in_backtrace_buffer
+        ; backtrace_length = in_backtrace_length
+        ; common_prefix = in_common_prefix
+        } ->
+      let single_allocation_size =
+        length |> bytes_of_int_words ~trace:t.filtered_trace.trace
+      in
+      let size = nsamples |> bytes_of_nsamples ~trace:t.filtered_trace.trace in
+      let backtrace_length, common_prefix =
+        match t.mode with
+        | Preserve_times -> 0, 0
+        | Preserve_backtraces ->
+          let in_common_prefix = min in_common_prefix t.max_next_common_prefix in
+          let out_common_prefix =
+            if t.prev_out_length = 0
+            then (* first backtrace *)
+              0
+            else
+              (* Start from [t.prev_out_length - 1] to skip over the allocation site at the end
+                 (slightly wasteful in the case that we get two consecutive identical backtraces
+                 but that should be exceedingly rare) *)
+              t.prev_out_length - 1 + move t ~from:t.prev_in_length ~to_:in_common_prefix
+          in
+          if in_common_prefix = 0
+          then Hash_set.clear t.seen
+          else
+            for in_ix = in_common_prefix to t.prev_in_length - 1 do
+              List.iter ~f:(Hash_set.remove t.seen) t.seen_at_each_in_index.(in_ix)
+            done;
+          let backtrace_length =
+            let out_ix = ref out_common_prefix in
+            let write loc =
+              write_to_backtrace t ~index:!out_ix loc;
+              incr out_ix
+            in
+            if !out_ix = 0 then write Location.toplevel;
+            for in_ix = in_common_prefix to in_backtrace_length - 1 do
+              let out_start = !out_ix in
+              let loc_code = in_backtrace_buffer.(in_ix) in
+              let locs =
+                Filtered_location_cache.locs_from_code t.filtered_trace.loc_cache loc_code
+              in
+              let seen_here = ref [] in
+              List.iter locs ~f:(fun loc ->
+                if not (Hash_set.mem t.seen loc)
+                then (
+                  write loc;
+                  Hash_set.add t.seen loc;
+                  seen_here := loc :: !seen_here));
+              write_seen_at t ~index:in_ix !seen_here;
+              let out_length = !out_ix - out_start in
+              write_out_length t ~index:in_ix out_length
+            done;
+            write Location.allocation_site;
+            !out_ix
+          in
+          backtrace_length, out_common_prefix
+      in
+      let backtrace_buffer = t.backtrace_buffer in
+      Alloc
+        { obj_id
+        ; source
+        ; single_allocation_size
+        ; nsamples
+        ; size
+        ; backtrace_buffer
+        ; backtrace_length
+        ; common_prefix
+        }
+    | Promote obj_id -> Promote obj_id
+    | Collect obj_id -> Collect obj_id
+  ;;
+
+  let interpret_event t time (event : Memtrace.Trace.Event.t) =
+    let { interesting; defer_minor_allocations; collect_on_promotion; _ } =
+      t.filtered_trace
+    in
+    let time = time |> time_span_of_timedelta in
+    t.last_time <- time;
+    let return (out_event : Event.t) =
+      let () =
+        match t.mode with
+        | Preserve_times -> ()
+        | Preserve_backtraces ->
+          (match event, out_event with
+           | ( Alloc { backtrace_length = in_length; _ }
+             , Alloc { backtrace_length = out_length; _ } ) ->
+             t.prev_in_length <- in_length;
+             t.prev_out_length <- out_length;
+             t.max_next_common_prefix <- Int.max_value
+           | Alloc _, _ | _, Alloc _ | _, End -> assert false
+           | (Promote _ | Collect _), (Promote _ | Collect _) -> ())
+      in
+      t.callback time out_event
+    in
+    let skip () =
+      (* If we don't pass the event through, we need to make sure the next common prefix
+         is no larger than this one so that the next event will know to go back far enough
+         to copy the backtrace from this event.
+      *)
+      let () =
+        match t.mode with
+        | Preserve_times -> ()
+        | Preserve_backtraces ->
+          (match event with
+           | Alloc { common_prefix; _ } ->
+             t.max_next_common_prefix <- min common_prefix t.max_next_common_prefix
+           (* *Don't* update prev_in_length, since its purpose is to know how to move the
+              out cursor *from the last event we interpreted* *)
+           | Promote _ | Collect _ -> ())
+      in
+      ()
+    in
+    let interesting =
+      let (Alloc { obj_id; _ } | Promote obj_id | Collect obj_id) = event in
+      interesting obj_id
+    in
+    if not interesting
+    then skip ()
+    else (
+      match t.mode with
+      | Preserve_backtraces -> return (event |> conv_event t)
+      | Preserve_times ->
+        (match event with
+         | Alloc ({ obj_id; source = Minor; _ } as alloc) when defer_minor_allocations ->
+           Obj_id.Table.add_exn
+             t.deferring
+             ~key:obj_id
+             ~data:(Alloc { alloc with source = Major });
+           skip ()
+         | Promote obj_id when collect_on_promotion ->
+           Hash_set.strict_add_exn t.collected_early obj_id;
+           return (Collect obj_id)
+         | Promote obj_id when defer_minor_allocations ->
+           (match Obj_id.Table.find_and_remove t.deferring obj_id with
+            | None ->
+              raise
+                (Not_found_s
+                   [%message "Missing deferred object" ~obj_id:((obj_id :> int) : int)])
+            | Some event -> return (event |> conv_event t))
+         | Collect obj_id
+           when collect_on_promotion && Hash_set.mem t.collected_early obj_id ->
+           Hash_set.remove t.collected_early obj_id
+         | Collect obj_id
+           when defer_minor_allocations && Obj_id.Table.mem t.deferring obj_id ->
+           Obj_id.Table.remove t.deferring obj_id
+         | _ -> return (event |> conv_event t)))
+  ;;
+
+  let done_ t = t.callback t.last_time End
+end
+
+let iter t ~mode f =
+  let interpreter = Interpreter.create ~filtered_trace:t ~callback:f ~mode () in
+  let parse_backtraces =
+    match mode with
+    | Mode.Preserve_backtraces -> true
+    | Preserve_times -> false
+  in
+  Memtrace.Trace.Reader.iter t.trace ~parse_backtraces (fun time event ->
+    Interpreter.interpret_event interpreter time event);
+  Interpreter.done_ interpreter
 ;;

@@ -2,9 +2,16 @@ open! Core_kernel
 open! Async
 open Memtrace_viewer_common
 
-let default_frequency = 0.005
-let default_error = 0.0001
-let default_direction = Filter.default.direction
+let percent x = x /. 100.
+
+(* Allocation size (as percentage of total) below which a node is pruned from the trie
+   returned to the client. *)
+let default_significance_frequency = 0.5 |> percent
+
+(* Upper bound on measurement errors (used in the substring heavy hitters algorithm). *)
+let default_tolerance = 0.01 |> percent
+
+(* Number of points in the time series produced for the graph. *)
 let graph_size = 450
 
 let time_ns_of_memtrace_timestamp ts =
@@ -40,7 +47,7 @@ module Initial = struct
     { trace : Memtrace.Trace.Reader.t
     ; loc_cache : Location.Cache.t
     ; graph : Data.Graph.t
-    ; trie : Data.Trie.t
+    ; trie : Data.Fragment_trie.t
     ; info : Data.Info.t
     }
 
@@ -52,9 +59,8 @@ module Initial = struct
       Location_trie.build
         ~trace:filtered_trace
         ~loc_cache
-        ~error:default_error
-        ~frequency:default_frequency
-        ~direction:default_direction
+        ~tolerance:default_tolerance
+        ~significance_frequency:default_significance_frequency
     in
     let info = info_of_trace_info (Memtrace.Trace.Reader.info trace) in
     { trace; loc_cache; graph; trie; info }
@@ -68,8 +74,7 @@ type t =
 [@@deriving fields]
 
 let compute ~initial_state:Initial.{ trace; loc_cache; trie; graph; info } ~filter =
-  let total_allocations_unfiltered = Data.Trie.total_allocations trie in
-  let Filter.{ direction; _ } = filter in
+  let total_allocations_unfiltered = Data.Fragment_trie.total_allocations trie in
   let trie, filtered_graph =
     if Filter.is_default filter
     then trie, None
@@ -79,15 +84,15 @@ let compute ~initial_state:Initial.{ trace; loc_cache; trie; graph; info } ~filt
         Location_trie.build
           ~trace:filtered_trace
           ~loc_cache
-          ~error:default_error
-          ~frequency:default_frequency
-          ~direction
+          ~tolerance:default_tolerance
+          ~significance_frequency:default_significance_frequency
       in
       let filtered_graph = Graph.build ~trace:filtered_trace ~size:graph_size in
       trie, Some filtered_graph)
   in
+  let hot_paths = Hot_paths.hot_paths trie in
   let info = Some info in
-  { Data.graph; filtered_graph; trie; direction; total_allocations_unfiltered; info }
+  { Data.graph; filtered_graph; trie; total_allocations_unfiltered; hot_paths; info }
 ;;
 
 let create ~initial_state ~filter =

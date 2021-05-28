@@ -1,1 +1,1 @@
-include Tab_panel_intf.S (** @inline *)
+include Tab_panel_intf.Tab_panel (** @inline *)

@@ -1,0 +1,2 @@
+(library (name memtrace_viewer_server_tests)
+ (libraries core memtrace_viewer_native) (preprocess (pps ppx_jane)))

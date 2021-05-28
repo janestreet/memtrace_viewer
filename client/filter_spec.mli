@@ -57,11 +57,7 @@ module Clause : sig
   [@@deriving sexp, equal]
 end
 
-type t =
-  { clauses : Clause.t option list
-  ; direction : Filter.direction
-  }
-[@@deriving sexp, equal]
+type t = { clauses : Clause.t option list } [@@deriving sexp, equal]
 
 val to_filter : t -> Filter.t option
 val to_filter_allow_incomplete : t -> Filter.t

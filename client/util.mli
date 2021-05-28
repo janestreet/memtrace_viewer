@@ -17,3 +17,6 @@ val placeholder_div : Vdom.Node.t
 
 (* An empty SVG node meant as a placeholder. See [placeholder_svg]. *)
 val placeholder_svg : Vdom.Node.t
+
+(* Wrap a type suitable for use as a Bonsai model in the option type. *)
+module Option_model (T : Bonsai.Model) : Bonsai.Model with type t = T.t option

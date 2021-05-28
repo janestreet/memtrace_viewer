@@ -1,15 +1,59 @@
 open! Core_kernel
-include Range_intf
+open Range_intf
+
+module Bound = struct
+  type 'a t =
+    | No_bound
+    | Open of 'a
+    | Closed of 'a
+  [@@deriving sexp, bin_io, equal, quickcheck]
+end
+
+type 'a t =
+  { lower_bound : 'a Bound.t
+  ; upper_bound : 'a Bound.t
+  }
+
+module Or_empty = struct
+  type nonrec 'a t =
+    | Non_empty of 'a t
+    | Empty
+end
+
+module type Point = Point
+
+module type S =
+  S
+  with type 'a range := 'a t
+  with type 'a or_empty := 'a Or_empty.t
+  with module Bound := Bound
 
 
 module Make (Point : Point) = struct
   module Point = Point
 
-  type t =
-    { lower_bound : Point.t Bound.t
-    ; upper_bound : Point.t Bound.t
+  type 'a range = 'a t =
+    { lower_bound : 'a Bound.t
+    ; upper_bound : 'a Bound.t
     }
   [@@deriving sexp, bin_io, equal, quickcheck]
+
+  let valid_bounds (lower_bound : Point.t Bound.t) (upper_bound : Point.t Bound.t) =
+    match lower_bound, upper_bound with
+    | No_bound, _ | _, No_bound -> true
+    | Closed lower_bound, Closed upper_bound -> Point.compare lower_bound upper_bound <= 0
+    | Closed lower_bound, Open upper_bound
+    | Open lower_bound, Closed upper_bound
+    | Open lower_bound, Open upper_bound -> Point.compare lower_bound upper_bound < 0
+  ;;
+
+  let quickcheck_generator_range gen =
+    Quickcheck.Generator.filter
+      (quickcheck_generator_range gen)
+      ~f:(fun { lower_bound; upper_bound } -> valid_bounds lower_bound upper_bound)
+  ;;
+
+  type t = Point.t range [@@deriving sexp, bin_io, equal, quickcheck]
 
   let range lower_bound upper_bound = { lower_bound; upper_bound }
   let all = { lower_bound = No_bound; upper_bound = No_bound }
@@ -64,15 +108,6 @@ module Make (Point : Point) = struct
       Point.compare bound1 bound2
   ;;
 
-  let valid_bounds (lower_bound : Point.t Bound.t) (upper_bound : Point.t Bound.t) =
-    match lower_bound, upper_bound with
-    | No_bound, _ | _, No_bound -> true
-    | Closed lower_bound, Closed upper_bound -> Point.compare lower_bound upper_bound <= 0
-    | Closed lower_bound, Open upper_bound
-    | Open lower_bound, Closed upper_bound
-    | Open lower_bound, Open upper_bound -> Point.compare lower_bound upper_bound < 0
-  ;;
-
   let covers_points { lower_bound; upper_bound } ~lower ~upper =
     in_bound ~which:Lower lower lower_bound && in_bound ~which:Upper upper upper_bound
   ;;
@@ -89,17 +124,15 @@ module Make (Point : Point) = struct
     { lower_bound; upper_bound }
   ;;
 
-  let quickcheck_generator =
-    Quickcheck.Generator.filter
-      quickcheck_generator
-      ~f:(fun { lower_bound; upper_bound } -> valid_bounds lower_bound upper_bound)
-  ;;
-
   module Or_empty = struct
-    type nonrec t =
-      | Non_empty of t
+    open Or_empty
+
+    type 'a or_empty = 'a t =
+      | Non_empty of 'a range
       | Empty
     [@@deriving sexp, bin_io, equal, quickcheck]
+
+    type t = Point.t or_empty [@@deriving sexp, bin_io, equal, quickcheck]
 
     let range lower_bound upper_bound = Non_empty { lower_bound; upper_bound }
     let all = Non_empty all

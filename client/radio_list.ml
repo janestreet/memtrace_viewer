@@ -8,16 +8,15 @@ module type Button = sig
   val title : t -> string option
 end
 
-type 'a t = 'a And_view.t
-
-let component (type a) (module Button : Button with type t = a) ~name ~initial_value =
+let component (type a) (module Button : Button with type t = a) ~name ~value ~set_value =
   let open Bonsai.Let_syntax in
-  let%sub state = Bonsai.state [%here] (module Button) ~default_model:initial_value in
   return
-    (let%map value, set_value = state in
+    (let%mapn name = name
+     and value = value
+     and set_value = set_value in
      let open Vdom in
      let render_item button =
-       let selected = Button.equal button value in
+       let selected = Option.equal Button.equal (Some button) value in
        let on_click _ = set_value button in
        let label_attrs =
          match Button.title button with
@@ -40,8 +39,5 @@ let component (type a) (module Button : Button with type t = a) ~name ~initial_v
              ]
          ]
      in
-     let view =
-       Node.ul [ Attr.class_ "radio-list" ] (List.map ~f:render_item Button.all)
-     in
-     { And_view.view; value })
+     Node.ul [ Attr.class_ "radio-list" ] (List.map ~f:render_item Button.all))
 ;;

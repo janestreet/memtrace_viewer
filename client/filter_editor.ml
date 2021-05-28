@@ -360,14 +360,14 @@ let component ~max_time ~start_time ~time_view =
     List_editor.component
       [%here]
       ~extra_attrs:[ Attr.class_ "clauses" ]
-      ~add_item_text:"Add Filter"
+      ~add_item_text:"Add filter"
       (toplevel_clause_editor ~time_parameters)
   in
   let%sub hidden_function_clause_list_editor =
     List_editor.component
       [%here]
       ~extra_attrs:[ Attr.class_ "clauses" ]
-      ~add_item_text:"Add Filter"
+      ~add_item_text:"Add filter"
       (hidden_function_clause_editor ~time_parameters)
   in
   return

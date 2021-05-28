@@ -9,7 +9,7 @@ let full_graph_and_max_time ~trace : (Time_ns.Span.t * Byte_units.t) list * Time
   let total_size = ref Byte_units.zero in
   let points : (Time_ns.Span.t * Byte_units.t) list ref = ref [] in
   let max_time = ref Time_ns.Span.zero in
-  Filtered_trace.iter trace (fun time event ->
+  Filtered_trace.iter trace ~mode:Preserve_times (fun time event ->
     (match event with
      | Alloc { obj_id; size; _ } ->
        Obj_id.Table.add_exn objects ~key:obj_id ~data:{ size };

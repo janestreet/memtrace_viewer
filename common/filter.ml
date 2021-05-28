@@ -1,10 +1,5 @@
 open! Core_kernel
 
-type direction =
-  | Explore_downwards_from_allocations
-  | Explore_upwards_from_main
-[@@deriving sexp, bin_io, equal]
-
 module String_relation = struct
   type t =
     | Equals
@@ -28,7 +23,6 @@ type t =
   ; required_locations : Location_predicate.t list
   ; forbidden_locations : Location_predicate.t list
   ; hidden_locations : Location_predicate.t list
-  ; direction : direction
   ; include_minor_heap : bool
   ; include_major_heap : bool
   }
@@ -41,7 +35,6 @@ let default =
   ; required_locations = []
   ; forbidden_locations = []
   ; hidden_locations = []
-  ; direction = Explore_downwards_from_allocations
   ; include_minor_heap = true
   ; include_major_heap = true
   }
@@ -54,7 +47,6 @@ let is_always_true = function
     ; required_locations
     ; forbidden_locations
     ; hidden_locations
-    ; direction = _
     ; include_minor_heap
     ; include_major_heap
     } ->
@@ -68,6 +60,4 @@ let is_always_true = function
     && include_major_heap
 ;;
 
-let is_default t =
-  is_always_true t && equal_direction t.direction Explore_downwards_from_allocations
-;;
+let is_default t = is_always_true t

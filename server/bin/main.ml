@@ -1,3 +1,3 @@
 open! Core
 
-let () = Command.run Memtrace_viewer_native.command
+let () = Command_unix.run Memtrace_viewer_native.command

@@ -2,26 +2,36 @@
     --allocated-color: rgb(32, 133, 239);
     --live-color: rgb(255, 128, 0); /* currently vestigial */
     --collected-color: rgb(255, 0, 0);
+    --help-color: aliceblue /* currently vestigial */;
+    --poi-color: peachpuff;
+    --poi-color-even: #ffe9d6;
+    --focus-color: #F2D2F6;
+    --zoom-color: lightgoldenrodyellow;
+    --zoom-color-even: #fefef6;
 }
 #container{
     display: grid;
     margin-top: 1rem;
     gap: 1rem;
     grid-template:
-        "left middle filter" auto
-        "left middle details" 1fr
-        / minmax(17em,1fr) 2fr 2fr;
+        "info   info"   auto
+        "filter filter" auto
+        "poi    zoom"   auto
+        "poi    main"   minmax(auto,1fr)
+        / minmax(30em,1fr) 2fr minmax(17em,1fr);
 }
-section {
-    padding: 0.5rem;
+p, ul, h2 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
 }
-section:not(.borderless) {
+.panel {
     border: 1px solid black;
+}
+.panel-content {
+    margin: 0.5rem;
 }
 h2 {
     padding: 0.5rem;
-    margin-top: 0;
-    margin-bottom: 0.5rem;
     text-align: center;
     font-size: 1em;
     background-color: rgba(256, 256, 256, 0.25);
@@ -56,46 +66,25 @@ ul.tab-bar li.selected button {
 ul.tab-bar li:not(.selected) button:hover {
     background-color: white;
 }
-#left-column{
-    grid-area:left;
-    display:grid;
-    grid-template:
-        "info" auto
-        "help" 1fr
-        / auto;
-    grid-gap: 1rem;
-}
 #info-panel{
     grid-area: info;
     background-color: #ded2f6;
-    overflow: overlay;
 }
-#help-panel{
-    grid-area: help;
-    background-color: aliceblue;
+#poi-panel-container{
+    grid-area: poi;
 }
-#middle-column{
-    grid-area: middle;
-    display: grid;
-    grid-template:
-        "zoom" auto
-        "main" 1fr
-        / auto;
-    grid-gap: 1rem;
-}
-#container.exploring-upwards #middle-column {
-    grid-template:
-        "main" auto
-        "zoom" 1fr
-        / auto;
+#poi-panel{
+    background-color: var(--poi-color);
 }
 #zoom-panel{
     grid-area: zoom;
-    background-color: lightgoldenrodyellow;
+    background-color: var(--zoom-color);
+}
+#main-panel-container{
+    grid-area:main;
 }
 #main-panel{
-    grid-area: main;
-    background-color: #D2DAF6;
+    background-color:#D2DAF6;
 }
 #filter-panel{
     grid-area:filter;
@@ -104,28 +93,48 @@ ul.tab-bar li:not(.selected) button:hover {
 #details-panel{
     grid-area:details;
     background-color:#F6CBC2;
-/*    height:100%; */
-}
-table, td, th {
-  border: 1px solid black;
-}
-td, th {
-  padding: 7px;
 }
 table {
   border-collapse: collapse;
 }
-#help-panel table, #help-panel tr, #help-panel td {
+tr, td, th {
   border: none;
 }
-#table-panel > table {
+td, th {
+  padding: 7px;
+}
+thead {
+  background-color: rgba(256, 256, 256, 25%)
+}
+tbody tr:nth-child(odd):not(.focused) {
+  background-color: rgba(0, 0, 0, 5%)
+}
+tbody tr:nth-child(even):not(.focused) {
+  background-color: rgba(0, 0, 0, 10%)
+}
+section #zoom-panel {
+  margin-bottom: 0.5rem;
+}
+#info-panel .summary ul.info-fields {
+  list-style: none;
+  margin-left: 0;
+  padding-left: 0;
+}
+#info-panel ul.info-fields li {
+  display: inline-block;
+  margin-right: 1em;
+}
+table.location-table {
   min-width: 25em;
   margin-left: auto;
   margin-right: auto;
 }
-#table-panel > table td {
+table.location-table tbody tr {
   cursor: pointer;
   user-select: none;
+}
+table.location-table tbody tr:hover {
+  background-color: var(--focus-color);
 }
 .flame-graph-container {
   padding: 0.5rem;
@@ -139,31 +148,55 @@ table {
   cursor: pointer;
   user-select: none;
 }
-.flame-graph-node.zoomed-into {
-  opacity: 0.5;
-}
 .flame-graph-node text {
   font-size: 12px;
 }
 .flame-graph-node rect.flame-graph-node-color-box {
   /* The rect is inside an embedded svg element, so it should take up the whole
      thing */
-  width: 100%;
+  /* width: 100%; See comment in Flame_graph_view.Make.render_node */
   height: 100%;
   stroke: transparent;
 }
+/* The :nots here shouldn't be necessary by CSS precedence rules since the last
+   declaration should win, but Chrome seems to disagree */
+.flame-graph-node-zoomed-into:not(.flame-graph-node-focused)
+    rect.flame-graph-node-color-box {
+  fill: var(--zoom-color) !important /* see comment about !important below */
+}
+.flame-graph-node-zoomed-into.even:not(.flame-graph-node-focused)
+    rect.flame-graph-node-color-box {
+  fill: var(--zoom-color-even) !important;
+}
 .flame-graph-node-focused rect.flame-graph-node-color-box {
-  fill: #F2D2F6 !important; /* override individual style */
-  /* We could do without the !important if Css_gen supported saying something like
+  fill: var(--focus-color) !important; /* override individual style */
+  /* We could do without the !important if we could say something like
        <svg class="flame-graph-node" style="--flame-graph-node-color: #eef">
-     but it doesn't appear to allow setting variables from an inline style, so our
-     only choice is to set the fill color directly from an inline style, which means
-     overriding it here using !important. */
+     but the way VirtualDom sets style properties (directly assigning to
+     [node.style[property]]) doesn't allow setting CSS variables (for which you
+     need to use [node.style.setPropertyValue()] instead), so our only choice is
+     to set the fill color directly from an inline style, which means overriding
+     it here using !important. */
   stroke: black;
   stroke-width: 3;
 }
+
+#filter-panel-body {
+  display: grid;
+  grid-template:
+    "graph allocs"
+    "graph form" 1fr
+      / auto 1fr;
+}
 #filter-graph-container {
+  grid-area: graph;
   text-align: center;
+}
+#filter-panel-body .total_allocations {
+  grid-area: allocs;
+}
+#filter-form {
+  grid-area: form;
 }
 #filter-graph {
   width: 500px;
@@ -215,15 +248,6 @@ table {
 .graph-x-axis-label {
   text-align: center;
 }
-table.range-table {
-  margin-left: 1.5em;
-}
-table.range-table, table.range-table tr, table.range-table td {
-  border: none;
-}
-table.range-table td {
-  padding: 3px 2px;
-}
 .swatch {
   width: 1ex;
   height: 1ex;
@@ -258,6 +282,9 @@ table.range-table td {
   --swatch-color: var(--collected-color);
 }
 
+#filter-form p {
+  margin-top: 0;
+}
 input.bound {
   /* This keeps the "s" after the field from being vertically offset from other
      text */
@@ -308,7 +335,10 @@ input.bound[type="datetime-local"] {
 
 .focused {
   outline: 2px solid black;
-  background-color:#F2D2F6;
+  background-color:var(--focus-color);
+}
+.loc-special, .backtrace-empty {
+  font-style: italic;
 }
 .last-loc {
 }
@@ -323,4 +353,36 @@ input.bound[type="datetime-local"] {
 }
 .info-label {
   font-weight: bold;
+}
+.indented {
+  margin-inline-start: 40px;
+}
+.backtrace {
+}
+.backtrace-inline {
+  display: inline-block;
+}
+.backtrace-ellipsis {
+  list-style-type: none;
+}
+.double-button {
+  display: inline-grid;
+  grid-template:
+    "one" auto
+    "two" auto
+      / auto;
+  vertical-align: middle;
+}
+button.expander-button {
+  background-color: inherit;
+  padding: 0;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: bold;
+  color: blue;
+  cursor: pointer;
+  border: none;
+}
+.expander-closed .expander-content {
+  display: none;
 }

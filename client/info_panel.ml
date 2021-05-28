@@ -2,17 +2,19 @@ open! Core_kernel
 open Bonsai_web
 open Memtrace_viewer_common
 
-let info_linef ?(attrs = []) label pat =
-  let open Vdom in
-  let view str =
-    let label_view =
-      match label with
-      | None -> Node.none
-      | Some label -> Node.span [ Attr.class_ "info-label" ] [ Node.textf "%s: " label ]
-    in
-    Node.p attrs [ label_view; Node.text str ]
-  in
-  Printf.ksprintf view pat
+let info_linef ?(attrs = []) pat =
+  pat |> Printf.ksprintf (fun str -> Vdom.(Node.li attrs [ Node.text str ]))
+;;
+
+let info_fieldf ?(attrs = []) label pat =
+  pat
+  |> Printf.ksprintf (fun str ->
+    Vdom.(
+      Node.li
+        attrs
+        [ Node.span [ Attr.class_ "info-label" ] [ Node.textf "%s: " label ]
+        ; Node.text str
+        ]))
 ;;
 
 let print_timestamp () t =
@@ -26,29 +28,35 @@ let view ~(info : Data.Info.t option) ~total_allocations =
   | Some info ->
     let context_line =
       match info.context with
-      | None -> Node.none
-      | Some context -> info_linef (Some "Context") "%s" context
+      | None -> info_linef "%s" (Filename.basename info.executable_name)
+      | Some context -> info_linef "%s" context
     in
-    Node.section
-      [ Attr.id "info-panel" ]
-      [ Node.h2 [] [ Node.text "Summary" ]
-      ; info_linef
-          ~attrs:[ Attr.class_ "total-allocations" ]
-          None
-          "Total allocations: %s"
-          (total_allocations |> Byte_units.Short.to_string)
-      ; info_linef
-          ~attrs:[ Attr.title info.executable_name ]
-          (Some "Executable")
-          "%s"
-          (Filename.basename info.executable_name)
-      ; info_linef (Some "PID") "%Ld" info.pid
-      ; info_linef (Some "Host") "%s" info.host_name
-      ; info_linef (Some "Word size") "%d bits" info.word_size
-      ; info_linef (Some "Start time") "%a" print_timestamp info.start_time
-      ; info_linef (Some "Sample rate") "%g" info.sample_rate
-      ; context_line
-      ]
+    Panel.panel
+      ~id:"info-panel"
+      ~title:"Summary"
+      (Node.div
+         [ Attr.class_ "summary" ]
+         [ Node.ul
+             [ Attr.class_ "info-fields" ]
+             [ context_line
+             ; info_fieldf
+                 ~attrs:[ Attr.class_ "total-allocations" ]
+                 "Total allocations"
+                 "%s"
+                 (total_allocations |> Byte_units.Short.to_string)
+             ;
+               info_fieldf
+                 ~attrs:[ Attr.title info.executable_name ]
+                 "Executable"
+                 "%s"
+                 (Filename.basename info.executable_name)
+             ; info_fieldf "PID" "%Ld" info.pid
+             ; info_fieldf "Host" "%s" info.host_name
+             ; info_fieldf "Word size" "%d bits" info.word_size
+             ; info_fieldf "Start time" "%a" print_timestamp info.start_time
+             ; info_fieldf "Sample rate" "%g" info.sample_rate
+             ]
+         ])
 ;;
 
 let component ~info ~total_allocations =

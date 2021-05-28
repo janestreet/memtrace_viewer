@@ -11,16 +11,20 @@ module Range_predicate = struct
         }
   [@@deriving sexp, equal]
 
-  module To_range (R : Range.Range) = struct
-    let to_range (t : R.Point.t t) : R.t option =
-      match t with
-      | At_least (Some lower_bound) -> Some (R.range (Closed lower_bound) No_bound)
-      | At_most (Some upper_bound) -> Some (R.range No_bound (Closed upper_bound))
-      | Between { lower_bound = Some lower_bound; upper_bound = Some upper_bound } ->
-        Some (R.range (Closed lower_bound) (Closed upper_bound))
-      | _ -> None
-    ;;
-  end
+  let to_range (type point) (module R : Range.S with type Point.t = point) (t : point t)
+    : point Range.t option
+    =
+    match t with
+    | At_least (Some lower_bound)
+    | Between { lower_bound = Some lower_bound; upper_bound = None } ->
+      Some (R.range (Closed lower_bound) No_bound)
+    | At_most (Some upper_bound)
+    | Between { lower_bound = None; upper_bound = Some upper_bound } ->
+      Some (R.range No_bound (Closed upper_bound))
+    | Between { lower_bound = Some lower_bound; upper_bound = Some upper_bound } ->
+      Some (R.range (Closed lower_bound) (Closed upper_bound))
+    | _ -> None
+  ;;
 
   module Or_empty = struct
     type nonrec 'a t =
@@ -28,16 +32,17 @@ module Range_predicate = struct
       | Empty
     [@@deriving sexp, equal]
 
-    module To_range (R : Range.Range) = struct
-      let to_range (t : R.Point.t t) : R.Or_empty.t option =
-        match t with
-        | Non_empty range ->
-          let module To_range = To_range (R) in
-          To_range.to_range range
-          |> Option.map ~f:(fun range -> R.Or_empty.Non_empty range)
-        | Empty -> Some Empty
-      ;;
-    end
+    let to_range
+          (type point)
+          (r : (module Range.S with type Point.t = point))
+          (t : point t)
+      : point Range.Or_empty.t option
+      =
+      match t with
+      | Non_empty range ->
+        to_range r range |> Option.map ~f:(fun range -> Range.Or_empty.Non_empty range)
+      | Empty -> Some Empty
+    ;;
   end
 end
 
@@ -71,18 +76,15 @@ module Which_heap = struct
 end
 
 let time_span_range_of_range_predicate =
-  let module T = Range_predicate.To_range (Range.Time_ns_span) in
-  T.to_range
+  Range_predicate.to_range (module Range.Time_ns_span)
 ;;
 
 let time_span_range_of_range_predicate_or_empty =
-  let module T = Range_predicate.Or_empty.To_range (Range.Time_ns_span) in
-  T.to_range
+  Range_predicate.Or_empty.to_range (module Range.Time_ns_span)
 ;;
 
 let byte_units_range_of_range_predicate =
-  let module T = Range_predicate.To_range (Range.Byte_units) in
-  T.to_range
+  Range_predicate.to_range (module Range.Byte_units)
 ;;
 
 module Byte_units_with_io : sig
@@ -185,22 +187,18 @@ module Clause = struct
   ;;
 end
 
-type t =
-  { clauses : Clause.t option list
-  ; direction : Filter.direction
-  }
-[@@deriving sexp, equal]
+type t = { clauses : Clause.t option list } [@@deriving sexp, equal]
 
-let to_filter_allow_incomplete { clauses; direction } =
+let to_filter_allow_incomplete { clauses } =
   let clauses = List.filter_opt clauses in
   let filter =
     List.fold_left clauses ~init:Filter.default ~f:(fun filter clause ->
       Clause.to_filter_modifier clause filter |> Option.value ~default:filter)
   in
-  { filter with direction }
+  filter
 ;;
 
-let to_filter { clauses; direction } =
+let to_filter { clauses } =
   let open Option.Let_syntax in
   let%bind filter =
     List.fold_left clauses ~init:(Some Filter.default) ~f:(fun filter clause ->
@@ -208,7 +206,5 @@ let to_filter { clauses; direction } =
       and clause = clause in
       Clause.to_filter_modifier clause filter)
   in
-  Option.some_if
-    (filter.include_minor_heap || filter.include_major_heap)
-    { filter with direction }
+  Option.some_if (filter.include_minor_heap || filter.include_major_heap) filter
 ;;

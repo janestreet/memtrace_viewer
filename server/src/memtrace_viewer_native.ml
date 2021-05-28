@@ -2,6 +2,7 @@ open! Core
 open! Async
 open Memtrace
 open Memtrace_viewer_common
+module Time = Time_unix
 
 let initialize_connection initial_state filter _ _ _ _ =
   User_state.create ~initial_state ~filter
@@ -95,3 +96,7 @@ let command =
      in
      fun () -> main ~filename ~filter:Filter.default ~port)
 ;;
+
+module For_testing = struct
+  module Substring_heavy_hitters = Substring_heavy_hitters
+end
