@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 open Bonsai_web
 
 module Index_set = struct
@@ -32,13 +32,14 @@ let component ?(extra_attrs = []) ?(add_item_text = "Add") here item =
            |> And_view.map_view ~f:(fun view ->
              Node.li
                ~key:(index |> Int.to_string)
-               []
                [ Node.button
-                   [ (* Important to set type="button" here: the default is type="submit",
-                        which makes Enter delete the first item! *)
-                     Attr.type_ "button"
-                   ; Attr.on_click (fun _ -> remove)
-                   ]
+                   ~attr:
+                     (Attr.many_without_merge
+                        [ (* Important to set type="button" here: the default is type="submit",
+                             which makes Enter delete the first item! *)
+                          Attr.type_ "button"
+                        ; Attr.on_click (fun _ -> remove)
+                        ])
                    [ Node.text "-" ]
                ; Node.text " "
                ; view
@@ -57,19 +58,22 @@ let component ?(extra_attrs = []) ?(add_item_text = "Add") here item =
      let add_item_row =
        Vdom.Node.li
          ~key:"add"
-         []
          [ Node.button
-             [ (* Important so that Enter doesn't click this button *)
-               Attr.type_ "button"
-             ; Attr.on_click (fun _ -> add_item ())
-             ]
+             ~attr:
+               (Attr.many_without_merge
+                  [ (* Important so that Enter doesn't click this button *)
+                    Attr.type_ "button"
+                  ; Attr.on_click (fun _ -> add_item ())
+                  ])
              [ Node.text add_item_text ]
          ]
      in
      let open Vdom in
      let values_and_views = Int.Map.data rows in
      let row_views = List.map ~f:And_view.view values_and_views in
-     let view = Node.ul extra_attrs (row_views @ [ add_item_row ]) in
+     let view =
+       Node.ul ~attr:(Attr.many_without_merge extra_attrs) (row_views @ [ add_item_row ])
+     in
      let value = List.map ~f:And_view.value values_and_views in
      { And_view.value; view })
 ;;

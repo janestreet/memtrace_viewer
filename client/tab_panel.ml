@@ -1,12 +1,12 @@
-open! Core_kernel
+open! Core
 open Bonsai_web
 include Tab_panel_intf
 
-type ('tab, 'extra) t =
+type ('tab, 'output) t =
   { view : Vdom.Node.t
   ; selected_tab : 'tab
   ; select_tab : 'tab -> Vdom.Event.t
-  ; extra : 'extra
+  ; output : 'output
   }
 
 module Component (Tab : Tab) = struct
@@ -47,47 +47,50 @@ module Component (Tab : Tab) = struct
                else Attr.disabled
              in
              Node.li
-               [ Attr.classes classes ]
-               [ Node.button [ on_click_or_disabled ] [ Node.text (Tab.name tab) ] ]
+               ~attr:(Attr.classes classes)
+               [ Node.button ~attr:on_click_or_disabled [ Node.text (Tab.name tab) ] ]
            in
-           Node.ul [ Attr.class_ "tab-bar" ] (List.map ~f:tab_view Tab.all)
+           Node.ul ~attr:(Attr.class_ "tab-bar") (List.map ~f:tab_view Tab.all)
          in
          { selected_tab; select_tab; view })
     ;;
   end
 
-  let current_tab ~(tab_bar : Tab_bar.t Bonsai.Value.t)
-    : (Vdom.Node.t * Tab.Extra.t) Bonsai.Computation.t
+  let current_tab ~input ~(tab_bar : Tab_bar.t Bonsai.Value.t)
+    : (Vdom.Node.t * Tab.Output.t) Bonsai.Computation.t
     =
     let open Bonsai.Let_syntax in
     let%sub { Tab_bar.select_tab; selected_tab; _ } = Bonsai.read tab_bar in
     Bonsai.enum
       (module Tab)
       ~match_:selected_tab
-      ~with_:(fun tab -> Tab.component tab ~select_tab)
+      ~with_:(fun tab -> Tab.component tab ~input ~select_tab)
   ;;
 
   let view tab_bar_view current_tab_view =
     let open Vdom in
-    Node.div [ Attr.class_ "tab-panel" ] [ tab_bar_view; current_tab_view ]
+    Node.div ~attr:(Attr.class_ "tab-panel") [ tab_bar_view; current_tab_view ]
   ;;
 
-  let component : (Tab.t, Tab.Extra.t) t Bonsai.Computation.t =
-    let open Bonsai.Let_syntax in
-    let%sub tab_is_enabled = Tab.enabled in
-    let%sub tab_bar = Tab_bar.component ~tab_is_enabled in
-    let%sub current_tab = current_tab ~tab_bar in
-    return
-      (let%map { view = tab_bar_view; selected_tab; select_tab } = tab_bar
-       and current_tab_view, extra = current_tab in
-       let view = view tab_bar_view current_tab_view in
-       { view; select_tab; selected_tab; extra })
+  let component : input:Tab.Input.t -> (Tab.t, Tab.Output.t) t Bonsai.Computation.t =
+    fun ~input ->
+      let open Bonsai.Let_syntax in
+      let%sub tab_bar = Tab_bar.component ~tab_is_enabled:(Tab.enabled ~input) in
+      let%sub current_tab = current_tab ~input ~tab_bar in
+      return
+        (let%map { view = tab_bar_view; selected_tab; select_tab } = tab_bar
+         and current_tab_view, output = current_tab in
+         let view = view tab_bar_view current_tab_view in
+         { view; select_tab; selected_tab; output })
   ;;
 end
 
 let component
-      (type tab extra)
-      (module Tab : Tab with type t = tab and type Extra.t = extra)
+      (type tab input output)
+      (module Tab : Tab
+        with type t = tab
+         and type Input.t = input
+         and type Output.t = output)
   =
   let module Tab_panel = Component (Tab) in
   Tab_panel.component

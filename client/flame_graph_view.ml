@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 open Bonsai_web
 module Node_svg = Virtual_dom_svg.Node
 module Attr_svg = Virtual_dom_svg.Attr
@@ -6,386 +6,459 @@ include Flame_graph_view_intf
 
 
 let node_height = 20.
+let node_height_int = Float.round_up node_height |> Float.to_int
 
-module Make (Tree : Tree) = struct
-  module Node = struct
-    type t =
-      { tree_node : Tree.Node.t
-      ; shape : Shape.t
-      }
+module Style = struct
+  type t =
+    | Flames
+    | Focus
+    | Icicles
 
-    let parent { tree_node; shape } =
-      Tree.Node.parent ~shape tree_node
-      |> Option.map ~f:(fun tree_node -> { tree_node; shape })
-    ;;
-
-    let children { tree_node; shape } =
-      Tree.Node.children ~shape tree_node
-      |> List.map ~f:(fun tree_node -> { tree_node; shape })
-    ;;
-
-    module Debug = struct
-      type nonrec t = t
-
-      let sexp_of_t { tree_node; shape } =
-        [%message "" ~tree_node:(Tree.Node.label ~shape tree_node) (shape : Shape.t)]
-      ;;
-    end
-  end
-
-  let color_for_node ~shape (_node : _) =
-    (* Based on the random algorithm from the original flamegraph.pl *)
+  let random_flame_color () =
     let v1 = Random.float 1. in
     let v2 = Random.float 1. in
     let v3 = Random.float 1. in
-    let r, g, b =
-      match shape with
-      | Shape.Flames ->
-        let r = 205 + (50. *. v3 |> Int.of_float) in
-        let g = 0 + (230. *. v1 |> Int.of_float) in
-        let b = 0 + (55. *. v2 |> Int.of_float) in
-        r, g, b
-      | Shape.Icicles ->
-        let r = 50 + (55. *. v2 |> Int.of_float) in
-        let g = 100 + (130. *. v1 |> Int.of_float) in
-        let b = 230 + (25. *. v3 |> Int.of_float) in
-        r, g, b
-    in
+    let r = 205 + (50. *. v3 |> Int.of_float) in
+    let g = 0 + (230. *. v1 |> Int.of_float) in
+    let b = 0 + (55. *. v2 |> Int.of_float) in
     `RGBA (Css_gen.Color.RGBA.create ~r ~g ~b ())
   ;;
 
-  let rec render_node
-            ~x
-            ~y
-            ~width
-            ~shape
-            ~focus
-            ~set_focus
-            ~in_zoom
-            ~zoom_nodes
-            ~set_zoom
-            ~even
-            node
-    : Vdom.Node.t list
-    =
-    let style =
-      let color = color_for_node ~shape node |> Css_gen.Color.to_string_css in
-      Css_gen.create ~field:"fill" ~value:color
-      |> Css_gen.combine (Css_gen.create ~field:"--foo" ~value:"red")
-    in
-    let children =
-      let even = not even in
-      let y =
-        if Tree.Node.hidden ~shape node
-        then y
-        else (
-          match shape with
-          | Flames -> y -. node_height
-          | Icicles -> y +. node_height)
-      in
-      match zoom_nodes with
-      | next_zoom_node :: zoom_nodes ->
-        let child_nodes = [ next_zoom_node ] in
-        let in_zoom = true in
-        let size = Tree.Node.size next_zoom_node in
-        render_level
-          ~x
-          ~y
-          ~width
-          ~shape
-          ~size
-          ~focus
-          ~set_focus
-          ~in_zoom
-          ~zoom_nodes
-          ~set_zoom
-          ~even
-          child_nodes
-      | [] ->
-        let child_nodes = Tree.Node.children ~shape node in
-        let size = Tree.Node.size node in
-        let children_size =
-          List.fold_left child_nodes ~init:0. ~f:(fun total child ->
-            total +. Tree.Node.size child)
-        in
-        let children_width = width *. (children_size /. size) in
-        let x = x +. ((width -. children_width) /. 2.) in
-        let width = children_width in
-        let in_zoom = false in
-        render_level
-          ~x
-          ~y
-          ~width
-          ~shape
-          ~size
-          ~focus
-          ~set_focus
-          ~in_zoom
-          ~zoom_nodes
-          ~set_zoom
-          ~even
-          child_nodes
-    in
-    let view =
-      if Tree.Node.hidden ~shape node
-      then None
-      else (
-        let focused =
-          match focus with
-          | Some focus ->
-            Shape.equal focus.Node.shape shape && Tree.Node.same focus.tree_node node
-          | None -> false
-        in
-        let classes =
-          List.concat
-            [ [ "flame-graph-node" ]
-            ; (if focused then [ "flame-graph-node-focused" ] else [])
-            ; (if in_zoom then [ "flame-graph-node-zoomed-into" ] else [])
-            ; (if even then [ "even" ] else [])
-            ]
-        in
-        Some
-          ((* Put the node in an embedded <svg> element so that the text gets clipped to the
-              rectangle *)
-            Node_svg.svg
-              [ Attr_svg.x x
-              ; Attr_svg.y y
-              ; Attr_svg.width width
-              ; Attr_svg.height node_height
-              ; Vdom.Attr.classes classes
-              ; Vdom.Attr.on_click (fun _ ->
-                  set_focus (Some { Node.tree_node = node; shape }))
-              ; Vdom.Attr.on_double_click (fun _ -> set_zoom (Some node))
-              ]
-              [ Node_svg.rect
-                  [ Vdom.Attr.class_ "flame-graph-node-color-box"
-                  ; Vdom.Attr.style style
-                  ; (* Since we set the width on the svg element above, we should be able to
-                       let CSS take care of setting this rect's width to 100% of its container
-                       and be done with it, but Chrome was sporadically making the rect very
-                       small for no apparent reason. Height doesn't seem to have the same
-                       problem. *)
-                    Attr_svg.width width
-                  ]
-                  []
-              ; Node_svg.text
-                  [ Attr_svg.x 2.; Attr_svg.y (0.8 *. node_height) ]
-                  [ Vdom.Node.text (Tree.Node.label ~shape node) ]
-              ; Node_svg.title [] [ Vdom.Node.text (Tree.Node.details ~shape node) ]
-              ]))
-    in
-    (view |> Option.to_list) @ children
+  let random_icicle_color () =
+    let v1 = Random.float 1. in
+    let v2 = Random.float 1. in
+    let v3 = Random.float 1. in
+    let r = 50 + (55. *. v2 |> Int.of_float) in
+    let g = 100 + (130. *. v1 |> Int.of_float) in
+    let b = 230 + (25. *. v3 |> Int.of_float) in
+    `RGBA (Css_gen.Color.RGBA.create ~r ~g ~b ())
+  ;;
 
-  and render_level
+  let focus_color_odd =
+    let r = 250 in
+    let g = 250 in
+    let b = 210 in
+    `RGBA (Css_gen.Color.RGBA.create ~r ~g ~b ())
+  ;;
+
+  let focus_color_even =
+    let r = 254 in
+    let g = 254 in
+    let b = 246 in
+    `RGBA (Css_gen.Color.RGBA.create ~r ~g ~b ())
+  ;;
+
+  let focus_color even = if even then focus_color_even else focus_color_odd
+
+  let get_color even = function
+    | Flames -> random_flame_color ()
+    | Icicles -> random_icicle_color ()
+    | Focus -> focus_color even
+  ;;
+
+  let get_node_css even style =
+    let color = get_color even style in
+    Css_gen.create_with_color ~field:"fill" ~color
+  ;;
+end
+
+module Bearing = struct
+  type t =
+    | Upwards
+    | Downwards
+
+  let succ_y ~bearing y =
+    match bearing with
+    | Upwards -> y -. node_height
+    | Downwards -> y +. node_height
+  ;;
+end
+
+module Make (Graph : Graph) = struct
+  module Selector = struct
+    type t =
+      | Flame of Graph.Tree.t
+      | Icicle of Graph.Tree.t
+      | Focus of Graph.Sequence.t
+
+    let flame tree = Flame tree
+    let icicle tree = Icicle tree
+    let focus seq = Focus seq
+
+    let same t1 t2 =
+      match t1, t2 with
+      | Flame tree1, Flame tree2 -> Graph.Tree.same tree1 tree2
+      | Flame _, (Icicle _ | Focus _) -> false
+      | Icicle tree1, Icicle tree2 -> Graph.Tree.same tree1 tree2
+      | Icicle _, (Flame _ | Focus _) -> false
+      | Focus seq1, Focus seq2 -> Graph.Sequence.same seq1 seq2
+      | Focus _, (Flame _ | Icicle _) -> false
+    ;;
+  end
+
+  let unselected_classes_attr = Vdom.Attr.classes [ "flame-graph-node" ]
+
+  let selected_classes_attr =
+    Vdom.Attr.classes [ "flame-graph-node"; "flame-graph-node-selected" ]
+  ;;
+
+  let color_box_class_attr = Vdom.Attr.class_ "flame-graph-node-color-box"
+  let height_attr = Attr_svg.height node_height
+  let text_x_attr = Attr_svg.x 2.
+  let text_y_attr = Attr_svg.y (0.8 *. node_height)
+
+  let render_node
+        ~graph
         ~x
         ~y
         ~width
-        ~shape
-        ~size
-        ~focus
-        ~set_focus
-        ~in_zoom
-        ~zoom_nodes
-        ~set_zoom
+        ~style
+        ~selection
+        ~select
+        ~activate
         ~even
-        nodes
+        ~selector
+        node
+    : Vdom.Node.t
     =
-    if Float.(size = 0.)
-    then []
-    else (
-      let size_scale = width /. size in
-      let x = ref x in
-      let node_views =
-        List.concat_map nodes ~f:(fun node ->
-          let this_x = !x in
-          let width = Tree.Node.size node *. size_scale in
-          x := !x +. width;
-          render_node
-            ~x:this_x
+    let css = Style.get_node_css even style in
+    let selected = Option.exists ~f:(Selector.same selector) selection in
+    let classes_attr =
+      if selected then selected_classes_attr else unselected_classes_attr
+    in
+    (* Put the node in an embedded <svg> element so that the text gets clipped to the
+       rectangle *)
+    Node_svg.svg
+      ~attr:
+        (Vdom.Attr.many
+           [ Attr_svg.x x
+           ; Attr_svg.y y
+           ; Attr_svg.width width
+           ; height_attr
+           ; classes_attr
+           ; Vdom.Attr.on_click (fun _ -> select selector)
+           ; Vdom.Attr.on_double_click (fun _ -> activate selector)
+           ])
+      [ Node_svg.rect
+          ~attr:
+            (Vdom.Attr.many
+               [ color_box_class_attr
+               ; Vdom.Attr.style css
+               ; (* Since we set the width on the svg element above, we should be able to
+                    let CSS take care of setting this rect's width to 100% of its container
+                    and be done with it, but Chrome was sporadically making the rect very
+                    small for no apparent reason. Height doesn't seem to have the same
+                    problem. *)
+                 Attr_svg.width width
+               ])
+          []
+      ; Node_svg.text
+          ~attr:(Vdom.Attr.many [ text_x_attr; text_y_attr ])
+          [ Vdom.Node.text (Graph.Node.label ~graph node) ]
+      ; Node_svg.title [ Vdom.Node.text (Graph.Node.details ~graph node) ]
+      ]
+  ;;
+
+  let rec render_sequence
+            ~graph
+            ~x
             ~y
-            ~width
-            ~shape
-            ~focus
-            ~set_focus
-            ~in_zoom
-            ~zoom_nodes
-            ~set_zoom
+            ~scale
+            ~style
+            ~bearing
+            ~selection
+            ~select
+            ~activate
             ~even
-            node)
+            ~make_selector
+            seq
+    : Vdom.Node.t list
+    =
+    let first = Graph.Sequence.node seq in
+    let first_view =
+      let size = Graph.Node.size ~graph first in
+      let width = size *. scale in
+      let selector = make_selector seq in
+      render_node
+        ~graph
+        ~x
+        ~y
+        ~width
+        ~style
+        ~selection
+        ~select
+        ~activate
+        ~even
+        ~selector
+        first
+    in
+    let rest_view =
+      match Graph.Sequence.next ~graph seq with
+      | None -> []
+      | Some rest ->
+        let even = not even in
+        let y = Bearing.succ_y ~bearing y in
+        render_sequence
+          ~graph
+          ~x
+          ~y
+          ~scale
+          ~style
+          ~bearing
+          ~selection
+          ~select
+          ~activate
+          ~even
+          ~make_selector
+          rest
+    in
+    first_view :: rest_view
+  ;;
+
+  let rec render_tree
+            ~graph
+            ~x
+            ~y
+            ~scale
+            ~style
+            ~bearing
+            ~selection
+            ~select
+            ~activate
+            ~even
+            ~make_selector
+            tree
+    : Vdom.Node.t list
+    =
+    let node = Graph.Tree.node tree in
+    let width = Graph.Node.size ~graph node *. scale in
+    let view =
+      let selector = make_selector tree in
+      render_node
+        ~graph
+        ~x
+        ~y
+        ~width
+        ~style
+        ~selection
+        ~select
+        ~activate
+        ~even
+        ~selector
+        node
+    in
+    let children_view =
+      let even = not even in
+      let y = Bearing.succ_y ~bearing y in
+      let children = Graph.Tree.children ~graph tree in
+      let children_size =
+        List.fold_left children ~init:0. ~f:(fun total child ->
+          total +. Graph.Node.size ~graph (Graph.Tree.node child))
       in
-      (* If there's a single child, flatten the DOM out a little; if nothing else, it
-         makes it easier to poke around using the Chrome inspector *)
-      match nodes with
-      | [] | [ _ ] -> node_views
-      | _ -> [ Node_svg.g [] node_views ])
-  ;;
-
-  let tree_height ~shape (roots : Tree.Node.t list) =
-    let rec height roots =
-      let node_height node =
-        let this_node_height = if Tree.Node.hidden ~shape node then 0 else 1 in
-        this_node_height + height (Tree.Node.children ~shape node)
-      in
-      List.fold_left roots ~init:0 ~f:(fun h root -> Int.max h (node_height root))
-    in
-    height roots
-  ;;
-
-  let get_zoom_nodes zoom =
-    let rec loop node acc =
-      match Tree.Node.parent ~shape:Flames node with
-      | None -> acc
-      | Some parent -> loop parent (node :: acc)
-    in
-    loop zoom []
-  ;;
-
-  let render ~width ~focus ~zoom ~set_focus ~set_zoom =
-    Random.init 0;
-    let first_zoom_node, zoom_nodes =
-      match get_zoom_nodes zoom with
-      | [] -> assert false
-      | first_zoom_node :: zoom_nodes -> first_zoom_node, zoom_nodes
-    in
-    let node_height_int = Float.round_up node_height |> Float.to_int in
-    let flame_height_in_nodes =
-      tree_height ~shape:Flames [ zoom ] + List.length zoom_nodes
-    in
-    let flame_height = node_height_int * flame_height_in_nodes in
-    let icicle_roots = Tree.Node.children ~shape:Icicles zoom in
-    let icicle_height = node_height_int * tree_height ~shape:Icicles icicle_roots in
-    let height = flame_height + icicle_height in
-    let flame_graph_bottom_node_y = Float.of_int flame_height -. node_height in
-    let flame_node_views =
-      let width = Float.of_int width in
-      let size = Tree.Node.size first_zoom_node in
+      let children_width = children_size *. scale in
+      let x = x +. ((width -. children_width) /. 2.) in
       render_level
+        ~graph
+        ~x
+        ~y
+        ~scale
+        ~style
+        ~bearing
+        ~selection
+        ~select
+        ~activate
+        ~even
+        ~make_selector
+        children
+    in
+    view :: children_view
+
+  and render_level
+        ~graph
+        ~x
+        ~y
+        ~scale
+        ~style
+        ~bearing
+        ~selection
+        ~select
+        ~activate
+        ~even
+        ~make_selector
+        trees
+    =
+    let x = ref x in
+    let tree_views =
+      List.concat_map trees ~f:(fun tree ->
+        let this_x = !x in
+        let node = Graph.Tree.node tree in
+        let width = Graph.Node.size ~graph node *. scale in
+        x := !x +. width;
+        render_tree
+          ~graph
+          ~x:this_x
+          ~y
+          ~scale
+          ~style
+          ~bearing
+          ~selection
+          ~select
+          ~activate
+          ~even
+          ~make_selector
+          tree)
+    in
+    (* If there's a single child, flatten the DOM out a little; if nothing else, it
+       makes it easier to poke around using the Chrome inspector *)
+    match trees with
+    | [] | [ _ ] -> tree_views
+    | _ -> [ Node_svg.g tree_views ]
+  ;;
+
+  let rec tree_height ~graph trees =
+    List.fold_left trees ~init:0 ~f:(fun acc tree ->
+      let height = 1 + tree_height ~graph (Graph.Tree.children ~graph tree) in
+      Int.max acc height)
+  ;;
+
+  let rec sequence_beginning ~graph seq =
+    match Graph.Sequence.prev ~graph seq with
+    | None -> seq
+    | Some prev -> sequence_beginning ~graph prev
+  ;;
+
+  let rec sequence_end ~graph seq =
+    match Graph.Sequence.next ~graph seq with
+    | None -> seq
+    | Some next -> sequence_end ~graph next
+  ;;
+
+  let rec sequence_height ~graph seq =
+    match Graph.Sequence.next ~graph seq with
+    | None -> 1
+    | Some next -> 1 + sequence_height ~graph next
+  ;;
+
+  let render ~width ~selection ~select ~activate graph =
+    Random.init 0;
+    let flame_tree = Graph.flame_tree graph in
+    let focus = Option.map ~f:(sequence_beginning ~graph) (Graph.focus graph) in
+    let icicle_tree = Graph.icicle_tree graph in
+    let size = Graph.size graph in
+    let scale = Float.of_int width /. size in
+    let flame_height = node_height_int * tree_height ~graph flame_tree in
+    let focus_height =
+      match focus with
+      | None -> 0
+      | Some seq -> node_height_int * sequence_height ~graph seq
+    in
+    let icicle_height = node_height_int * tree_height ~graph icicle_tree in
+    let height = flame_height + focus_height + icicle_height in
+    let flame_graph_bottom_node_y = Float.of_int flame_height -. node_height in
+    let focus_bottom_node_y = Float.of_int (flame_height + focus_height) -. node_height in
+    let icicle_graph_top_node_y = Float.of_int (flame_height + focus_height) in
+    let flame_graph_views =
+      render_level
+        ~graph
         ~x:0.
         ~y:flame_graph_bottom_node_y
-        ~width
-        ~shape:Flames
-        ~size
-        ~focus
-        ~set_focus
-        ~in_zoom:true
-        ~zoom_nodes
-        ~set_zoom
+        ~scale
+        ~style:Flames
+        ~bearing:Upwards
+        ~selection
+        ~select
+        ~activate
         ~even:false
-        [ first_zoom_node ]
+        ~make_selector:Selector.flame
+        flame_tree
     in
-    let icicle_graph_top_node_y = Float.of_int flame_height in
-    let icicle_node_views =
-      let width = Float.of_int width in
-      let zoom_nodes = [] in
-      let size =
-        List.fold_left icicle_roots ~init:0. ~f:(fun total child ->
-          total +. Tree.Node.size child)
-      in
-      let icicle_roots_width =
-        if flame_height_in_nodes = 0
-        then
-          (* No nodes above the top of the icicles, so let the icicles take up the whole
-             width *)
-          width
-        else width *. (size /. Tree.Node.size zoom)
-      in
-      let x = (width -. icicle_roots_width) /. 2. in
+    let focus_views =
+      match focus with
+      | None -> []
+      | Some focus ->
+        render_sequence
+          ~graph
+          ~x:0.
+          ~y:focus_bottom_node_y
+          ~scale
+          ~style:Focus
+          ~bearing:Upwards
+          ~selection
+          ~select
+          ~activate
+          ~even:false
+          ~make_selector:Selector.focus
+          focus
+    in
+    let icicle_graph_views =
       render_level
-        ~x
+        ~graph
+        ~x:0.
         ~y:icicle_graph_top_node_y
-        ~width:icicle_roots_width
-        ~shape:Icicles
-        ~size
-        ~focus
-        ~set_focus
-        ~in_zoom:false
-        ~zoom_nodes
-        ~set_zoom
+        ~scale
+        ~style:Icicles
+        ~bearing:Downwards
+        ~selection
+        ~select
+        ~activate
         ~even:false
-        icicle_roots
+        ~make_selector:Selector.icicle
+        icicle_tree
     in
     let open Vdom in
-    let flame_view = Node_svg.g [ Attr.class_ "flame-graph-flames" ] flame_node_views in
+    let flame_view =
+      Node_svg.g ~attr:(Attr.class_ "flame-graph-flames") flame_graph_views
+    in
+    let focus_view = Node_svg.g ~attr:(Attr.class_ "flame-graph-focus") focus_views in
     let icicle_view =
-      Node_svg.g [ Attr.class_ "flame-graph-icicles" ] icicle_node_views
+      Node_svg.g ~attr:(Attr.class_ "flame-graph-icicles") icicle_graph_views
     in
     Node.div
-      [ Attr.class_ "flame-graph-container" ]
+      ~attr:(Attr.class_ "flame-graph-container")
       [ Node_svg.svg
-          [ Attr.class_ "flame-graph"
-          ; Attr.style
-              (Css_gen.concat [ Css_gen.width (`Px width); Css_gen.height (`Px height) ])
-          ]
-          [ flame_view; icicle_view ]
+          ~attr:
+            (Attr.many
+               [ Attr.class_ "flame-graph"
+               ; Attr.style
+                   (Css_gen.concat
+                      [ Css_gen.width (`Px width); Css_gen.height (`Px height) ])
+               ])
+          [ flame_view; focus_view; icicle_view ]
       ]
   ;;
 
   module Keyboard_navigation = struct
-    module Rel_dir = struct
-      type t =
-        | Left
-        | Right
-        | Toward_roots
-        | Toward_leaves
+    let to_parent ~graph tree = Graph.Tree.parent ~graph tree
 
-      let of_abs (abs : Direction.t) ~(shape : Shape.t) =
-        match abs, shape with
-        | Left, _ -> Left
-        | Right, _ -> Right
-        | Up, Flames | Down, Icicles -> Toward_leaves
-        | Down, Flames | Up, Icicles -> Toward_roots
-      ;;
-    end
-
-    let to_child ~node =
-      let nodes = Node.children node in
-      List.max_elt nodes ~compare:(fun (n1 : Node.t) (n2 : Node.t) ->
-        Float.compare (Tree.Node.size n1.tree_node) (Tree.Node.size n2.tree_node))
+    let largest_tree ~graph trees =
+      List.max_elt trees ~compare:(fun tree1 tree2 ->
+        let node1 = Graph.Tree.node tree1 in
+        let node2 = Graph.Tree.node tree2 in
+        let size1 = Graph.Node.size ~graph node1 in
+        let size2 = Graph.Node.size ~graph node2 in
+        Float.compare size1 size2)
     ;;
 
-    let to_parent ~zoom ~node =
-      let is_eligible_parent parent =
-        match Node.parent parent with
-        | None -> (* Don't focus root *) false
-        | Some _ ->
-          if Tree.Node.same parent.tree_node zoom
-          then (
-            match node.Node.shape with
-            | Flames -> (* Zoom is in the flame part, so fine *) true
-            | Icicles -> (* We're moving out of the icicle part *) false)
-          else (* Normal case *) true
-      in
-      match Node.parent node with
-      | Some parent when is_eligible_parent parent -> Some parent
-      | _ ->
-        (* Moving between shapes *)
-        (match node.shape with
-         | Flames ->
-           let node = { Node.tree_node = zoom; shape = Icicles } in
-           to_child ~node
-         | Icicles ->
-           let rec to_child_of_root tree_node =
-             match Tree.Node.parent tree_node ~shape:Flames with
-             | Some parent when Option.is_some (Tree.Node.parent parent ~shape:Icicles) ->
-               to_child_of_root parent
-             | _ -> tree_node
-           in
-           let tree_node = to_child_of_root zoom in
-           Some { Node.tree_node; shape = Flames })
+    let to_child ~graph tree =
+      let children = Graph.Tree.children ~graph tree in
+      largest_tree ~graph children
     ;;
 
     type left_or_right =
       | Left
       | Right
 
-    let to_sibling ~which ~node =
-      let%bind.Option parent = Node.parent node in
-      let siblings = Node.children parent in
-      let rec find_successor nodes =
-        match nodes with
-        | first_node :: next_node :: _
-          when Tree.Node.same first_node.Node.tree_node node.tree_node -> Some next_node
-        | _ :: nodes -> find_successor nodes
+    let to_sibling ~graph ~origin ~which tree =
+      let siblings =
+        match Graph.Tree.parent ~graph tree with
+        | None -> origin
+        | Some parent -> Graph.Tree.children ~graph parent
+      in
+      let rec find_successor trees =
+        match trees with
+        | first_tree :: (next_tree :: _ as rest) ->
+          if Graph.Tree.same first_tree tree then Some next_tree else find_successor rest
+        | [ _ ] -> None
         | [] -> None
       in
       let siblings_oriented =
@@ -396,37 +469,101 @@ module Make (Tree : Tree) = struct
       find_successor siblings_oriented
     ;;
 
-    let find_rel ~dir ~zoom ~node : Node.t option =
-      match dir with
-      | Rel_dir.Toward_roots -> to_parent ~zoom ~node
-      | Toward_leaves -> to_child ~node
-      | Left -> to_sibling ~which:Left ~node
-      | Right -> to_sibling ~which:Right ~node
+    let move_into_flame_tree ~graph =
+      let%map.Option largest_flame_tree = largest_tree ~graph (Graph.flame_tree graph) in
+      Selector.Flame largest_flame_tree
     ;;
 
-    let find_abs ~dir ~zoom ~node =
-      let%bind.Option node =
-        match node with
-        | Some node -> Some node
-        | None ->
-          (match dir with
-           | Direction.Up -> Some { Node.shape = Flames; tree_node = zoom }
-           | Down -> Some { Node.shape = Icicles; tree_node = zoom }
-           | Left | Right -> None)
+    let move_into_icicle_tree ~graph =
+      let%map.Option largest_icicle_tree =
+        largest_tree ~graph (Graph.icicle_tree graph)
       in
-      let dir = Rel_dir.of_abs dir ~shape:node.Node.shape in
-      find_rel ~dir ~zoom ~node
+      Selector.Icicle largest_icicle_tree
     ;;
 
-    let move ~(dir : Direction.t) ~zoom ~focus ~set_focus =
-      let new_focus_node = find_abs ~dir ~zoom ~node:focus in
-      match new_focus_node with
-      | Some new_focus_node ->
-        Vdom.Event.Many [ Vdom.Event.Prevent_default; set_focus (Some new_focus_node) ]
+    let move_down_to_focus ~graph =
+      match Graph.focus graph with
+      | Some seq -> Some (Selector.Focus (sequence_end ~graph seq))
+      | None -> move_into_icicle_tree ~graph
+    ;;
+
+    let move_up_to_focus ~graph =
+      match Graph.focus graph with
+      | Some seq -> Some (Selector.Focus (sequence_beginning ~graph seq))
+      | None -> move_into_flame_tree ~graph
+    ;;
+
+    let move_flame_tree ~graph ~(dir : Direction.t) tree =
+      let origin = Graph.flame_tree graph in
+      match dir with
+      | Up ->
+        let%map.Option new_tree = to_child ~graph tree in
+        Selector.Flame new_tree
+      | Down ->
+        (match to_parent ~graph tree with
+         | Some new_tree -> Some (Selector.Flame new_tree)
+         | None -> move_down_to_focus ~graph)
+      | Left ->
+        let%map.Option new_tree = to_sibling ~origin ~graph ~which:Left tree in
+        Selector.Flame new_tree
+      | Right ->
+        let%map.Option new_tree = to_sibling ~origin ~graph ~which:Right tree in
+        Selector.Flame new_tree
+    ;;
+
+    let move_icicle_tree ~graph ~(dir : Direction.t) tree =
+      let origin = Graph.icicle_tree graph in
+      match dir with
+      | Down ->
+        let%map.Option new_tree = to_child ~graph tree in
+        Selector.Icicle new_tree
+      | Up ->
+        (match to_parent ~graph tree with
+         | Some new_tree -> Some (Selector.Icicle new_tree)
+         | None -> move_up_to_focus ~graph)
+      | Left ->
+        let%map.Option new_tree = to_sibling ~origin ~graph ~which:Left tree in
+        Selector.Icicle new_tree
+      | Right ->
+        let%map.Option new_tree = to_sibling ~origin ~graph ~which:Right tree in
+        Selector.Icicle new_tree
+    ;;
+
+    let move_focus ~graph ~(dir : Direction.t) seq =
+      match dir with
+      | Up ->
+        (match Graph.Sequence.next ~graph seq with
+         | Some seq -> Some (Selector.Focus seq)
+         | None -> move_into_flame_tree ~graph)
+      | Down ->
+        (match Graph.Sequence.prev ~graph seq with
+         | Some seq -> Some (Selector.Focus seq)
+         | None -> move_into_icicle_tree ~graph)
+      | Left -> None
+      | Right -> None
+    ;;
+
+    let move ~graph ~dir (selector : Selector.t option) =
+      match selector with
+      | Some (Flame tree) -> move_flame_tree ~graph ~dir tree
+      | Some (Icicle tree) -> move_icicle_tree ~graph ~dir tree
+      | Some (Focus seq) -> move_focus ~graph ~dir seq
+      | None ->
+        (match dir with
+         | Direction.Up -> move_into_flame_tree ~graph
+         | Direction.Down -> move_into_icicle_tree ~graph
+         | Direction.Left | Direction.Right -> None)
+    ;;
+
+    let move_event ~graph ~dir ~selection ~navigate_to =
+      let new_selection = move ~graph ~dir selection in
+      match new_selection with
+      | Some new_selection ->
+        Vdom.Event.Many [ Vdom.Event.Prevent_default; navigate_to new_selection ]
       | None -> Vdom.Event.Ignore
     ;;
 
-    let handle_arrow_key ~zoom ~focus ~set_focus event =
+    let handle_arrow_key ~graph ~selection ~navigate_to event =
       let dir : Direction.t =
         match Vdom_keyboard.Keyboard_event.key event with
         | ArrowUp | KeyK -> Up
@@ -435,10 +572,10 @@ module Make (Tree : Tree) = struct
         | ArrowRight | KeyL -> Right
         | _ -> assert false
       in
-      move ~dir ~zoom ~focus ~set_focus
+      move_event ~dir ~graph ~selection ~navigate_to
     ;;
 
-    let arrow_key_command ~zoom ~focus ~set_focus =
+    let arrow_key_command ~graph ~selection ~navigate_to =
       let open Vdom_keyboard in
       let keys =
         List.map
@@ -453,15 +590,15 @@ module Make (Tree : Tree) = struct
           ; KeyL
           ]
       in
-      let description = "Move focus" in
+      let description = "Move selection" in
       let group = None in
-      let handler = handle_arrow_key ~zoom ~focus ~set_focus in
+      let handler = handle_arrow_key ~graph ~selection ~navigate_to in
       { Keyboard_event_handler.Command.keys; description; group; handler }
     ;;
 
-    let key_handler ~zoom ~focus ~set_focus =
+    let key_handler ~graph ~selection ~navigate_to =
       Vdom_keyboard.Keyboard_event_handler.of_command_list_exn
-        [ arrow_key_command ~zoom ~focus ~set_focus ]
+        [ arrow_key_command ~graph ~selection ~navigate_to ]
     ;;
   end
 
@@ -470,40 +607,17 @@ module Make (Tree : Tree) = struct
     ; key_handler : Vdom_keyboard.Keyboard_event_handler.t
     }
 
-  let component ~tree ~width ~focus ~set_focus ~zoom ~set_zoom =
+  let component graph ~width ~selection ~select ~navigate_to ~activate =
     let open Bonsai.Let_syntax in
     return
-      (let%map tree = tree
+      (let%map graph = graph
        and width = width
-       and focus = focus
-       and set_focus = set_focus
-       and zoom = zoom
-       and set_zoom = set_zoom in
-       (* Treat the focus as None if it's not in the tree or it's neither inside the zoom
-          nor part of the zoom *)
-       let focus =
-         let%bind.Option focus = focus in
-         let within_zoom =
-           Tree.is_related
-             tree
-             ~shape:focus.Node.shape
-             ~strictly:true
-             ~ancestor:zoom
-             ~descendant:focus.tree_node
-         in
-         let part_of_zoom () =
-           Shape.equal focus.shape Flames
-           && Tree.is_related
-                tree
-                ~shape:Flames
-                ~strictly:false
-                ~ancestor:focus.tree_node
-                ~descendant:zoom
-         in
-         if within_zoom || part_of_zoom () then Some focus else None
-       in
-       let view = render ~width ~focus ~zoom ~set_focus ~set_zoom in
-       let key_handler = Keyboard_navigation.key_handler ~zoom ~focus ~set_focus in
+       and selection = selection
+       and select = select
+       and navigate_to = navigate_to
+       and activate = activate in
+       let view = render ~width ~selection ~select ~activate graph in
+       let key_handler = Keyboard_navigation.key_handler ~graph ~selection ~navigate_to in
        { view; key_handler })
   ;;
 end

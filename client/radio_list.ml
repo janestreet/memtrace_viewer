@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 open Bonsai_web
 
 module type Button = sig
@@ -24,20 +24,21 @@ let component (type a) (module Button : Button with type t = a) ~name ~value ~se
          | None -> []
        in
        Node.li
-         []
          [ Node.label
-             label_attrs
+             ~attr:(Attr.many_without_merge label_attrs)
              [ Node.input
-                 (List.concat
-                    [ [ Attr.type_ "radio" ]
-                    ; [ Attr.name name ]
-                    ; [ Attr.on_click on_click ]
-                    ; (if selected then [ Attr.checked ] else [])
-                    ])
+                 ~attr:
+                   (Attr.many_without_merge
+                      (List.concat
+                         [ [ Attr.type_ "radio" ]
+                         ; [ Attr.name name ]
+                         ; [ Attr.on_click on_click ]
+                         ; (if selected then [ Attr.checked ] else [])
+                         ]))
                  []
              ; Node.text (Button.label button)
              ]
          ]
      in
-     Node.ul [ Attr.class_ "radio-list" ] (List.map ~f:render_item Button.all))
+     Node.ul ~attr:(Attr.class_ "radio-list") (List.map ~f:render_item Button.all))
 ;;

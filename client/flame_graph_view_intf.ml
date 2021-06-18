@@ -1,41 +1,40 @@
-open! Core_kernel
+open! Core
 open Bonsai_web
 
-module Shape = struct
-  type t =
-    | Flames
-    | Icicles
-  [@@deriving sexp, equal]
-end
+module type Graph = sig
+  type t
+  type graph := t
 
-module type Tree = sig
   module Node : sig
     type t
 
-    val label : shape:Shape.t -> t -> string
-    val details : shape:Shape.t -> t -> string
-    val size : t -> float
-    val hidden : shape:Shape.t -> t -> bool
-    val children : shape:Shape.t -> t -> t list
-    val parent : shape:Shape.t -> t -> t option
-    val same : t -> t -> bool
-
-    module Debug : sig
-      type nonrec t = t [@@deriving sexp_of]
-    end
+    val label : graph:graph -> t -> string
+    val details : graph:graph -> t -> string
+    val size : graph:graph -> t -> float
   end
 
-  type t
+  module Tree : sig
+    type t
 
-  val root : t -> Node.t
+    val node : t -> Node.t
+    val children : graph:graph -> t -> t list
+    val parent : graph:graph -> t -> t option
+    val same : t -> t -> bool
+  end
 
-  val is_related
-    :  t
-    -> shape:Shape.t
-    -> strictly:bool
-    -> ancestor:Node.t
-    -> descendant:Node.t
-    -> bool
+  module Sequence : sig
+    type t
+
+    val node : t -> Node.t
+    val next : graph:graph -> t -> t option
+    val prev : graph:graph -> t -> t option
+    val same : t -> t -> bool
+  end
+
+  val flame_tree : t -> Tree.t list
+  val icicle_tree : t -> Tree.t list
+  val focus : t -> Sequence.t option
+  val size : t -> float
 end
 
 module Direction = struct
@@ -52,36 +51,33 @@ module type S = sig
     ; key_handler : Vdom_keyboard.Keyboard_event_handler.t
     }
 
-  module Tree : Tree
+  module Graph : Graph
 
-  module Node : sig
+  module Selector : sig
     type t =
-      { tree_node : Tree.Node.t
-      ; shape : Shape.t
-      }
+      | Flame of Graph.Tree.t
+      | Icicle of Graph.Tree.t
+      | Focus of Graph.Sequence.t
 
-    module Debug : sig
-      type nonrec t = t [@@deriving sexp_of]
-    end
+    val same : t -> t -> bool
   end
 
   val component
-    :  tree:Tree.t Bonsai.Value.t
+    :  Graph.t Bonsai.Value.t
     -> width:int Bonsai.Value.t
-    -> focus:Node.t option Bonsai.Value.t
-    -> set_focus:(Node.t option -> Vdom.Event.t) Bonsai.Value.t
-    -> zoom:Tree.Node.t Bonsai.Value.t
-    -> set_zoom:(Tree.Node.t option -> Vdom.Event.t) Bonsai.Value.t
+    -> selection:Selector.t option Bonsai.Value.t
+    -> select:(Selector.t -> Vdom.Event.t) Bonsai.Value.t
+    -> navigate_to:(Selector.t -> Vdom.Event.t) Bonsai.Value.t
+    -> activate:(Selector.t -> Vdom.Event.t) Bonsai.Value.t
     -> t Bonsai.Computation.t
 end
 
 module type Flame_graph_view = sig
-  module type Tree = Tree
+  module type Graph = Graph
 
-  module Shape = Shape
   module Direction = Direction
 
   module type S = S
 
-  module Make (Tree : Tree) : S with module Tree := Tree
+  module Make (Graph : Graph) : S with module Graph := Graph
 end

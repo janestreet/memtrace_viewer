@@ -2,7 +2,7 @@
    graph labels" in Graphics Gems, vol. 1, modified to generate labels *inside* the given
    bounds rather than outside them *)
 
-open! Core_kernel
+open! Core
 
 module type Diff = sig
   type t

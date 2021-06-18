@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 open Memtrace_viewer_common
 
 (* A generalized suffix tree based on Ukkonen's algorithm
@@ -72,8 +72,8 @@ module Make (X : Char) = struct
     val is_heavy : t -> heaviness_threshold:int -> bool
     val contains_heavy : t -> heaviness_threshold:int -> bool
     val total_count : t -> int
+    val light_count : t -> int
     val representative : t -> t
-    val max_error : t -> int
 
     module Debug : sig
       type nonrec t = t [@@deriving sexp_of]
@@ -720,7 +720,6 @@ module Make (X : Char) = struct
     let representative t = Summary.representative t.summary
     let total_count t = count t + descendents_count t
     let light_count t = total_count t - heavy_descendents_count t
-    let max_error t = t.max_edge_squashed
 
     let is_heavy t ~heaviness_threshold =
       let light_count = light_count t in

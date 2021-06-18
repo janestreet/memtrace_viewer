@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 open Bonsai_web
 
 type t =
@@ -15,7 +15,9 @@ let wrap ~view ~key_handler =
   in
   let view =
     Node.div
-      [ (* Make focusable *) Attr.tabindex (-1); Attr.on_keydown on_keydown ]
+      ~attr:
+        (Attr.many_without_merge
+           [ (* Make focusable *) Attr.tabindex (-1); Attr.on_keydown on_keydown ])
       [ view ]
   in
   let key_help = Vdom_keyboard.Keyboard_event_handler.get_help_text key_handler in

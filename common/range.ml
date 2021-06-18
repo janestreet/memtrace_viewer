@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 open Range_intf
 
 module Bound = struct

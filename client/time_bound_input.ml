@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 open Bonsai_web
 
 module Size = struct
@@ -59,7 +59,6 @@ let component ~which ~max ~start_time ~time_view =
        { And_view.value = value, Size.Small
        ; view =
            Node.span
-             []
              [ Vdom_input_widgets.Entry.number
                  ~extra_attrs:
                    [ Attr.class_ "bound"

@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 include Data_intf
 
 module Location = struct
@@ -8,11 +8,9 @@ module Location = struct
       | Toplevel
       | Dummy
       | Function of
-          { filename : string
-          ; line : int
-          ; start_char : int
-          ; end_char : int
-          ; defname : string
+          { defname : string
+          ; full_string : string
+          ; loc_in_file : string
           }
     [@@deriving sexp, bin_io, compare, hash]
   end
@@ -22,7 +20,9 @@ module Location = struct
   include Hashable.Make (T)
 
   let create ~filename ~line ~start_char ~end_char ~defname =
-    Function { filename; line; start_char; end_char; defname }
+    let loc_in_file = sprintf "(%s:%d:%d-%d)" filename line start_char end_char in
+    let full_string = sprintf "%s %s" defname loc_in_file in
+    Function { defname; loc_in_file; full_string }
   ;;
 
   let allocation_site = Allocation_site
@@ -49,50 +49,35 @@ module Location = struct
     | Function _ -> false
   ;;
 
-  let filename = function
-    | Function f -> f.filename
-    | _ -> "(none)"
-  ;;
-
-  let line = function
-    | Function f -> f.line
-    | _ -> 0
-  ;;
-
-  let start_char = function
-    | Function f -> f.start_char
-    | _ -> 0
-  ;;
-
-  let end_char = function
-    | Function f -> f.end_char
-    | _ -> 0
-  ;;
+  let allocation_site_string = "(allocation site)"
+  let toplevel_string = "(toplevel)"
+  let dummy_string = "(no location)"
 
   let defname = function
-    | Function f -> f.defname
-    | Allocation_site -> "(allocation site)"
-    | Toplevel -> "(toplevel)"
-    | Dummy -> "(no location)"
+    | Function { defname; _ } -> defname
+    | Allocation_site -> allocation_site_string
+    | Toplevel -> toplevel_string
+    | Dummy -> dummy_string
   ;;
 
-  let loc_in_file_to_string t =
-    let filename = filename t in
-    let line = line t in
-    let start_char = start_char t in
-    let end_char = end_char t in
-    sprintf "(%s:%d:%d-%d)" filename line start_char end_char
+  let loc_in_file = function
+    | Function { loc_in_file; _ } -> loc_in_file
+    | Allocation_site -> allocation_site_string
+    | Toplevel -> toplevel_string
+    | Dummy -> dummy_string
   ;;
 
-  let to_string t =
-    let defname = defname t in
-    if is_special t then defname else sprintf "%s %s" defname (loc_in_file_to_string t)
+  let full_name = function
+    | Function { full_string; _ } -> full_string
+    | Allocation_site -> allocation_site_string
+    | Toplevel -> toplevel_string
+    | Dummy -> dummy_string
   ;;
 
   module Debug = struct
     type nonrec t = t
 
-    let sexp_of_t t = Sexp.Atom (t |> to_string)
+    let sexp_of_t t = Sexp.Atom (full_name t)
   end
 end
 
@@ -126,6 +111,8 @@ module Backtrace = struct
     val of_reversed_list : Location.t list -> t
     val elements : t -> Location.t list
     val head_and_tail : t -> (Location.t * t) option
+    val hd : t -> Location.t option
+    val tl : t -> t option
 
     module Debug : sig
       type nonrec t = t [@@deriving sexp_of]
@@ -141,6 +128,16 @@ module Backtrace = struct
     let of_forward t = List.rev t
     let of_reversed_list t = t
     let elements t = t
+
+    let hd = function
+      | [] -> None
+      | loc :: _ -> Some loc
+    ;;
+
+    let tl = function
+      | [] -> None
+      | _ :: rest -> Some rest
+    ;;
 
     let head_and_tail = function
       | [] -> None
@@ -177,11 +174,28 @@ end
 module Entry = struct
   type t =
     { allocations : Byte_units.Stable.V2.t
-    ; max_error : Byte_units.Stable.V2.t
+    ; direct_allocations : Byte_units.Stable.V2.t
+    ; allocations_string : string
+    ; percentage_string : string
+    ; is_heavy : bool
     }
   [@@deriving sexp, bin_io, fields]
 
-  let create ~allocations ~max_error = { allocations; max_error }
+  let empty =
+    let allocations = Byte_units.zero in
+    let direct_allocations = Byte_units.zero in
+    let is_heavy = false in
+    let allocations_string = Byte_units.Short.to_string allocations in
+    let percentage_string = "0%" in
+    { allocations; direct_allocations; is_heavy; allocations_string; percentage_string }
+  ;;
+
+  let create ~total_allocations_in_trie ~allocations ~direct_allocations ~is_heavy =
+    let allocations_string = Byte_units.Short.to_string allocations in
+    let percentage = 100. *. Byte_units.(allocations // total_allocations_in_trie) in
+    let percentage_string = Format.sprintf "%.1f%%" percentage in
+    { allocations; direct_allocations; is_heavy; allocations_string; percentage_string }
+  ;;
 end
 
 module Orientation = struct
@@ -209,6 +223,7 @@ module Fragment = struct
     ; mutable extensions_by_caller : (Location.t, t) List.Assoc.t
     ; mutable extensions_by_callee : (Location.t, t) List.Assoc.t
     ; mutable representative : t
+    ; mutable length : int
     }
   [@@deriving fields]
 
@@ -220,8 +235,6 @@ module Fragment = struct
     | Orientation.Callers -> t.first_caller
     | Orientation.Callees -> t.last_callee
   ;;
-
-  let last t ~orient = first t ~orient:(Orientation.flip orient)
 
   let retract t ~orient =
     if is_empty t
@@ -235,11 +248,24 @@ module Fragment = struct
       Some retraction)
   ;;
 
+  let rec retract_by t ~orient ~n =
+    if n <= 0
+    then Some t
+    else (
+      match retract t ~orient with
+      | None -> None
+      | Some t -> retract_by t ~orient ~n:(n - 1))
+  ;;
+
   let backtrace t =
     let rec loop t acc =
       if is_empty t then acc else loop t.retraction_by_callee (t.last_callee :: acc)
     in
     loop t []
+  ;;
+
+  let is_trivial t =
+    is_empty t || (is_empty t.retraction_by_callee && Location.is_special t.last_callee)
   ;;
 
   let backtrace_rev t =
@@ -252,14 +278,14 @@ module Fragment = struct
   ;;
 
   let rec deep_fold_callers t ~backtrace ~init ~f =
-    let init = f ~backtrace ~entry:t.entry init in
+    let init = f ~backtrace ~fragment:t init in
     List.fold t.extensions_by_caller ~init ~f:(fun acc (loc, child) ->
       let backtrace = loc :: backtrace in
       deep_fold_callers child ~backtrace ~init:acc ~f)
   ;;
 
   let rec deep_fold_callees t ~backtrace_rev ~init ~f =
-    let init = f ~backtrace_rev ~entry:t.entry init in
+    let init = f ~backtrace_rev ~fragment:t init in
     List.fold t.extensions_by_callee ~init ~f:(fun acc (loc, child) ->
       let backtrace_rev = Backtrace.Reversed.cons loc backtrace_rev in
       deep_fold_callees child ~backtrace_rev ~init:acc ~f)
@@ -271,17 +297,17 @@ module Fragment = struct
     | Callees -> t.extensions_by_callee
   ;;
 
-  let all_one_frame_extensions t =
-    List.map ~f:snd t.extensions_by_caller @ List.map ~f:snd t.extensions_by_callee
+  let has_extensions t ~orient = not (List.is_empty (one_frame_extensions t ~orient))
+
+  let extend t ~orient loc =
+    List.Assoc.find ~equal:Location.equal (one_frame_extensions t ~orient) loc
   ;;
 
   let rec extend_by_callers t backtrace_rev =
     match Backtrace.Reversed.head_and_tail backtrace_rev with
     | None -> Some t
     | Some (loc, locs) ->
-      let%bind.Option child =
-        List.Assoc.find ~equal:Location.equal t.extensions_by_caller loc
-      in
+      let%bind.Option child = extend ~orient:Callers t loc in
       extend_by_callers child locs
   ;;
 
@@ -289,96 +315,18 @@ module Fragment = struct
     match backtrace with
     | [] -> Some t
     | loc :: locs ->
-      let%bind.Option child =
-        List.Assoc.find ~equal:Location.equal t.extensions_by_callee loc
-      in
+      let%bind.Option child = extend ~orient:Callees t loc in
       extend_by_callees child locs
   ;;
 
-  let extend_by t backtrace ~orient =
-    match orient with
-    | Orientation.Callers -> extend_by_callers t (Backtrace.Reversed.of_forward backtrace)
-    | Callees -> extend_by_callees t backtrace
-  ;;
-
-  module Extension = struct
-    module T = struct
-      type nonrec t =
-        { callers : Backtrace.Reversed.t
-        ; callees : Backtrace.t
-        }
-      [@@deriving sexp, compare]
-    end
-
-    include T
-    include Comparable.Make (T)
-
-    let empty = { callers = Backtrace.Reversed.nil; callees = [] }
-    let of_callers callers = { callers; callees = [] }
-    let of_callees callees = { callees; callers = Backtrace.Reversed.nil }
-
-    module Debug = struct
-      type nonrec t = t =
-        { callers : Backtrace.Reversed.Debug.t
-        ; callees : Backtrace.Debug.t
-        }
-      [@@deriving sexp_of]
-    end
-  end
-
-  let extend t { Extension.callers; callees } =
-    let%bind.Option t = extend_by_callers t callers in
-    extend_by_callees t callees
-  ;;
-
-  let rec is_extension t ~extension ~strictly ~orient =
-    if same t extension
-    then not strictly
+  let is_extension t ~extension ~orient =
+    let n = length extension - length t in
+    if n < 0
+    then false
     else (
-      match retract extension ~orient with
-      | None -> false
-      | Some extension -> is_extension t ~extension ~strictly:false ~orient)
-  ;;
-
-  let is_one_sided_extension t ~extension ~strictly =
-    is_extension t ~extension ~strictly ~orient:Callers
-    || is_extension t ~extension ~strictly ~orient:Callees
-  ;;
-
-  let rec flip0 t ~extension ~flipped_orient =
-    (*
-       {v
-          |------------ extension -----------|
-          .    .    . end .   .    .    .    .
-          |------ t ------|
-                    |-------- flip t --------|
-       v}
-
-       Algorithm: If t has length one, [extension] is the answer. Otherwise retract both
-       extension and t toward end (that is, retract with respect to the orientation
-       opposite [orient]) and recurse.
-    *)
-    match retract t ~orient:flipped_orient with
-    | None -> extension
-    | Some t_retracted ->
-      if is_empty t_retracted
-      then (
-        assert (
-          Location.equal
-            (first t ~orient:flipped_orient)
-            (first extension ~orient:flipped_orient));
-        extension)
-      else (
-        let extension_retracted =
-          retract extension ~orient:flipped_orient |> Option.value_exn
-          (* If None, [extension] isn't actually an extension of [t] *)
-        in
-        flip0 t_retracted ~extension:extension_retracted ~flipped_orient)
-  ;;
-
-  let flip t ~extension ~orient =
-    assert (is_extension t ~extension ~orient ~strictly:false);
-    flip0 t ~extension ~flipped_orient:(Orientation.flip orient)
+      match retract_by ~orient ~n extension with
+      | None -> assert false
+      | Some extension -> same extension t)
   ;;
 
   module Debug = struct
@@ -399,6 +347,8 @@ module Fragment = struct
       ; orient : Orientation.t
       }
 
+    let fragment { fragment; _ } = fragment
+    let orient { orient; _ } = orient
     let first { fragment; orient } = first fragment ~orient
 
     let retract { fragment; orient } =
@@ -406,10 +356,22 @@ module Fragment = struct
       { fragment; orient }
     ;;
 
+    let retract_by { fragment; orient } ~n =
+      let%map.Option fragment = retract_by fragment ~orient ~n in
+      { fragment; orient }
+    ;;
+
     let one_frame_extensions { fragment; orient } =
       one_frame_extensions fragment ~orient
       |> List.Assoc.map ~f:(fun fragment -> { fragment; orient })
     ;;
+
+    let extend { fragment; orient } loc =
+      let%map.Option fragment = extend fragment ~orient loc in
+      { fragment; orient }
+    ;;
+
+    let has_extensions { fragment; orient } = has_extensions fragment ~orient
 
     module Debug = struct
       type nonrec t = t =
@@ -419,6 +381,107 @@ module Fragment = struct
       [@@deriving sexp_of]
     end
   end
+
+  let oriented fragment ~orient = { Oriented.fragment; orient }
+
+  module Iterator = struct
+    (* We represent a position within a fragment the prefix ending at that
+       position and the suffix ending at that position:
+
+       {v
+         |ABCDEFGHIJKLMNOPQRSTUVWXYZ| fragment
+          ________I_________________  position
+         |ABCDEFGHI|________________  prefix
+         ________|IJKLMNOPQRSTUVWXYZ| suffix
+       v} *)
+    type nonrec t =
+      { prefix : t
+      ; suffix : t
+      }
+
+    let prefix { prefix; _ } = prefix
+    let suffix { suffix; _ } = suffix
+    let location { suffix; _ } = first ~orient:Callers suffix
+
+    let next { prefix; suffix } =
+      match retract ~orient:Callers suffix with
+      | None -> assert false
+      | Some suffix ->
+        if is_empty suffix
+        then None
+        else (
+          let next_loc = first ~orient:Callers suffix in
+          let prefix =
+            match extend ~orient:Callees prefix next_loc with
+            | Some fragment -> fragment
+            | None -> assert false
+          in
+          Some { prefix; suffix })
+    ;;
+
+    let prev { prefix; suffix } =
+      match retract ~orient:Callees prefix with
+      | None -> assert false
+      | Some prefix ->
+        let next_loc = first ~orient:Callees prefix in
+        if is_empty prefix
+        then None
+        else (
+          let suffix =
+            match extend ~orient:Callers suffix next_loc with
+            | Some fragment -> fragment
+            | None -> assert false
+          in
+          Some { prefix; suffix })
+    ;;
+
+    module Trace = struct
+      module T = struct
+        type t =
+          { prefix_trace : Backtrace.Reversed.t
+          ; suffix_trace : Backtrace.t
+          }
+        [@@deriving sexp, bin_io, compare, hash]
+      end
+
+      include T
+      include Comparable.Make_binable (T)
+    end
+
+    let trace { prefix; suffix } =
+      let prefix_trace = backtrace_rev prefix in
+      let suffix_trace = backtrace suffix in
+      { Trace.prefix_trace; suffix_trace }
+    ;;
+  end
+
+  let iterator_start t =
+    if is_empty t
+    then None
+    else (
+      let rec loop prefix =
+        match retract ~orient:Callees prefix with
+        | None -> assert false
+        | Some prev -> if is_empty prev then prefix else loop prev
+      in
+      let prefix = loop t in
+      let suffix = t in
+      Some { Iterator.prefix; suffix })
+  ;;
+
+  let iterator_end t =
+    if is_empty t
+    then None
+    else (
+      let rec loop suffix =
+        match retract ~orient:Callers suffix with
+        | None -> assert false
+        | Some next -> if is_empty next then suffix else loop next
+      in
+      let suffix = loop t in
+      let prefix = t in
+      Some { Iterator.prefix; suffix })
+  ;;
 end
 
 module Fragment_trie = struct
@@ -426,32 +489,74 @@ module Fragment_trie = struct
     { root : Fragment.t
     ; children_of_root : Fragment.t Location.Table.t
     ; total_allocations : Byte_units.t
-    ; significance_threshold : Byte_units.t
     }
 
   module type Suffix_tree =
     Data_intf.Suffix_tree with type entry := Entry.t and type location := Location.t
 
-  let create ~(root : Fragment.t) ~total_allocations ~significance_threshold =
+  let create ~(root : Fragment.t) ~total_allocations =
     assert (
       List.equal
         (Tuple2.equal ~eq1:Location.equal ~eq2:Fragment.same)
         root.extensions_by_caller
         root.extensions_by_callee);
     let children_of_root = Location.Table.of_alist_exn root.extensions_by_callee in
-    let t = { root; children_of_root; total_allocations; significance_threshold } in
+    let t = { root; children_of_root; total_allocations } in
     t
   ;;
 
   let empty_fragment t = t.root
-  let singleton_fragments t = t.children_of_root
-  let significance_threshold t = t.significance_threshold
 
   let allocation_site_fragment t =
     Location.Table.find_exn t.children_of_root Location.allocation_site
   ;;
 
   let toplevel_fragment t = Location.Table.find_exn t.children_of_root Location.toplevel
+
+  let empty =
+    let id_gen = Fragment.Id.Generator.create () in
+    let rec allocation_site : Fragment.t =
+      { id = Fragment.Id.Generator.generate id_gen
+      ; entry = Entry.empty
+      ; first_caller = Allocation_site
+      ; last_callee = Allocation_site
+      ; retraction_by_caller = root
+      ; retraction_by_callee = root
+      ; extensions_by_caller = []
+      ; extensions_by_callee = []
+      ; representative = allocation_site
+      ; length = 1
+      }
+    and toplevel : Fragment.t =
+      { id = Fragment.Id.Generator.generate id_gen
+      ; entry = Entry.empty
+      ; first_caller = Toplevel
+      ; last_callee = Toplevel
+      ; retraction_by_caller = root
+      ; retraction_by_callee = root
+      ; extensions_by_caller = []
+      ; extensions_by_callee = []
+      ; representative = toplevel
+      ; length = 1
+      }
+    and children_of_root =
+      [ Location.allocation_site, allocation_site; Location.toplevel, toplevel ]
+    and root : Fragment.t =
+      { id = Fragment.Id.Generator.generate id_gen
+      ; entry = Entry.empty
+      ; first_caller = Dummy
+      ; last_callee = Dummy
+      ; retraction_by_caller = root
+      ; retraction_by_callee = root
+      ; extensions_by_caller = children_of_root
+      ; extensions_by_callee = children_of_root
+      ; representative = root
+      ; length = 0
+      }
+    in
+    let total_allocations = Byte_units.zero in
+    create ~root ~total_allocations
+  ;;
 
   let of_suffix_tree
         (type tree)
@@ -461,124 +566,88 @@ module Fragment_trie = struct
     =
     let id_gen = Fragment.Id.Generator.create () in
     let old_root_node = Tree.root tree in
-    let cache : Fragment.t Tree.Node.Id.Table.t = Tree.Node.Id.Table.create () in
-    let rec new_root_node =
-      { Fragment.id = Fragment.Id.Generator.generate id_gen
-      ; entry = Tree.Node.entry old_root_node
-      ; first_caller = Dummy
-      ; last_callee = Dummy
-      ; retraction_by_caller = new_root_node
-      ; retraction_by_callee = new_root_node
-      ; extensions_by_caller = []
-      ; extensions_by_callee = []
-      ; representative = new_root_node
-      }
-    in
-    Tree.Node.Id.Table.add_exn cache ~key:(Tree.Node.id old_root_node) ~data:new_root_node;
-    let node_of old_node =
-      Tree.Node.Id.Table.find_or_add cache (Tree.Node.id old_node) ~default:(fun () ->
-        let id = Fragment.Id.Generator.generate id_gen in
-        let entry = Tree.Node.entry old_node in
-        let first_caller = (* to be corrected *) Location.Dummy in
-        let last_callee = Tree.Node.incoming_edge old_node in
-        let retraction_by_caller = (* to be corrected *) new_root_node in
-        let retraction_by_callee = (* to be corrected *) new_root_node in
-        let extensions_by_caller = (* to be corrected *) [] in
-        let extensions_by_callee = (* to be corrected *) [] in
-        let representative = (* to be corrected *) new_root_node in
-        { Fragment.id
-        ; entry
-        ; first_caller
-        ; last_callee
-        ; retraction_by_caller
-        ; retraction_by_callee
-        ; extensions_by_caller
-        ; extensions_by_callee
-        ; representative
-        })
-    in
-    let rec translate ~first_edge ~new_parent (last_edge, old_node) =
-      let new_node = node_of old_node in
-      new_node.first_caller <- first_edge;
-      new_node.extensions_by_callee
-      <- List.map
-           ~f:(translate ~first_edge ~new_parent:new_node)
-           (Tree.Node.children old_node);
-      new_node.retraction_by_callee <- new_parent;
-      (* This is the node in which this node appears among the [extensions_by_caller]. *)
-      let parent_by_caller =
-        (* Since the suffix trie represents stacks in caller-first order, the parent by
-           caller is the suffix. *)
-        match Tree.Node.suffix old_node with
-        | Some old_suffix -> node_of old_suffix
-        | None ->
-          raise_s
-            [%message
-              "non-root node has no suffix"
-                ~id:(Tree.Node.id old_node : Tree.Node.Id.t)
-                ~debug:(old_node : Tree.Node.Debug.t)]
+    let old_root_children = Tree.Node.children old_root_node in
+    if List.is_empty old_root_children
+    then empty
+    else (
+      let cache : Fragment.t Tree.Node.Id.Table.t = Tree.Node.Id.Table.create () in
+      let rec new_root_node =
+        { Fragment.id = Fragment.Id.Generator.generate id_gen
+        ; entry = Tree.Node.entry old_root_node
+        ; first_caller = Dummy
+        ; last_callee = Dummy
+        ; retraction_by_caller = new_root_node
+        ; retraction_by_callee = new_root_node
+        ; extensions_by_caller = []
+        ; extensions_by_callee = []
+        ; representative = new_root_node
+        ; length = 0
+        }
       in
-      new_node.retraction_by_caller <- parent_by_caller;
-      parent_by_caller.extensions_by_caller
-      <- (first_edge, new_node) :: parent_by_caller.extensions_by_caller;
-      new_node.representative <- node_of (Tree.Node.representative old_node);
-      last_edge, new_node
-    in
-    let children_of_root =
-      List.map (Tree.Node.children old_root_node) ~f:(fun ((first_edge, _) as child) ->
-        translate ~first_edge ~new_parent:new_root_node child)
-    in
-    new_root_node.extensions_by_caller <- children_of_root;
-    new_root_node.extensions_by_callee <- children_of_root;
-    let total_allocations = Tree.total_allocations tree in
-    let significance_threshold = Tree.significance_threshold tree in
-    create ~root:new_root_node ~total_allocations ~significance_threshold
-  ;;
-
-  let empty =
-    let id_gen = Fragment.Id.Generator.create () in
-    let empty_entry : Entry.t =
-      { allocations = Byte_units.zero; max_error = Byte_units.zero }
-    in
-    let rec allocation_site : Fragment.t =
-      { id = Fragment.Id.Generator.generate id_gen
-      ; entry = empty_entry
-      ; first_caller = Allocation_site
-      ; last_callee = Allocation_site
-      ; retraction_by_caller = root
-      ; retraction_by_callee = root
-      ; extensions_by_caller = []
-      ; extensions_by_callee = []
-      ; representative = allocation_site
-      }
-    and toplevel : Fragment.t =
-      { id = Fragment.Id.Generator.generate id_gen
-      ; entry = empty_entry
-      ; first_caller = Toplevel
-      ; last_callee = Toplevel
-      ; retraction_by_caller = root
-      ; retraction_by_callee = root
-      ; extensions_by_caller = []
-      ; extensions_by_callee = []
-      ; representative = toplevel
-      }
-    and children_of_root =
-      [ Location.allocation_site, allocation_site; Location.toplevel, toplevel ]
-    and root : Fragment.t =
-      { id = Fragment.Id.Generator.generate id_gen
-      ; entry = empty_entry
-      ; first_caller = Dummy
-      ; last_callee = Dummy
-      ; retraction_by_caller = root
-      ; retraction_by_callee = root
-      ; extensions_by_caller = children_of_root
-      ; extensions_by_callee = children_of_root
-      ; representative = root
-      }
-    in
-    let total_allocations = Byte_units.zero in
-    let significance_threshold = Byte_units.zero in
-    create ~root ~total_allocations ~significance_threshold
+      Tree.Node.Id.Table.add_exn
+        cache
+        ~key:(Tree.Node.id old_root_node)
+        ~data:new_root_node;
+      let node_of old_node =
+        Tree.Node.Id.Table.find_or_add cache (Tree.Node.id old_node) ~default:(fun () ->
+          let id = Fragment.Id.Generator.generate id_gen in
+          let entry = Tree.Node.entry old_node in
+          let first_caller = (* to be corrected *) Location.Dummy in
+          let last_callee = Tree.Node.incoming_edge old_node in
+          let retraction_by_caller = (* to be corrected *) new_root_node in
+          let retraction_by_callee = (* to be corrected *) new_root_node in
+          let extensions_by_caller = (* to be corrected *) [] in
+          let extensions_by_callee = (* to be corrected *) [] in
+          let representative = (* to be corrected *) new_root_node in
+          let length = 0 in
+          { Fragment.id
+          ; entry
+          ; first_caller
+          ; last_callee
+          ; retraction_by_caller
+          ; retraction_by_callee
+          ; extensions_by_caller
+          ; extensions_by_callee
+          ; representative
+          ; length
+          })
+      in
+      let rec translate ~length ~first_edge ~new_parent (last_edge, old_node) =
+        let new_node = node_of old_node in
+        new_node.first_caller <- first_edge;
+        new_node.length <- length;
+        new_node.extensions_by_callee
+        <- List.map
+             ~f:(translate ~length:(length + 1) ~first_edge ~new_parent:new_node)
+             (Tree.Node.children old_node);
+        new_node.retraction_by_callee <- new_parent;
+        (* This is the node in which this node appears among the [extensions_by_caller]. *)
+        let parent_by_caller =
+          (* Since the suffix trie represents stacks in caller-first order, the parent by
+             caller is the suffix. *)
+          match Tree.Node.suffix old_node with
+          | Some old_suffix -> node_of old_suffix
+          | None ->
+            raise_s
+              [%message
+                "non-root node has no suffix"
+                  ~id:(Tree.Node.id old_node : Tree.Node.Id.t)
+                  ~debug:(old_node : Tree.Node.Debug.t)]
+        in
+        new_node.retraction_by_caller <- parent_by_caller;
+        parent_by_caller.extensions_by_caller
+        <- (first_edge, new_node) :: parent_by_caller.extensions_by_caller;
+        new_node.representative <- node_of (Tree.Node.representative old_node);
+        last_edge, new_node
+      in
+      let children_of_root =
+        List.map old_root_children ~f:(fun ((first_edge, _) as child) ->
+          translate ~length:1 ~first_edge ~new_parent:new_root_node child)
+      in
+      new_root_node.extensions_by_caller <- children_of_root;
+      new_root_node.extensions_by_callee <- children_of_root;
+      let total_allocations = Tree.total_allocations tree in
+      create ~root:new_root_node ~total_allocations)
   ;;
 
   let deep_fold_callers t ~init ~f =
@@ -587,6 +656,11 @@ module Fragment_trie = struct
 
   let deep_fold_callees t ~init ~f =
     Fragment.deep_fold_callees t.root ~backtrace_rev:Backtrace.Reversed.nil ~init ~f
+  ;;
+
+  let fold_singletons t ~init ~f =
+    Location.Table.fold t.children_of_root ~init ~f:(fun ~key ~data ->
+      f ~location:key ~fragment:data)
   ;;
 
   let total_allocations t = t.total_allocations
@@ -607,6 +681,19 @@ module Fragment_trie = struct
       Fragment.extend_by_callers child backtrace_rev
   ;;
 
+  let find_singleton t location = Location.Table.find t.children_of_root location
+
+  let find_iterator t { Fragment.Iterator.Trace.prefix_trace; suffix_trace } =
+    let%bind.Option prefix = find_rev t prefix_trace in
+    let%bind.Option suffix = find t suffix_trace in
+    (* Check that the iterator is still valid *)
+    let%map.Option (_ : Fragment.t) =
+      let prefix_tail = Option.value_exn (Backtrace.Reversed.tl prefix_trace) in
+      Fragment.extend_by_callers suffix prefix_tail
+    in
+    { Fragment.Iterator.prefix; suffix }
+  ;;
+
   module Serialized_form = struct
     module Unserialized_fragment = Fragment
 
@@ -620,6 +707,7 @@ module Fragment_trie = struct
         ; extension_ids_by_caller : (Location.t, Fragment.Id.t) List.Assoc.t
         ; extensions_by_callee : (Location.t, t) List.Assoc.t
         ; representative_id : Fragment.Id.t
+        ; length : int
         }
       [@@deriving bin_io, sexp]
 
@@ -633,6 +721,7 @@ module Fragment_trie = struct
                  ; extensions_by_caller
                  ; extensions_by_callee
                  ; representative
+                 ; length
                  } :
                    Fragment.t)
         =
@@ -650,6 +739,7 @@ module Fragment_trie = struct
         ; extension_ids_by_caller
         ; extensions_by_callee
         ; representative_id
+        ; length
         }
       ;;
     end
@@ -659,15 +749,13 @@ module Fragment_trie = struct
     type t =
       { root : Fragment.t
       ; total_allocations : Byte_units.Stable.V2.t
-      ; significance_threshold : Byte_units.Stable.V2.t
       }
     [@@deriving sexp, bin_io]
 
     let of_trie (trie : trie) =
       let root = Fragment.of_trie_node trie.root in
       let total_allocations = trie.total_allocations in
-      let significance_threshold = trie.significance_threshold in
-      { root; total_allocations; significance_threshold }
+      { root; total_allocations }
     ;;
 
     let to_trie t : trie =
@@ -697,6 +785,7 @@ module Fragment_trie = struct
                  ; extension_ids_by_caller = _
                  ; extensions_by_callee
                  ; representative_id = _
+                 ; length
                  } :
                    Fragment.t)
         =
@@ -710,6 +799,7 @@ module Fragment_trie = struct
           ; extensions_by_caller = (* to be corrected *) []
           ; extensions_by_callee = (* corrected immediately below *) []
           ; representative = (* to be corrected *) fragment
+          ; length
           }
         in
         fragment.extensions_by_callee
@@ -748,6 +838,7 @@ module Fragment_trie = struct
         ; extensions_by_caller = []
         ; extensions_by_callee = []
         ; representative = root
+        ; length = 0
         }
       in
       Unserialized_fragment.Id.Table.add_exn fragment_cache ~key:root.id ~data:root;
@@ -757,8 +848,7 @@ module Fragment_trie = struct
            t.root.extensions_by_callee;
       fill_in_callers root t.root;
       let total_allocations = t.total_allocations in
-      let significance_threshold = t.significance_threshold in
-      create ~root ~total_allocations ~significance_threshold
+      create ~root ~total_allocations
     ;;
   end
 
@@ -809,6 +899,7 @@ type t =
   ; trie : Fragment_trie.t
   ; total_allocations_unfiltered : Byte_units.Stable.V2.t
   ; hot_paths : Fragment.t list
+  ; hot_call_sites : Fragment.t list
   ; info : Info.t option
   }
 
@@ -819,15 +910,27 @@ module Serialized_form = struct
     ; trie : Fragment_trie.t
     ; total_allocations_unfiltered : Byte_units.Stable.V2.t
     ; hot_path_backtraces : Backtrace.t list
+    ; hot_call_site_locations : Location.t list
     ; info : Info.t option
     }
   [@@deriving sexp, bin_io]
 
   let serialize
-        { hot_paths; graph; filtered_graph; trie; total_allocations_unfiltered; info }
+        { hot_paths
+        ; hot_call_sites
+        ; graph
+        ; filtered_graph
+        ; trie
+        ; total_allocations_unfiltered
+        ; info
+        }
     =
-    let hot_path_backtraces = hot_paths |> List.map ~f:Fragment.backtrace in
+    let hot_path_backtraces = List.map ~f:Fragment.backtrace hot_paths in
+    let hot_call_site_locations =
+      List.map ~f:(Fragment.first ~orient:Callers) hot_call_sites
+    in
     { hot_path_backtraces
+    ; hot_call_site_locations
     ; graph
     ; filtered_graph
     ; trie
@@ -838,6 +941,7 @@ module Serialized_form = struct
 
   let unserialize
         { hot_path_backtraces
+        ; hot_call_site_locations
         ; graph
         ; filtered_graph
         ; trie
@@ -850,7 +954,19 @@ module Serialized_form = struct
       |> List.map ~f:(fun backtrace ->
         Fragment_trie.find trie backtrace |> Option.value_exn)
     in
-    { hot_paths; graph; filtered_graph; trie; total_allocations_unfiltered; info }
+    let hot_call_sites =
+      hot_call_site_locations
+      |> List.map ~f:(fun location ->
+        Fragment_trie.find_singleton trie location |> Option.value_exn)
+    in
+    { hot_paths
+    ; hot_call_sites
+    ; graph
+    ; filtered_graph
+    ; trie
+    ; total_allocations_unfiltered
+    ; info
+    }
   ;;
 end
 
@@ -884,6 +1000,7 @@ let empty =
   ; trie = Fragment_trie.empty
   ; total_allocations_unfiltered = Byte_units.zero
   ; hot_paths = []
+  ; hot_call_sites = []
   ; info = None
   }
 ;;

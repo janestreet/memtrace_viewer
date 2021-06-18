@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 include Identifier_intf
 
 module Make () : S_with_special = struct

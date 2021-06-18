@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 open Memtrace_viewer_common
 
 module Code = struct

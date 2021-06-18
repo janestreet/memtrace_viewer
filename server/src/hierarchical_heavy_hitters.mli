@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 
 module Make (X : Hashable.S_plain) : sig
   type t

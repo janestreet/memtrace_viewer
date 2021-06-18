@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 open! Bonsai_web
 open Memtrace_viewer_common
 module Attr = Vdom.Attr
@@ -101,7 +101,7 @@ let _ = Viewport.y_coord_of (* seems silly to leave it out *)
 let render_graph_line ~viewport (series : Series.t) =
   let points = List.map ~f:(Viewport.coords_of viewport) series.points in
   let classes = List.filter_opt [ Some "graph-line"; series.css_class ] in
-  Node_svg.polyline [ Attr.classes classes; Attr_svg.points points ] []
+  Node_svg.polyline ~attr:(Attr.many [ Attr.classes classes; Attr_svg.points points ]) []
 ;;
 
 (* Important that this have as few inputs as possible, since this is the expensive part *)
@@ -186,12 +186,15 @@ let component ~series ~regions ~width ~height ~start_time ~time_view ~set_time_v
        List.map ticks ~f:(fun x ->
          let x = Viewport.x_coord_of viewport x in
          Node_svg.line
-           [ Attr.class_ "graph-tick-mark"
-           ; Attr_svg.x1 x
-           ; Attr_svg.y1 (Viewport.bottom viewport -. (Viewport.height viewport /. 20.))
-           ; Attr_svg.x2 x
-           ; Attr_svg.y2 (Viewport.bottom viewport)
-           ]
+           ~attr:
+             (Attr.many
+                [ Attr.class_ "graph-tick-mark"
+                ; Attr_svg.x1 x
+                ; Attr_svg.y1
+                    (Viewport.bottom viewport -. (Viewport.height viewport /. 20.))
+                ; Attr_svg.x2 x
+                ; Attr_svg.y2 (Viewport.bottom viewport)
+                ])
            [])
      in
      let tick_labels : Node.t list =
@@ -229,10 +232,12 @@ let component ~series ~regions ~width ~height ~start_time ~time_view ~set_time_v
                ]
            in
            Node_svg.text
-             (List.concat
-                [ [ Attr.classes classes; Attr_svg.x label_x; Attr_svg.y label_y ]
-                ; transform_attrs
-                ])
+             ~attr:
+               (Attr.many
+                  (List.concat
+                     [ [ Attr.classes classes; Attr_svg.x label_x; Attr_svg.y label_y ]
+                     ; transform_attrs
+                     ]))
              [ Vdom.Node.text label ])
      in
      let region_box (region : Region.t) =
@@ -255,12 +260,14 @@ let component ~series ~regions ~width ~height ~start_time ~time_view ~set_time_v
                | No_bound -> assert false
              in
              Node_svg.line
-               [ Vdom.Attr.classes [ "graph-region-bound"; open_or_closed_class ]
-               ; Attr_svg.x1 x1
-               ; Attr_svg.y1 y1
-               ; Attr_svg.x2 x2
-               ; Attr_svg.y2 y2
-               ]
+               ~attr:
+                 (Vdom.Attr.many
+                    [ Vdom.Attr.classes [ "graph-region-bound"; open_or_closed_class ]
+                    ; Attr_svg.x1 x1
+                    ; Attr_svg.y1 y1
+                    ; Attr_svg.x2 x2
+                    ; Attr_svg.y2 y2
+                    ])
                []
          in
          let lower_bound_line = bound_line range.lower_bound in
@@ -279,17 +286,19 @@ let component ~series ~regions ~width ~height ~start_time ~time_view ~set_time_v
                Viewport.x_coord_of viewport upper_bound
            in
            Node_svg.rect
-             [ Vdom.Attr.class_ "graph-region-interior"
-             ; Attr_svg.x lower_bound_x
-             ; Attr_svg.y (Viewport.top viewport)
-             ; Attr_svg.width (upper_bound_x -. lower_bound_x)
-             ; Attr_svg.height (Viewport.height viewport)
-             ]
+             ~attr:
+               (Vdom.Attr.many
+                  [ Vdom.Attr.class_ "graph-region-interior"
+                  ; Attr_svg.x lower_bound_x
+                  ; Attr_svg.y (Viewport.top viewport)
+                  ; Attr_svg.width (upper_bound_x -. lower_bound_x)
+                  ; Attr_svg.height (Viewport.height viewport)
+                  ])
              []
          in
          let classes = List.filter_opt [ Some "graph-region"; region.css_class ] in
          Node_svg.g
-           [ Attr.classes classes ]
+           ~attr:(Attr.classes classes)
            [ interior; lower_bound_line; upper_bound_line ]
      in
      let region_boxes = List.map ~f:region_box regions in
@@ -301,36 +310,41 @@ let component ~series ~regions ~width ~height ~start_time ~time_view ~set_time_v
          ~on_change:set_time_view
      in
      Node.div
-       []
        [ Node_svg.svg
-           [ Attr.id "filter-graph"
-           ; Attr.class_ "graph"
-           ; Attr_svg.width width
-           ; Attr_svg.height height
-           ; Attr_svg.viewbox ~min_x:0. ~min_y:0. ~width ~height
-           ; Attr_svg.preserve_aspect_ratio ~align:None ()
-           ]
+           ~attr:
+             (Attr.many
+                [ Attr.id "filter-graph"
+                ; Attr.class_ "graph"
+                ; Attr_svg.width width
+                ; Attr_svg.height height
+                ; Attr_svg.viewbox ~min_x:0. ~min_y:0. ~width ~height
+                ; Attr_svg.preserve_aspect_ratio ~align:None ()
+                ])
            [ Node_svg.g
-               [ Attr.class_ "graph-data"
-               ; Attr_svg.x 0.
-               ; Attr_svg.y 0.
-               ; Attr_svg.width (Viewport.width viewport)
-               ; Attr_svg.height (Viewport.height viewport)
-               ]
+               ~attr:
+                 (Attr.many
+                    [ Attr.class_ "graph-data"
+                    ; Attr_svg.x 0.
+                    ; Attr_svg.y 0.
+                    ; Attr_svg.width (Viewport.width viewport)
+                    ; Attr_svg.height (Viewport.height viewport)
+                    ])
                [ Node_svg.rect
-                   [ Attr.class_ "graph-border"
-                   ; Attr_svg.x (Viewport.left viewport)
-                   ; Attr_svg.y (Viewport.top viewport)
-                   ; Attr_svg.width (Viewport.width viewport)
-                   ; Attr_svg.height (Viewport.height viewport)
-                   ]
+                   ~attr:
+                     (Attr.many
+                        [ Attr.class_ "graph-border"
+                        ; Attr_svg.x (Viewport.left viewport)
+                        ; Attr_svg.y (Viewport.top viewport)
+                        ; Attr_svg.width (Viewport.width viewport)
+                        ; Attr_svg.height (Viewport.height viewport)
+                        ])
                    []
-               ; Node_svg.g [] graph_lines
-               ; Node_svg.g [] tick_marks
+               ; Node_svg.g graph_lines
+               ; Node_svg.g tick_marks
                ]
-           ; Node_svg.g [] tick_labels
-           ; Node_svg.g [] region_boxes
+           ; Node_svg.g tick_labels
+           ; Node_svg.g region_boxes
            ]
-       ; Node.div [ Attr.class_ "graph-x-axis-label" ] [ time_view_control ]
+       ; Node.div ~attr:(Attr.class_ "graph-x-axis-label") [ time_view_control ]
        ])
 ;;

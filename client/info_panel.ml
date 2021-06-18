@@ -1,9 +1,11 @@
-open! Core_kernel
+open! Core
 open Bonsai_web
 open Memtrace_viewer_common
 
 let info_linef ?(attrs = []) pat =
-  pat |> Printf.ksprintf (fun str -> Vdom.(Node.li attrs [ Node.text str ]))
+  pat
+  |> Printf.ksprintf (fun str ->
+    Vdom.(Node.li ~attr:(Attr.many_without_merge attrs) [ Node.text str ]))
 ;;
 
 let info_fieldf ?(attrs = []) label pat =
@@ -11,8 +13,8 @@ let info_fieldf ?(attrs = []) label pat =
   |> Printf.ksprintf (fun str ->
     Vdom.(
       Node.li
-        attrs
-        [ Node.span [ Attr.class_ "info-label" ] [ Node.textf "%s: " label ]
+        ~attr:(Attr.many_without_merge attrs)
+        [ Node.span ~attr:(Attr.class_ "info-label") [ Node.textf "%s: " label ]
         ; Node.text str
         ]))
 ;;
@@ -35,9 +37,9 @@ let view ~(info : Data.Info.t option) ~total_allocations =
       ~id:"info-panel"
       ~title:"Summary"
       (Node.div
-         [ Attr.class_ "summary" ]
+         ~attr:(Attr.class_ "summary")
          [ Node.ul
-             [ Attr.class_ "info-fields" ]
+             ~attr:(Attr.class_ "info-fields")
              [ context_line
              ; info_fieldf
                  ~attrs:[ Attr.class_ "total-allocations" ]

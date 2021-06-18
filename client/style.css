@@ -4,10 +4,8 @@
     --collected-color: rgb(255, 0, 0);
     --help-color: aliceblue /* currently vestigial */;
     --poi-color: peachpuff;
-    --poi-color-even: #ffe9d6;
-    --focus-color: #F2D2F6;
-    --zoom-color: lightgoldenrodyellow;
-    --zoom-color-even: #fefef6;
+    --selection-color: #F2D2F6;
+    --explore-color: lightgoldenrodyellow;
 }
 #container{
     display: grid;
@@ -16,7 +14,7 @@
     grid-template:
         "info   info"   auto
         "filter filter" auto
-        "poi    zoom"   auto
+        "poi    explore"   auto
         "poi    main"   minmax(auto,1fr)
         / minmax(30em,1fr) 2fr minmax(17em,1fr);
 }
@@ -76,9 +74,9 @@ ul.tab-bar li:not(.selected) button:hover {
 #poi-panel{
     background-color: var(--poi-color);
 }
-#zoom-panel{
-    grid-area: zoom;
-    background-color: var(--zoom-color);
+#explore-panel{
+    grid-area: explore;
+    background-color: var(--explore-color);
 }
 #main-panel-container{
     grid-area:main;
@@ -112,7 +110,7 @@ tbody tr:nth-child(odd):not(.focused) {
 tbody tr:nth-child(even):not(.focused) {
   background-color: rgba(0, 0, 0, 10%)
 }
-section #zoom-panel {
+section #explore-panel {
   margin-bottom: 0.5rem;
 }
 #info-panel .summary ul.info-fields {
@@ -128,13 +126,20 @@ table.location-table {
   min-width: 25em;
   margin-left: auto;
   margin-right: auto;
+  table-layout: fixed;
+  width: 100%;
+}
+col.locations-column {
+}
+col.allocations-column {
+    width:6em;
 }
 table.location-table tbody tr {
   cursor: pointer;
   user-select: none;
 }
 table.location-table tbody tr:hover {
-  background-color: var(--focus-color);
+  background-color: var(--selection-color);
 }
 .flame-graph-container {
   padding: 0.5rem;
@@ -158,18 +163,8 @@ table.location-table tbody tr:hover {
   height: 100%;
   stroke: transparent;
 }
-/* The :nots here shouldn't be necessary by CSS precedence rules since the last
-   declaration should win, but Chrome seems to disagree */
-.flame-graph-node-zoomed-into:not(.flame-graph-node-focused)
-    rect.flame-graph-node-color-box {
-  fill: var(--zoom-color) !important /* see comment about !important below */
-}
-.flame-graph-node-zoomed-into.even:not(.flame-graph-node-focused)
-    rect.flame-graph-node-color-box {
-  fill: var(--zoom-color-even) !important;
-}
-.flame-graph-node-focused rect.flame-graph-node-color-box {
-  fill: var(--focus-color) !important; /* override individual style */
+.flame-graph-node-selected rect.flame-graph-node-color-box {
+  fill: var(--selection-color) !important; /* override individual style */
   /* We could do without the !important if we could say something like
        <svg class="flame-graph-node" style="--flame-graph-node-color: #eef">
      but the way VirtualDom sets style properties (directly assigning to
@@ -335,15 +330,18 @@ input.bound[type="datetime-local"] {
 
 .focused {
   outline: 2px solid black;
-  background-color:var(--focus-color);
+  background-color:var(--selection-color);
 }
 .loc-special, .backtrace-empty {
   font-style: italic;
 }
 .last-loc {
+  overflow-x: clip;
+  text-overflow: ellipsis;
 }
 .first-loc {
-  text-indent:1em;
+  overflow-x: clip;
+  text-overflow: ellipsis;
 }
 .loc-in-file {
   font-style: italic;

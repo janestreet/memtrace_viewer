@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 
 module type Suffix_tree = sig
   type entry
@@ -37,11 +37,9 @@ module type Data = sig
   module Location : sig
     type t [@@deriving sexp, bin_io]
 
-    val filename : t -> string
-    val line : t -> int
-    val start_char : t -> int
-    val end_char : t -> int
     val defname : t -> string
+    val full_name : t -> string
+    val loc_in_file : t -> string
 
     val create
       :  filename:string
@@ -58,8 +56,6 @@ module type Data = sig
     val is_toplevel : t -> bool
     val is_dummy : t -> bool
     val is_special : t -> bool
-    val to_string : t -> string
-    val loc_in_file_to_string : t -> string
 
     include Comparable.S with type t := t
     include Hashable.S with type t := t
@@ -94,6 +90,8 @@ module type Data = sig
       val nil : t
       val cons : Location.t -> t -> t
       val append : t -> t -> t
+      val hd : t -> Location.t option
+      val tl : t -> t option
       val head_and_tail : t -> (Location.t * t) option
 
       include Comparable.S with type t := t
@@ -120,8 +118,17 @@ module type Data = sig
     type t [@@deriving sexp, bin_io]
 
     val allocations : t -> Byte_units.t
-    val max_error : t -> Byte_units.t
-    val create : allocations:Byte_units.t -> max_error:Byte_units.t -> t
+    val direct_allocations : t -> Byte_units.t
+    val is_heavy : t -> bool
+    val allocations_string : t -> string
+    val percentage_string : t -> string
+
+    val create
+      :  total_allocations_in_trie:Byte_units.t
+      -> allocations:Byte_units.t
+      -> direct_allocations:Byte_units.t
+      -> is_heavy:bool
+      -> t
   end
 
   module Orientation : sig
@@ -140,6 +147,7 @@ module type Data = sig
 
       include Hashable.S with type t := t
       include Sexpable.S with type t := t
+      include Comparable.S with type t := t
     end
 
     type t
@@ -149,85 +157,76 @@ module type Data = sig
     val same : t -> t -> bool
     val entry : t -> Entry.t
     val first : t -> orient:Orientation.t -> Location.t
-    val last : t -> orient:Orientation.t -> Location.t
     val backtrace : t -> Backtrace.t
     val backtrace_rev : t -> Backtrace.Reversed.t
     val retract : t -> orient:Orientation.t -> t option
+    val retract_by : t -> orient:Orientation.t -> n:int -> t option
     val one_frame_extensions : t -> orient:Orientation.t -> (Location.t, t) List.Assoc.t
-    val all_one_frame_extensions : t -> t list
+    val has_extensions : t -> orient:Orientation.t -> bool
+    val is_trivial : t -> bool
+    val extend : t -> orient:Orientation.t -> Location.t -> t option
     val extend_by_callers : t -> Backtrace.Reversed.t -> t option
     val extend_by_callees : t -> Backtrace.t -> t option
-    val extend_by : t -> Backtrace.t -> orient:Orientation.t -> t option
-    val is_extension : t -> extension:t -> strictly:bool -> orient:Orientation.t -> bool
-    val is_one_sided_extension : t -> extension:t -> strictly:bool -> bool
+    val is_extension : t -> extension:t -> orient:Orientation.t -> bool
     val representative : t -> t
+    val length : t -> int
 
-    module Extension : sig
-      type t =
-        { callers : Backtrace.Reversed.t
-        ; callees : Backtrace.t
-        }
-      [@@deriving sexp]
-
-      include Comparable.S with type t := t
-
-      val empty : t
-      val of_callers : Backtrace.Reversed.t -> t
-      val of_callees : Backtrace.t -> t
-
-      module Debug : sig
-        type nonrec t = t [@@deriving sexp_of]
-      end
-    end
-
-    val extend : t -> Extension.t -> t option
-
-
-    (** Given [t] that's a one-sided sub-backtrace of [extension], get the fragment with the
-        same end frame as [t] that is a sub-backtrace of [extension] on the other side.
-
-        {v
-          |------------ extension -----------|
-          .    .    . end .   .    .    .    .
-          |------ t ------|
-                    |-------- flip t --------|
-       v}
-
-        The motivating case is where t represents a frame that is focused, so it's /really/
-        the end that's the focused frame, and we need to find the representation of that
-        frame in the other direction (that is, in the other flame graph).
-
-        Precondition: [is_extension t ~extension ~orient ~strictly:false]
-    *)
-    val flip : t -> extension:t -> orient:Orientation.t -> t
 
     module Debug : sig
       type nonrec t = t [@@deriving sexp_of]
     end
 
     module Oriented : sig
+      type fragment := t
 
-      (** A fragment as understood to stand for either a backtrace and its callers or a
-          backtrace and its callees. In practical terms, this means whether it appears in
-          the flame graph (callees) or the icicle graph (callers).
+      (** A fragment and an orientation. Can be thought of as a tree node --
+          with it's extensions as children and it's retraction as parent. *)
+      type t
 
-          Note that this isn't usually an actual degree of freedom, since each node on the
-          flame graph (besides the zoom nodes) represents a fragment that extends the zoom
-          fragment on one side or the other, and that side determines which graph the node
-          must be on. Nonetheless it's convenient to tag it. *)
-      type nonrec t =
-        { fragment : t
-        ; orient : Orientation.t
-        }
-
+      val fragment : t -> fragment
+      val orient : t -> Orientation.t
       val first : t -> Location.t
       val retract : t -> t option
+      val retract_by : t -> n:int -> t option
       val one_frame_extensions : t -> (Location.t, t) List.Assoc.t
+      val has_extensions : t -> bool
+      val extend : t -> Location.t -> t option
 
       module Debug : sig
         type nonrec t = t [@@deriving sexp_of]
       end
     end
+
+    val oriented : t -> orient:Orientation.t -> Oriented.t
+
+    module Iterator : sig
+      type fragment := t
+
+      (** An iterator that iterates through the prefixes of a fragment
+          from callers to callees. *)
+      type t
+
+      val next : t -> t option
+      val prev : t -> t option
+      val location : t -> Location.t
+      val prefix : t -> fragment
+      val suffix : t -> fragment
+
+      module Trace : sig
+        type t = private
+          { prefix_trace : Backtrace.Reversed.t
+          ; suffix_trace : Backtrace.t
+          }
+        [@@deriving sexp, bin_io, compare]
+
+        include Comparable.S with type t := t
+      end
+
+      val trace : t -> Trace.t
+    end
+
+    val iterator_start : t -> Iterator.t option
+    val iterator_end : t -> Iterator.t option
   end
 
   module Fragment_trie : sig
@@ -237,25 +236,31 @@ module type Data = sig
       Suffix_tree with type entry := Entry.t and type location := Location.t
 
     val empty_fragment : t -> Fragment.t
-    val singleton_fragments : t -> Fragment.t Location.Table.t
     val allocation_site_fragment : t -> Fragment.t
     val toplevel_fragment : t -> Fragment.t
     val total_allocations : t -> Byte_units.t
-    val significance_threshold : t -> Byte_units.t
     val of_suffix_tree : (module Suffix_tree with type t = 'a) -> 'a -> t
     val find : t -> Backtrace.t -> Fragment.t option
     val find_rev : t -> Backtrace.Reversed.t -> Fragment.t option
+    val find_singleton : t -> Location.t -> Fragment.t option
+    val find_iterator : t -> Fragment.Iterator.Trace.t -> Fragment.Iterator.t option
 
     val deep_fold_callers
       :  t
       -> init:'a
-      -> f:(backtrace:Backtrace.t -> entry:Entry.t -> 'a -> 'a)
+      -> f:(backtrace:Backtrace.t -> fragment:Fragment.t -> 'a -> 'a)
       -> 'a
 
     val deep_fold_callees
       :  t
       -> init:'a
-      -> f:(backtrace_rev:Backtrace.Reversed.t -> entry:Entry.t -> 'a -> 'a)
+      -> f:(backtrace_rev:Backtrace.Reversed.t -> fragment:Fragment.t -> 'a -> 'a)
+      -> 'a
+
+    val fold_singletons
+      :  t
+      -> init:'a
+      -> f:(location:Location.t -> fragment:Fragment.t -> 'a -> 'a)
       -> 'a
   end
 
@@ -281,6 +286,7 @@ module type Data = sig
     ; trie : Fragment_trie.t
     ; total_allocations_unfiltered : Byte_units.t
     ; hot_paths : Fragment.t list
+    ; hot_call_sites : Fragment.t list
     ; info : Info.t option
     }
   [@@deriving sexp, bin_io]

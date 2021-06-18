@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 open Memtrace
 open Memtrace_viewer_common
 module Loc_hitters = Substring_heavy_hitters.Make (Location)
@@ -225,9 +225,17 @@ end = struct
     let suffix { trie; node; edge_index } = find_suffix ~trie node edge_index
 
     let entry { trie; node; edge_index = _ } =
+      let total_allocations_in_trie = Trie.total_allocations trie in
       let allocations = Loc_hitters.Node.total_count node |> Trie.bytes_of_samples trie in
-      let max_error = Loc_hitters.Node.max_error node |> Trie.bytes_of_samples trie in
-      Data.Entry.create ~allocations ~max_error
+      let direct_allocations =
+        Loc_hitters.Node.light_count node |> Trie.bytes_of_samples trie
+      in
+      let is_heavy = Loc_hitters.is_heavy trie.shh node in
+      Data.Entry.create
+        ~total_allocations_in_trie
+        ~allocations
+        ~direct_allocations
+        ~is_heavy
     ;;
 
     let id { trie = _; node; edge_index } = Hitter_subnode_id.of_ ~node ~edge_index

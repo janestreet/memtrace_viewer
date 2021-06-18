@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 open Bonsai_web
 
 type t = Filter_spec.Clause.t option list And_view.t

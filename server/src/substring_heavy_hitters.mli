@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 open Memtrace_viewer_common
 
 module type Char = sig
@@ -38,7 +38,7 @@ module Make (X : Char) : sig
     val parent : t -> t
     val representative : t -> t
     val total_count : t -> int
-    val max_error : t -> int
+    val light_count : t -> int
 
     module Debug : sig
       type nonrec t = t [@@deriving sexp_of]

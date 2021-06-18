@@ -1,239 +1,314 @@
-open! Core_kernel
+open! Core
 open Bonsai_web
 open Vdom_keyboard
 open Memtrace_viewer_common
 
-type t =
-  { view : Vdom.Node.t
-  ; key_handler : Keyboard_event_handler.t
-  ; focus : Data.Fragment.Oriented.t option
-  ; fix_focus : new_zoom:Data.Fragment.t -> Vdom.Event.t
-  }
-
-module Node = struct
+module Graph = struct
   type t =
-    { trie : Data.Fragment_trie.t
-    ; fragment : Data.Fragment.t
+    { focus : Data.Fragment.t
+    ; trie : Data.Fragment_trie.t
+    ; flame_tree : Data.Fragment.Oriented.t list
+    ; icicle_tree : Data.Fragment.Oriented.t list
+    ; focus_seq : Data.Fragment.Iterator.t option
     }
-end
-
-let orient_of_shape (shape : Flame_graph_view.Shape.t) : Data.Orientation.t =
-  match shape with
-  | Flames -> Callees
-  | Icicles -> Callers
-;;
-
-let shape_of_orient (orient : Data.Orientation.t) : Flame_graph_view.Shape.t =
-  match orient with
-  | Callees -> Flames
-  | Callers -> Icicles
-;;
-
-module Tree :
-  Flame_graph_view.Tree with type t = Data.Fragment_trie.t and type Node.t = Node.t =
-struct
-  type t = Data.Fragment_trie.t
 
   module Node = struct
-    type nonrec t = Node.t =
-      { trie : t
-      ; fragment : Data.Fragment.t
-      }
+    type t =
+      | Tree of Data.Fragment.Oriented.t
+      | Focus of Data.Fragment.Iterator.t
 
-    let location ~shape t = Data.Fragment.first ~orient:(orient_of_shape shape) t.fragment
-    let label ~shape t = Data.Location.defname (location ~shape t)
-
-    let size t =
-      Data.Entry.allocations (Data.Fragment.entry t.fragment) |> Byte_units.bytes_float
+    let location = function
+      | Tree tree -> Data.Fragment.Oriented.first tree
+      | Focus seq -> Data.Fragment.Iterator.location seq
     ;;
 
-    let hidden ~(shape : Flame_graph_view.Shape.t) t =
-      Data.Location.is_special (location ~shape t)
+    let label ~graph:_ t = Data.Location.defname (location t)
+
+    let entry ~graph = function
+      | Tree tree -> Data.Fragment.entry (Data.Fragment.Oriented.fragment tree)
+      | Focus _ -> Data.Fragment.entry graph.focus
     ;;
 
-    let details ~shape t =
-      let full_loc = Location.format_string (location ~shape t) in
-      let allocations = Data.Entry.allocations (Data.Fragment.entry t.fragment) in
-      let percentage =
-        100. *. Byte_units.(allocations // Data.Fragment_trie.total_allocations t.trie)
-      in
-      Format.sprintf
-        "%s: %s (%.1f%%)"
-        full_loc
-        (allocations |> Byte_units.Short.to_string)
-        percentage
+    let allocations ~graph t = Data.Entry.allocations (entry ~graph t)
+    let size ~graph t = allocations ~graph t |> Byte_units.bytes_float
+
+    let details ~graph t =
+      let loc = location t in
+      let entry = entry ~graph t in
+      String.concat
+        [ Data.Location.full_name loc
+        ; ": "
+        ; Data.Entry.allocations_string entry
+        ; " ("
+        ; Data.Entry.percentage_string entry
+        ; ")"
+        ]
     ;;
-
-    let children ~shape t =
-      let children =
-        Data.Fragment.one_frame_extensions t.fragment ~orient:(orient_of_shape shape)
-      in
-      List.map children ~f:(fun (_, child) -> { trie = t.trie; fragment = child })
-    ;;
-
-    let parent ~shape t =
-      let parent = Data.Fragment.retract t.fragment ~orient:(orient_of_shape shape) in
-      Option.map parent ~f:(fun parent -> { trie = t.trie; fragment = parent })
-    ;;
-
-    let same t1 t2 = Data.Fragment.same t1.fragment t2.fragment
-
-    module Debug = struct
-      type nonrec t = t
-
-      let sexp_of_t { fragment; trie = _ } = Data.Fragment.Debug.sexp_of_t fragment
-    end
   end
 
-  let root t =
-    let fragment = Data.Fragment_trie.empty_fragment t in
-    { Node.trie = t; fragment }
+  module Tree = struct
+    type t = Data.Fragment.Oriented.t
+
+    let node t = Node.Tree t
+
+    let children ~graph:_ t =
+      let children = Data.Fragment.Oriented.one_frame_extensions t in
+      List.filter_map children ~f:(fun (loc, fragment) ->
+        if Data.Location.is_special loc then None else Some fragment)
+    ;;
+
+    let parent ~graph t =
+      let%bind.Option t = Data.Fragment.Oriented.retract t in
+      let fragment = Data.Fragment.Oriented.fragment t in
+      if Data.Fragment.same fragment graph.focus then None else Some t
+    ;;
+
+    let same (t1 : t) (t2 : t) =
+      let fragment1 = Data.Fragment.Oriented.fragment t1 in
+      let fragment2 = Data.Fragment.Oriented.fragment t2 in
+      Data.Fragment.same fragment1 fragment2
+    ;;
+
+    let allocations t =
+      let fragment = Data.Fragment.Oriented.fragment t in
+      let entry = Data.Fragment.entry fragment in
+      Data.Entry.allocations entry
+    ;;
+  end
+
+  module Sequence = struct
+    type t = Data.Fragment.Iterator.t
+
+    let node t = Node.Focus t
+
+    let next ~graph:_ seq =
+      let%bind.Option next = Data.Fragment.Iterator.next seq in
+      if Data.Location.is_special (Data.Fragment.Iterator.location next)
+      then None
+      else Some next
+    ;;
+
+    let prev ~graph:_ seq =
+      let%bind.Option prev = Data.Fragment.Iterator.prev seq in
+      if Data.Location.is_special (Data.Fragment.Iterator.location prev)
+      then None
+      else Some prev
+    ;;
+
+    let same t1 t2 =
+      let prefix1 = Data.Fragment.Iterator.prefix t1 in
+      let prefix2 = Data.Fragment.Iterator.prefix t2 in
+      Data.Fragment.same prefix1 prefix2
+    ;;
+  end
+
+  let create ~trie ~focus =
+    let flame_tree =
+      if Data.Fragment.is_empty focus
+      then []
+      else (
+        let orient = Data.Orientation.Callees in
+        let tree = Data.Fragment.oriented focus ~orient in
+        Tree.children ~graph:() tree)
+    in
+    let icicle_tree =
+      if Data.Fragment.is_empty focus
+      then []
+      else (
+        let orient = Data.Orientation.Callers in
+        let tree = Data.Fragment.oriented focus ~orient in
+        Tree.children ~graph:() tree)
+    in
+    let focus_seq =
+      let%bind.Option seq = Data.Fragment.iterator_start focus in
+      let rec loop seq =
+        if Data.Location.is_special (Data.Fragment.Iterator.location seq)
+        then (
+          match Data.Fragment.Iterator.next seq with
+          | None -> None
+          | Some seq -> loop seq)
+        else Some seq
+      in
+      loop seq
+    in
+    { trie; focus; flame_tree; icicle_tree; focus_seq }
   ;;
 
-  let rec is_related
-            t
-            ~(shape : Flame_graph_view.Shape.t)
-            ~strictly
-            ~(ancestor : Node.t)
-            ~(descendant : Node.t)
-    =
-    if Node.same ancestor descendant
-    then not strictly
-    else (
-      match Node.parent ~shape descendant with
-      | None -> false
-      | Some descendant -> is_related t ~shape ~strictly:false ~ancestor ~descendant)
+  let flame_tree { flame_tree; _ } = flame_tree
+  let icicle_tree { icicle_tree; _ } = icicle_tree
+  let focus { focus_seq; _ } = focus_seq
+
+  let size { flame_tree; icicle_tree; focus_seq; focus; _ } =
+    let allocations =
+      match focus_seq with
+      | Some _ ->
+        let entry = Data.Fragment.entry focus in
+        Data.Entry.allocations entry
+      | None ->
+        let flame_allocations =
+          List.fold_left
+            ~init:Byte_units.zero
+            ~f:(fun acc tree -> Byte_units.(acc + Tree.allocations tree))
+            flame_tree
+        in
+        let icicle_allocations =
+          List.fold_left
+            ~init:Byte_units.zero
+            ~f:(fun acc tree -> Byte_units.(acc + Tree.allocations tree))
+            icicle_tree
+        in
+        Byte_units.max flame_allocations icicle_allocations
+    in
+    Byte_units.bytes_float allocations
   ;;
 end
 
-module Flame_graph = Flame_graph_view.Make (Tree)
+module Flame_graph = Flame_graph_view.Make (Graph)
 
-module Focus_state = struct
+module Selection = struct
   type t =
-    { orient : Data.Orientation.t
-    ; backtrace : Data.Backtrace.t
-    }
+    | Flame of { fragment : Data.Fragment.t }
+    | Icicle of { fragment : Data.Fragment.t }
+    | Focus of
+        { callers_fragment : Data.Fragment.t
+        ; callees_fragment : Data.Fragment.t
+        }
+
+  let of_selector (selector : Flame_graph.Selector.t) : t =
+    match selector with
+    | Flame tree ->
+      let fragment = Data.Fragment.Oriented.fragment tree in
+      Flame { fragment }
+    | Icicle tree ->
+      let fragment = Data.Fragment.Oriented.fragment tree in
+      Icicle { fragment }
+    | Focus seq ->
+      let callers_fragment = Data.Fragment.Iterator.suffix seq in
+      let callees_fragment = Data.Fragment.Iterator.prefix seq in
+      Focus { callers_fragment; callees_fragment }
+  ;;
+end
+
+module Default_selection = struct
+  type t =
+    | First_caller
+    | First_callee
+    | No_selection
   [@@deriving sexp, equal]
-
-  let of_oriented_fragment { Data.Fragment.Oriented.orient; fragment } =
-    let backtrace = Data.Fragment.backtrace fragment in
-    { orient; backtrace }
-  ;;
-
-  let to_oriented_fragment { orient; backtrace } ~trie =
-    let%map.Option fragment = Data.Fragment_trie.find trie backtrace in
-    { Data.Fragment.Oriented.orient; fragment }
-  ;;
 end
 
 module State = struct
-  type t = { focus_state : Focus_state.t option } [@@deriving sexp, equal]
+  type t =
+    | Flame of { backtrace : Data.Backtrace.t }
+    | Icicle of { backtrace : Data.Backtrace.Reversed.t }
+    | Focus of { trace : Data.Fragment.Iterator.Trace.t }
+  [@@deriving sexp, equal]
 
-  let default = { focus_state = None }
+  let to_selector ~trie : t -> Flame_graph.Selector.t option = function
+    | Flame { backtrace } ->
+      let%map.Option fragment = Data.Fragment_trie.find trie backtrace in
+      let orient = Data.Orientation.Callees in
+      let tree = Data.Fragment.oriented fragment ~orient in
+      Flame_graph.Selector.Flame tree
+    | Icicle { backtrace } ->
+      let%map.Option fragment = Data.Fragment_trie.find_rev trie backtrace in
+      let orient = Data.Orientation.Callers in
+      let tree = Data.Fragment.oriented fragment ~orient in
+      Flame_graph.Selector.Icicle tree
+    | Focus { trace } ->
+      let%map.Option seq = Data.Fragment_trie.find_iterator trie trace in
+      Flame_graph.Selector.Focus seq
+  ;;
+
+  let of_selector : Flame_graph.Selector.t -> t = function
+    | Flame tree ->
+      let fragment = Data.Fragment.Oriented.fragment tree in
+      let backtrace = Data.Fragment.backtrace fragment in
+      Flame { backtrace }
+    | Icicle tree ->
+      let fragment = Data.Fragment.Oriented.fragment tree in
+      let backtrace = Data.Fragment.backtrace_rev fragment in
+      Icicle { backtrace }
+    | Focus seq ->
+      let trace = Data.Fragment.Iterator.trace seq in
+      Focus { trace }
+  ;;
+
+  let default ~state ~default_selection ~focus =
+    match state with
+    | None -> None
+    | Some _ ->
+      (match default_selection with
+       | Default_selection.No_selection -> None
+       | Default_selection.First_caller ->
+         let%map.Option seq = Data.Fragment.iterator_start focus in
+         let trace = Data.Fragment.Iterator.trace seq in
+         Focus { trace }
+       | Default_selection.First_callee ->
+         let%map.Option seq = Data.Fragment.iterator_end focus in
+         let trace = Data.Fragment.Iterator.trace seq in
+         Focus { trace })
+  ;;
 end
 
-let component ~trie ~zoom ~set_zoom =
+type t =
+  { view : Vdom.Node.t
+  ; key_handler : Keyboard_event_handler.t
+  ; selection : Selection.t option
+  ; reset_selection : Data.Fragment.t -> Default_selection.t -> Ui_event.t
+  }
+
+let component ~trie ~focus ~activate =
   let open Bonsai.Let_syntax in
   let width = Bonsai.Value.return 500 in
-  let%sub { State.focus_state }, set_state =
-    Bonsai.state [%here] (module State) ~default_model:State.default
-  in
-  let focus_as_oriented_fragment =
-    let%map focus_state = focus_state
-    and trie = trie in
-    let%bind.Option focus_state = focus_state in
-    Focus_state.to_oriented_fragment focus_state ~trie
-  in
-  let set_focus_to_oriented_fragment =
-    let%map set_state = set_state in
-    fun focus ->
-      let focus_state = Option.map ~f:Focus_state.of_oriented_fragment focus in
-      set_state { focus_state }
+  let%sub state, set_state = Bonsai.state_opt [%here] (module State) in
+  let%sub selection =
+    return
+      (let%map state = state
+       and trie = trie in
+       Option.bind ~f:(State.to_selector ~trie) state)
   in
   let%sub flame_graph =
-    let focus =
-      let%map focus = focus_as_oriented_fragment
+    let set_selection =
+      let%map set_state = set_state in
+      fun selector -> set_state (Some (State.of_selector selector))
+    in
+    let activate =
+      let%map activate = activate
+      and set_state = set_state in
+      fun selector ->
+        Ui_event.Many
+          [ set_state (Some (State.of_selector selector))
+          ; activate (Selection.of_selector selector)
+          ]
+    in
+    let graph : Graph.t Bonsai.Value.t =
+      let%map focus = focus
       and trie = trie in
-      let%map.Option { Data.Fragment.Oriented.orient; fragment } = focus in
-      { Flame_graph.Node.shape = shape_of_orient orient; tree_node = { fragment; trie } }
+      Graph.create ~focus ~trie
     in
-    let set_focus =
-      let%map set_focus_to_oriented_fragment = set_focus_to_oriented_fragment in
-      fun (focus : Flame_graph.Node.t option) ->
-        let oriented_fragment : Data.Fragment.Oriented.t option =
-          focus
-          |> Option.map ~f:(fun { shape; tree_node = { fragment; trie = _ } } ->
-            let orient = orient_of_shape shape in
-            { Data.Fragment.Oriented.orient; fragment })
-        in
-        set_focus_to_oriented_fragment oriented_fragment
-    in
-    let zoom =
-      let%map trie = trie
-      and zoom = zoom in
-      { Node.trie; fragment = zoom }
-    in
-    let set_zoom =
-      let%map set_zoom = set_zoom in
-      fun zoom -> set_zoom (Option.map zoom ~f:(fun zoom -> zoom.Node.fragment))
-    in
-    Flame_graph.component ~tree:trie ~width ~focus ~set_focus ~zoom ~set_zoom
+    Flame_graph.component
+      graph
+      ~width
+      ~selection
+      ~select:set_selection
+      ~navigate_to:set_selection
+      ~activate
+  in
+  let selection =
+    let%map selection = selection in
+    Option.map ~f:Selection.of_selector selection
   in
   return
-    (let%map trie = trie
-     and flame_graph = flame_graph
-     and focus_state = focus_state
-     and set_focus_to_oriented_fragment = set_focus_to_oriented_fragment in
-     let key_handler = flame_graph.key_handler in
-     let focus =
-       let%bind.Option focus_state = focus_state in
-       Focus_state.to_oriented_fragment focus_state ~trie
-     in
-     let fix_focus ~new_zoom =
-       (* This function is called when the zoom changes. Its job is to maintain, if
-          feasible, the invariant that the focus extends the zoom (which is to say, it
-          appears in the zoom's flame or icicle graph). Trickiness happens when the focus
-          needs to move from one graph to the other.
-
-          In the most common case, the focus is in the icicle graph and it becomes part of
-          the zoom (and thus will flip to the flame graph). This usually happens when the
-          user clicks Expand (or double-clicks), which sets the focus to the zoom, so it
-          (mostly) suffices to check whether the new zoom is exactly the old focus but in
-          the icicle graph (caller-oriented).
-
-          In this case, we note that new focus should be at the bottom of the new zoom
-          (= the old focus), so we take the bottom frame of the old focus and take its
-          singleton fragment to be the new focus.
-
-          {v
-                 <- callers                                callees ->
-              ... -------- icicles -------|------- old zoom -------|-- flames -- ...
-                 .    .    .    .    .    .    .    .    .    .    .
-                                |**** ------- old focus -----------|
-              ... --- icicles --|------------ new zoom ------------|-- flames -- ...
-                                |****|
-                               new focus
-
-              **** = frame whose location is displayed in the graph (first caller if
-                     icicle, last callee if flame/zoom)
-           v}
-       *)
-
-       let expanding_into_icicle_graph { Data.Fragment.Oriented.orient; fragment = focus }
-         =
-         Data.Orientation.equal orient Callers && Data.Fragment.same focus new_zoom
-       in
-       match focus with
-       | Some focus when expanding_into_icicle_graph focus ->
-         let focus =
-           Data.Fragment_trie.find
-             trie
-             [ Data.Fragment.first focus.fragment ~orient:Callers ]
-           |> Option.value_exn
-         in
-         set_focus_to_oriented_fragment (Some { orient = Callees; fragment = focus })
-       | _ -> Vdom.Event.Ignore
-     in
+    (let%map flame_graph = flame_graph
+     and state = state
+     and set_state = set_state
+     and selection = selection in
      let view = flame_graph.view in
-     { view; key_handler; focus; fix_focus })
+     let key_handler = flame_graph.key_handler in
+     let reset_selection focus default_selection =
+       let new_state = State.default ~state ~default_selection ~focus in
+       set_state new_state
+     in
+     { view; key_handler; selection; reset_selection })
 ;;

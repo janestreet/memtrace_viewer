@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 open Bonsai_simple_table_intf
 open Bonsai_web
 open Incr.Let_syntax
@@ -16,10 +16,16 @@ module Make (Row : Row) (Col_id : Id) = struct
 
   module T = struct
     module Column = struct
+      module Renderer = struct
+        type t = Row.Id.t -> Row.t -> cell
+
+        let equal = phys_equal
+      end
+
       type t =
         { header : cell
         ; header_for_testing : string option
-        ; render : Row.Id.t -> Row.t -> cell
+        ; render : Renderer.t
         ; group : Col_group.t option
         ; classes : string list
         }
@@ -217,18 +223,31 @@ module Make (Row : Row) (Col_id : Id) = struct
           | `All_in_default_order -> input >>| Input.rows >>| Map.keys
         in
         let rows =
-          Incr.Map.mapi' (input >>| Input.rows) ~f:(fun ~key:row_id ~data:row ->
-            let%map cells =
-              Incr.Map.mapi' cols ~f:(fun ~key:_col_id ~data:col_defn ->
-                let%map row = row
-                and render = col_defn >>| Column.render in
-                render row_id row)
-            and focused =
-              match%map focused_row with
-              | None -> false
-              | Some focus_id -> Row.Id.( = ) row_id focus_id
-            in
-            { cells; focused })
+          let%bind column_renderers =
+            Incr_map.map
+              cols
+              (* This funky looking data_equal function is used to basically
+                 provide a cutoff for the data that we're looking to extract.
+                 In this case, the renderer function. *)
+              ~data_equal:(fun a b -> Column.Renderer.equal a.Column.render b.render)
+              ~f:(fun a -> a.render)
+          in
+          Incr.Map.mapi (input >>| Input.rows) ~f:(fun ~key:row_id ~data:row ->
+            let cells = Map.map column_renderers ~f:(fun render -> render row_id row) in
+            { cells; focused = false })
+        in
+        let rows =
+          (* after everything else, just come in and tweak the one element that
+             has focus. *)
+          let%map rows = rows
+          and focused_row = focused_row in
+          match focused_row with
+          | None -> rows
+          | Some focus ->
+            Map.change
+              rows
+              focus
+              ~f:(Option.map ~f:(fun { cells; _ } -> { cells; focused = true }))
         in
         let cols =
           let%map cols_in_order = cols_in_order in
@@ -318,23 +337,26 @@ module Make (Row : Row) (Col_id : Id) = struct
 
       let view t ~inject =
         let col_ids_in_order = col_ids_in_order t in
+        Incr.set_cutoff col_ids_in_order (Incr.Cutoff.of_equal [%equal: Col_id.t list]);
         let%map rows =
+          let%bind col_ids_in_order = col_ids_in_order in
           let%map rendered_rows_by_key =
-            Incr.Map.mapi' t.rows ~f:(fun ~key:row_id ~data:row ->
-              let%pattern_bind { cells; focused } = row in
-              let%map cells =
-                Incr.Map.mapi cells ~f:(fun ~key:_col_id ~data:{ node; attrs } ->
-                  Vdom.Node.td attrs [ node ])
-              and col_ids_in_order = col_ids_in_order
-              and focus_attr =
-                if%map focused then Some (Vdom.Attr.class_ "focused") else None
+            Incr.Map.mapi t.rows ~f:(fun ~key:row_id ~data:row ->
+              let { cells; focused } = row in
+              let cells =
+                Map.mapi cells ~f:(fun ~key:_col_id ~data:{ node; attrs } ->
+                  Vdom.Node.td ~attr:(Vdom.Attr.many_without_merge attrs) [ node ])
+              in
+              let focus_attr =
+                if focused then Some (Vdom.Attr.class_ "focused") else None
               in
               let on_click =
                 Vdom.Attr.on_click (fun _ev ->
                   inject (Action.Set_focus_row (Some row_id)))
               in
               Vdom.Node.tr
-                (on_click :: Option.to_list focus_attr)
+                ~attr:
+                  (Vdom.Attr.many_without_merge (on_click :: Option.to_list focus_attr))
                 (List.map col_ids_in_order ~f:(fun col_id -> Map.find_exn cells col_id)))
           and keys = t.row_ids_in_order in
           List.filter_map keys ~f:(Map.find rendered_rows_by_key)
@@ -344,9 +366,10 @@ module Make (Row : Row) (Col_id : Id) = struct
             ( List.map cols ~f:(fun c ->
                 Vdom.Node.create "col" [ Vdom.Attr.classes c.classes ] [])
             , [ Vdom.Node.tr
-                  []
                   (List.map cols ~f:(fun c ->
-                     Vdom.Node.th c.header.attrs [ c.header.node ]))
+                     Vdom.Node.th
+                       ~attr:(Vdom.Attr.many_without_merge c.header.attrs)
+                       [ c.header.node ]))
               ] )
           | `With_groups groups ->
             let col_defn_tags, groups_row, col_headers_row =
@@ -372,7 +395,7 @@ module Make (Row : Row) (Col_id : Id) = struct
                            | Some group_name -> Vdom.Node.text (Col_group.to_string group_name)
                          in
                          Vdom.Node.th
-                           [ Vdom.Attr.create "colspan" (Int.to_string num_cols) ]
+                           ~attr:(Vdom.Attr.create "colspan" (Int.to_string num_cols))
                            [ group_name ]
                        in
                        let col_headers_ths =
@@ -390,7 +413,9 @@ module Make (Row : Row) (Col_id : Id) = struct
                            let attrs =
                              Vdom.Attrs.merge_classes_and_styles (classes :: c.header.attrs)
                            in
-                           Vdom.Node.th attrs [ c.header.node ])
+                           Vdom.Node.th
+                             ~attr:(Vdom.Attr.many_without_merge attrs)
+                             [ c.header.node ])
                        in
                        ( col_defn_tags @ [ colgroup_tag ]
                        , groups_row @ [ group_th ]
@@ -398,16 +423,16 @@ module Make (Row : Row) (Col_id : Id) = struct
             in
             ( col_defn_tags
             , [ Vdom.Node.tr
-                  [ Vdom.Attr.class_ "simple-table-header-group-row" ]
+                  ~attr:(Vdom.Attr.class_ "simple-table-header-group-row")
                   groups_row
               ; Vdom.Node.tr
-                  [ Vdom.Attr.class_ "simple-table-header-main-row" ]
+                  ~attr:(Vdom.Attr.class_ "simple-table-header-main-row")
                   col_headers_row
               ] )
         and table_attrs = t.table_attrs in
         Vdom.Node.table
-          table_attrs
-          (col_defn_tags @ [ Vdom.Node.thead [] header_rows; Vdom.Node.tbody [] rows ])
+          ~attr:(Vdom.Attr.many_without_merge table_attrs)
+          (col_defn_tags @ [ Vdom.Node.thead header_rows; Vdom.Node.tbody rows ])
       ;;
     end
 

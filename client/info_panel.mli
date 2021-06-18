@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 open Bonsai_web
 open Memtrace_viewer_common
 

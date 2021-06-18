@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 open! Bonsai_web
 module Attr = Vdom.Attr
 module Node = Vdom.Node
@@ -116,11 +116,13 @@ module Submission_handling = struct
               to be used as the form's onsubmit instead, thus getting Enter key behavior
               for free
            *)
-           ([ Attr.type_ "submit"
-            ; Attr.value "Apply"
-            ; Attr.title "Set current filter and redraw views"
-            ]
-            @ if not enabled then [ Attr.disabled ] else [])
+           ~attr:
+             (Attr.many_without_merge
+                ([ Attr.type_ "submit"
+                 ; Attr.value "Apply"
+                 ; Attr.title "Set current filter and redraw views"
+                 ]
+                 @ if not enabled then [ Attr.disabled ] else []))
            []
        in
        { button; on_submit })
@@ -141,15 +143,15 @@ let panel
     | None -> Util.placeholder_div
     | Some bytes ->
       Node.p
-        [ Attr.class_ "total-allocations" ]
+        ~attr:(Attr.class_ "total-allocations")
         [ Node.textf "Filtered allocations: %s" (bytes |> Byte_units.Short.to_string) ]
   in
   let swatch swatch_class =
     Node_svg.svg
-      [ Attr.classes [ "swatch"; swatch_class ] ]
-      [ Node_svg.rect [ Attr.class_ "swatch-bg" ] []
-      ; Node_svg.rect [ Attr.class_ "swatch-interior" ] []
-      ; Node_svg.rect [ Attr.class_ "swatch-border" ] []
+      ~attr:(Attr.classes [ "swatch"; swatch_class ])
+      [ Node_svg.rect ~attr:(Attr.class_ "swatch-bg") []
+      ; Node_svg.rect ~attr:(Attr.class_ "swatch-interior") []
+      ; Node_svg.rect ~attr:(Attr.class_ "swatch-border") []
       ]
   in
   let region_legend_text =
@@ -174,7 +176,7 @@ let panel
   let region_legend =
     if List.is_empty region_legend_text
     then Util.placeholder_div
-    else Node.p [] region_legend_text
+    else Node.p region_legend_text
   in
   let connection_lost_message =
     match server_state with
@@ -196,14 +198,14 @@ let panel
       ]
       [ region_legend
       ; And_view.view filter_clauses
-      ; Node.div [] [ button_node; connection_lost_message ]
+      ; Node.div [ button_node; connection_lost_message ]
       ]
   in
   let main_body =
     Vdom.Node.div
-      [ Vdom.Attr.id "filter-panel-body" ]
+      ~attr:(Vdom.Attr.id "filter-panel-body")
       [ allocations_line
-      ; Vdom.Node.div [ Vdom.Attr.id "filter-graph-container" ] [ graph_node ]
+      ; Vdom.Node.div ~attr:(Vdom.Attr.id "filter-graph-container") [ graph_node ]
       ; form
       ]
   in

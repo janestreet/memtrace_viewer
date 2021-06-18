@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 open Memtrace_viewer_common.Range
 
 module Tests_on_int_ranges = struct

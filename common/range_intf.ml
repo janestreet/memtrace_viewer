@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 
 module type Point = sig
   type t [@@deriving sexp, bin_io, equal, compare, quickcheck]

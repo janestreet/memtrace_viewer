@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 open Bonsai_web
 
 (* [Bonsai_simple_table] provides a simplistic table widget. It can lay things out in a

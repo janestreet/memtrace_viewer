@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 
 module type S = sig
   type t = private int [@@deriving equal, compare, sexp, bin_io]

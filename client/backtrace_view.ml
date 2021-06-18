@@ -1,13 +1,13 @@
-open! Core_kernel
+open! Core
 open Bonsai_web
 open Memtrace_viewer_common
 
-let render_loc loc = Vdom.Node.li [] [ Location.format_dom loc ]
+let render_loc loc = Vdom.Node.li [ Location.format_dom loc ]
 
 let trivial_backtrace =
   let open Vdom in
   Node.p
-    [ Attr.classes [ "backtrace"; "backtrace-empty"; "indented" ] ]
+    ~attr:(Attr.classes [ "backtrace"; "backtrace-empty"; "indented" ])
     [ Node.text "(none)" ]
 ;;
 
@@ -39,7 +39,7 @@ let render backtrace =
       then
         Some
           (Node.li
-             [ Attr.class_ "backtrace-ellipsis" ]
+             ~attr:(Attr.class_ "backtrace-ellipsis")
              [ Node.text "\u{22ee}" (* VERTICAL ELLIPSIS *) ])
       else None
     in
@@ -64,5 +64,5 @@ let render backtrace =
         ; ellipsis_if open_below
         ]
     in
-    Node.ul [ Attr.class_ "backtrace" ] items
+    Node.ul ~attr:(Attr.class_ "backtrace") items
 ;;

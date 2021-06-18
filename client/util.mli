@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 open Bonsai_web
 
 (* An implementation of [Stringable.S] for [float] that is compatible with HTML/JavaScript

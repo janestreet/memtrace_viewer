@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 
 (** Round the given number to the nearest number of the form [n *. 10. ** k], where [k] is
     an integer and [n] is 1, 2, or 5. *)

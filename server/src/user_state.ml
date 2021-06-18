@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 open! Async
 open Memtrace_viewer_common
 
@@ -91,8 +91,16 @@ let compute ~initial_state:Initial.{ trace; loc_cache; trie; graph; info } ~filt
       trie, Some filtered_graph)
   in
   let hot_paths = Hot_paths.hot_paths trie in
+  let hot_call_sites = Hot_call_sites.hot_call_sites trie in
   let info = Some info in
-  { Data.graph; filtered_graph; trie; total_allocations_unfiltered; hot_paths; info }
+  { Data.graph
+  ; filtered_graph
+  ; trie
+  ; total_allocations_unfiltered
+  ; hot_paths
+  ; hot_call_sites
+  ; info
+  }
 ;;
 
 let create ~initial_state ~filter =

@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 open Bonsai_web
 
 
@@ -93,7 +93,7 @@ let phrase_editor
     (let%map type_dropdown = type_dropdown
      and rest_of_sentence = rest_of_sentence in
      { And_view.value = rest_of_sentence.value
-     ; view = Vdom.Node.span [] [ type_dropdown.view; space; rest_of_sentence.view ]
+     ; view = Vdom.Node.span [ type_dropdown.view; space; rest_of_sentence.view ]
      })
 ;;
 
@@ -151,9 +151,7 @@ let range_body_editor
         (let%map lower_bound = lower_bound
          and upper_bound = upper_bound in
          let view =
-           Vdom.Node.span
-             []
-             [ lower_bound.view; Vdom.Node.text " and "; upper_bound.view ]
+           Vdom.Node.span [ lower_bound.view; Vdom.Node.text " and "; upper_bound.view ]
          in
          { And_view.value =
              Some
@@ -278,7 +276,7 @@ let function_clause_editor ~clause_ctor ~text_before : Filter_spec.Clause.t Edit
         in
         Some (clause_ctor (Some pred))))
   |> Editor.map_view ~f:(fun node ->
-    Vdom.Node.span [] [ Vdom.Node.textf "%s " text_before; node ])
+    Vdom.Node.span [ Vdom.Node.textf "%s " text_before; node ])
 ;;
 
 let inside_clause_editor : Filter_spec.Clause.t Editor.t =
@@ -321,8 +319,7 @@ end
 let with_conjunction conjunction view =
   let open Vdom in
   Node.span
-    []
-    [ Node.span [ Attr.class_ "conjunction" ] [ Node.textf "%s " conjunction ]; view ]
+    [ Node.span ~attr:(Attr.class_ "conjunction") [ Node.textf "%s " conjunction ]; view ]
 ;;
 
 let toplevel_clause_editor =
@@ -379,10 +376,9 @@ let component ~max_time ~start_time ~time_view =
      let value = clauses @ hidden_function_clauses in
      let view =
        Node.div
-         []
-         [ Node.p [] [ Node.text "Only show allocations:" ]
+         [ Node.p [ Node.text "Only show allocations:" ]
          ; clauses_view
-         ; Node.p [] [ Node.text "Hide functions:" ]
+         ; Node.p [ Node.text "Hide functions:" ]
          ; hidden_function_clauses_view
          ]
      in

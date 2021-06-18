@@ -1,4 +1,4 @@
-open! Core_kernel
+open! Core
 open Bonsai_web
 
 type t = Byte_units.t option And_view.t
@@ -44,7 +44,6 @@ let component =
      let open Vdom in
      let view =
        Node.span
-         []
          [ Vdom_input_widgets.Entry.number
              (module Util.Float_html_syntax)
              ~value

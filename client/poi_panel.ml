@@ -1,6 +1,35 @@
-open! Core_kernel
+open! Core
 open Bonsai_web
 open Memtrace_viewer_common
+
+module Orientations = struct
+  type t =
+    | Both
+    | Only of Data.Orientation.t
+end
+
+module State = struct
+  type t =
+    | Direction of Data.Orientation.t
+    | Hot_fragment of Data.Backtrace.t
+  [@@deriving sexp, equal]
+
+  let default = Direction Callees
+
+  let poi ~trie = function
+    | Direction Callees -> Data.Fragment_trie.toplevel_fragment trie
+    | Direction Callers -> Data.Fragment_trie.allocation_site_fragment trie
+    | Hot_fragment backtrace ->
+      (match Data.Fragment_trie.find trie backtrace with
+       | Some fragment -> fragment
+       | None -> Data.Fragment_trie.empty_fragment trie)
+  ;;
+
+  let orientations = function
+    | Direction orient -> Orientations.Only orient
+    | Hot_fragment _ -> Orientations.Both
+  ;;
+end
 
 
 module Direction_tab = struct
@@ -27,23 +56,22 @@ module Direction_tab = struct
     ;;
   end
 
-  let component ~trie ~poi ~set_poi =
+  let component ~state ~set_state =
     let open Bonsai.Let_syntax in
     let direction =
-      let%map poi = poi in
-      match Data.Fragment.backtrace poi with
-      | [ loc ] when Data.Location.is_allocation_site loc ->
+      let%map state = state in
+      match state with
+      | State.Direction Callees -> Some Direction_button.Explore_upwards_from_main
+      | State.Direction Callers ->
         Some Direction_button.Explore_downwards_from_allocations
-      | [ loc ] when Data.Location.is_toplevel loc -> Some Explore_upwards_from_main
-      | _ -> None
+      | Hot_fragment _ -> None
     in
     let set_direction =
-      let%map trie = trie
-      and set_poi = set_poi in
+      let%map set_state = set_state in
       function
       | Direction_button.Explore_downwards_from_allocations ->
-        set_poi (Data.Fragment_trie.allocation_site_fragment trie)
-      | Explore_upwards_from_main -> set_poi (Data.Fragment_trie.toplevel_fragment trie)
+        set_state (State.Direction Callers)
+      | Explore_upwards_from_main -> set_state (State.Direction Callees)
     in
     let%sub direction_list =
       Radio_list.component
@@ -56,129 +84,66 @@ module Direction_tab = struct
       (let%map direction_list = direction_list in
        let view =
          let open Vdom in
-         Node.div [] [ Node.p [] [ Node.text "Explore:" ]; direction_list ]
+         Node.div [ Node.p [ Node.text "Explore:" ]; direction_list ]
        in
        view, ())
   ;;
 end
 
-let all_representatives trie =
-  let rec descend acc (_, fragment) =
-    let acc =
-      if Data.Fragment.same fragment (Data.Fragment.representative fragment)
-      then fragment :: acc
-      else acc
-    in
-    List.fold
-      ~f:descend
-      ~init:acc
-      (Data.Fragment.one_frame_extensions fragment ~orient:Callees)
-  in
-  descend [] (Data.Location.dummy, Data.Fragment_trie.empty_fragment trie)
-;;
-
 module Table_tab = struct
   module Which_table = struct
     type t =
-      | Locations
-      | Hot_paths
+      | Call_sites of { hot_call_sites : Data.Fragment.t list Bonsai.Value.t }
+      | Hot_paths of { hot_paths : Data.Fragment.t list Bonsai.Value.t }
   end
 
   let row_of fragment =
-    let backtrace =
-      Data.Fragment.backtrace fragment |> Data.Fragment.Extension.of_callees
-    in
+    let display = Data.Fragment.backtrace fragment in
     let allocations = Data.Entry.allocations (Data.Fragment.entry fragment) in
-    { Location_table.Row.backtrace; allocations }
+    let fragment = Data.Fragment.representative fragment in
+    { Location_table.Row.fragment; display; allocations }
   ;;
 
-  let is_trivial fragment =
-    match Data.Fragment.retract ~orient:Callees fragment with
-    | None ->
-      (* empty fragment *)
-      true
-    | Some retraction ->
-      if Data.Fragment.is_empty retraction
-      then (
-        (* singleton fragment *)
-        match Data.Fragment.backtrace fragment with
-        | [ loc ] -> Data.Location.is_special loc
-        | _ -> assert false)
-      else false
-  ;;
+  let rows_of fragments = List.map ~f:row_of fragments
 
-  let locations_rows trie =
-    List.filter_map (all_representatives trie) ~f:(fun fragment ->
-      if is_trivial fragment then None else Some (row_of fragment))
-  ;;
-
-  let hot_paths_rows hot_paths = List.map ~f:row_of hot_paths
-
-  let component ~which_table ~trie ~hot_paths ~poi ~set_poi =
+  let component ~which_table ~total_allocations ~set_state =
     let open Bonsai.Let_syntax in
-    let total_allocations = Data.Fragment_trie.total_allocations <$> trie in
     let rows =
       match which_table with
-      | Which_table.Locations -> locations_rows <$> trie
-      | Hot_paths -> hot_paths_rows <$> hot_paths
+      | Which_table.Call_sites { hot_call_sites } -> rows_of <$> hot_call_sites
+      | Hot_paths { hot_paths } -> rows_of <$> hot_paths
     in
-    let presorted =
-      Bonsai.Value.return
-        (match which_table with
-         | Locations -> false
-         | Hot_paths -> true)
+    let presorted = Bonsai.Value.return true in
+    let%sub ({ Location_table.selection; _ } as table) =
+      Location_table.component ~total_allocations ~rows ~presorted
     in
-    let only_show_last_frame =
-      Bonsai.Value.return
-        (match which_table with
-         | Locations -> true
-         | Hot_paths -> false)
+    let selection_backtrace =
+      let%map selection = selection in
+      Option.map ~f:fst selection
     in
-    let%sub ({ Location_table.focus; _ } as table) =
-      Location_table.component ~total_allocations ~rows ~presorted ~only_show_last_frame
+    let callback =
+      let%map set_state = set_state in
+      function
+      | None -> Vdom.Event.Ignore
+      | Some selection_backtrace -> set_state (State.Hot_fragment selection_backtrace)
     in
-    let callees_of_fragment_extension
-          ({ Data.Fragment.Extension.callees; callers } as backtrace)
-      =
-      if List.is_empty (Data.Backtrace.Reversed.elements callers)
-      then callees
-      else
-        raise_s [%message "expected no callers" (backtrace : Data.Fragment.Extension.t)]
-    in
-    let poi_backtrace = Data.Fragment.backtrace <$> poi in
-    let%sub set_poi_on_change =
+    let%sub () =
       Bonsai.Edge.on_change
         [%here]
-        (module Util.Option_model (Data.Fragment.Extension))
-        focus
-        ~callback:
-          (let%mapn trie = trie
-           and poi_backtrace = poi_backtrace
-           and set_poi = set_poi in
-           fun focus ->
-             match focus with
-             | Some focus
-               when not
-                      (Data.Fragment.Extension.equal
-                         focus
-                         (poi_backtrace |> Data.Fragment.Extension.of_callees)) ->
-               (match
-                  Data.Fragment_trie.find trie (focus |> callees_of_fragment_extension)
-                with
-                | Some focus_fragment -> set_poi focus_fragment
-                | None -> Vdom.Event.Ignore)
-             | _ -> Vdom.Event.Ignore)
+        (module Util.Option_model (Data.Backtrace))
+        selection_backtrace
+        ~callback
     in
     return
       (let%map { Location_table.view
                ; key_handler
-               ; focus = _
-               ; set_focus = _
-               ; move_focus = _
+               ; selection = _
+               ; set_selection = _
+               ; move_selection = _
                }
         =
         table
-       and () = set_poi_on_change in
+       in
        (* Only send keyboard events to this table if it's focused (in the browser sense)
        *)
        let { Keyboard_scope.view; key_help = _ } =
@@ -189,44 +154,88 @@ module Table_tab = struct
 end
 
 module Tab = struct
-  module Extra = Unit
+  module Input = struct
+    type t =
+      { total_allocations : Byte_units.t Bonsai.Value.t
+      ; state : State.t Bonsai.Value.t
+      ; set_state : (State.t -> Ui_event.t) Bonsai.Value.t
+      ; hot_call_sites : Data.Fragment.t list Bonsai.Value.t
+      ; hot_paths : Data.Fragment.t list Bonsai.Value.t
+      }
+  end
+
+  module Output = Unit
 
   type t =
     | Directions
+    | Call_sites
     | Hot_paths
-    | Locations
   [@@deriving sexp, compare, enumerate, equal]
 
   let name = function
     | Directions -> "Endpoints"
-    | Locations -> "Locations"
+    | Call_sites -> "Call sites"
     | Hot_paths -> "Hot Paths"
   ;;
 
   let initial = Directions
-  let enabled = Bonsai.const (fun (_ : t) -> true)
+  let enabled ~input:_ = Bonsai.Value.return (fun (_ : t) -> true)
+
+  let component t ~input ~select_tab:_ =
+    let { Input.total_allocations; state; set_state; hot_call_sites; hot_paths } =
+      input
+    in
+    match t with
+    | Directions -> Direction_tab.component ~state ~set_state
+    | Call_sites ->
+      let which_table = Table_tab.Which_table.Call_sites { hot_call_sites } in
+      Table_tab.component ~which_table ~total_allocations ~set_state
+    | Hot_paths ->
+      let which_table = Table_tab.Which_table.Hot_paths { hot_paths } in
+      Table_tab.component ~which_table ~total_allocations ~set_state
+  ;;
 end
 
-let component ~trie ~hot_paths ~poi ~set_poi =
-  let open Bonsai.Let_syntax in
-  let module Tab = struct
-    include Tab
+type t =
+  { view : Vdom.Node.t
+  ; orientations : Orientations.t
+  ; poi : Data.Fragment.t
+  }
 
-    let component t ~select_tab:_ =
-      match t with
-      | Directions -> Direction_tab.component ~trie ~poi ~set_poi
-      | Locations ->
-        Table_tab.component ~which_table:Locations ~trie ~hot_paths ~poi ~set_poi
-      | Hot_paths ->
-        Table_tab.component ~which_table:Hot_paths ~trie ~hot_paths ~poi ~set_poi
-    ;;
-  end
+let component ~trie ~hot_paths ~hot_call_sites ~set_focus =
+  let open Bonsai.Let_syntax in
+  let%sub state, set_state =
+    Bonsai.state [%here] (module State) ~default_model:State.default
   in
-  let%sub tab_panel = Tab_panel.component (module Tab) in
+  let%sub total_allocations =
+    return
+      (let%map trie = trie in
+       Data.Fragment_trie.total_allocations trie)
+  in
+  let%sub set_state =
+    return
+      (let%map set_state = set_state
+       and trie = trie
+       and set_focus = set_focus in
+       fun new_state ->
+         let poi = State.poi ~trie new_state in
+         Vdom.Event.Many [ set_focus poi; set_state new_state ])
+  in
+  let input =
+    { Tab.Input.total_allocations; hot_paths; hot_call_sites; state; set_state }
+  in
+  let%sub tab_panel = Tab_panel.component ~input (module Tab) in
   return
-    (let%map tab_panel = tab_panel in
-     let open Vdom in
-     Node.div
-       [ Attr.id "poi-panel-container" ]
-       [ Panel.panel tab_panel.view ~id:"poi-panel" ~title:"Points of Interest" ])
+    (let%map { view; _ } = tab_panel
+     and trie = trie
+     and state = state in
+     let view =
+       let open Vdom in
+       Node.div
+         ~attr:(Attr.id "poi-panel-container")
+         [ Panel.panel view ~id:"poi-panel" ~title:"Points of Interest" ]
+     in
+     let orientations = State.orientations state in
+     let poi = State.poi ~trie state in
+     { view; orientations; poi })
 ;;
