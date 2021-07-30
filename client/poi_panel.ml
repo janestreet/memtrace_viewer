@@ -124,7 +124,7 @@ module Table_tab = struct
     let callback =
       let%map set_state = set_state in
       function
-      | None -> Vdom.Event.Ignore
+      | None -> Vdom.Effect.Ignore
       | Some selection_backtrace -> set_state (State.Hot_fragment selection_backtrace)
     in
     let%sub () =
@@ -158,7 +158,7 @@ module Tab = struct
     type t =
       { total_allocations : Byte_units.t Bonsai.Value.t
       ; state : State.t Bonsai.Value.t
-      ; set_state : (State.t -> Ui_event.t) Bonsai.Value.t
+      ; set_state : (State.t -> unit Ui_effect.t) Bonsai.Value.t
       ; hot_call_sites : Data.Fragment.t list Bonsai.Value.t
       ; hot_paths : Data.Fragment.t list Bonsai.Value.t
       }
@@ -219,7 +219,7 @@ let component ~trie ~hot_paths ~hot_call_sites ~set_focus =
        and set_focus = set_focus in
        fun new_state ->
          let poi = State.poi ~trie new_state in
-         Vdom.Event.Many [ set_focus poi; set_state new_state ])
+         Vdom.Effect.Many [ set_focus poi; set_state new_state ])
   in
   let input =
     { Tab.Input.total_allocations; hot_paths; hot_call_sites; state; set_state }

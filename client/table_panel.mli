@@ -7,7 +7,7 @@ type t =
   { view : Vdom.Node.t
   ; key_handler : Vdom_keyboard.Keyboard_event_handler.t
   ; selection : Data.Fragment.t option
-  ; reset_selection : unit -> Ui_event.t
+  ; reset_selection : unit -> unit Ui_effect.t
   }
 
 val component

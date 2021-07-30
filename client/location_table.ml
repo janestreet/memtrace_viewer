@@ -88,8 +88,8 @@ type t =
   { view : Vdom.Node.t
   ; key_handler : Vdom_keyboard.Keyboard_event_handler.t
   ; selection : (Data.Backtrace.t * Data.Fragment.t) option
-  ; set_selection : Data.Fragment.t option -> Vdom.Event.t
-  ; move_selection : [ `Prev | `Next ] -> Vdom.Event.t
+  ; set_selection : Data.Fragment.t option -> unit Vdom.Effect.t
+  ; move_selection : [ `Prev | `Next ] -> unit Vdom.Effect.t
   }
 
 let component ~total_allocations ~rows ~presorted =

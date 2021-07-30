@@ -53,7 +53,7 @@ type t =
   { view : Vdom.Node.t
   ; key_handler : Vdom_keyboard.Keyboard_event_handler.t
   ; selection : Data.Fragment.t option
-  ; reset_selection : unit -> Ui_event.t
+  ; reset_selection : unit -> unit Ui_effect.t
   }
 
 let transform_input ~orient ~focus ~state =
@@ -82,7 +82,7 @@ let transform_input ~orient ~focus ~state =
   add_nodes [] roots
 ;;
 
-let and_prevent_default event = Vdom.Event.Many [ Vdom.Event.Prevent_default; event ]
+let and_prevent_default event = Vdom.Effect.Many [ Vdom.Effect.Prevent_default; event ]
 
 let unroll_action ~orient inject_action selection =
   let keystroke = Vdom_keyboard.Keystroke.create' ArrowRight in
@@ -153,7 +153,7 @@ let component ~(data : Data.t Bonsai.Value.t) ~orient ~focus =
      let reset_selection () =
        match table.selection with
        | Some _ ->
-         Vdom.Event.Many
+         Vdom.Effect.Many
            [ table.set_selection None; table.move_selection `Next; inject Reset ]
        | None -> inject Reset
      in

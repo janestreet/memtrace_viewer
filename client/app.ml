@@ -55,7 +55,7 @@ let explore_panel
 let filter_panel
       ~(data : Data.t Bonsai.Value.t)
       ~(server_state : Server_state.t Bonsai.Value.t)
-      ~(inject_outgoing : (Action.t -> Vdom.Event.t) Bonsai.Value.t)
+      ~(inject_outgoing : (Action.t -> unit Vdom.Effect.t) Bonsai.Value.t)
   : Vdom.Node.t Bonsai.Computation.t
   =
   let open Bonsai.Let_syntax in
@@ -94,7 +94,7 @@ let onkeydown key_handler event =
 let component
       ~(data : Data.t Bonsai.Value.t)
       ~(server_state : Server_state.t Bonsai.Value.t)
-      ~(inject_outgoing : (Action.t -> Vdom.Event.t) Bonsai.Value.t)
+      ~(inject_outgoing : (Action.t -> unit Vdom.Effect.t) Bonsai.Value.t)
   : Vdom.Node.t Bonsai.Computation.t
   =
   let open Bonsai.Let_syntax in

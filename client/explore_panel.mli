@@ -13,6 +13,6 @@ val component
   -> selection:Main_panel.Selection.t Bonsai.Value.t
   -> poi:Data.Fragment.t Bonsai.Value.t
   -> focus:Data.Fragment.t Bonsai.Value.t
-  -> set_focus:(Data.Fragment.t -> Vdom.Event.t) Bonsai.Value.t
+  -> set_focus:(Data.Fragment.t -> unit Vdom.Effect.t) Bonsai.Value.t
   -> total_allocations:Byte_units.t Bonsai.Value.t
   -> t Bonsai.Computation.t

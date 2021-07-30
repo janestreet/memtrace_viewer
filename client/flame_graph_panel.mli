@@ -24,11 +24,11 @@ type t =
   { view : Vdom.Node.t
   ; key_handler : Vdom_keyboard.Keyboard_event_handler.t
   ; selection : Selection.t option
-  ; reset_selection : Data.Fragment.t -> Default_selection.t -> Vdom.Event.t
+  ; reset_selection : Data.Fragment.t -> Default_selection.t -> unit Vdom.Effect.t
   }
 
 val component
   :  trie:Data.Fragment_trie.t Bonsai.Value.t
   -> focus:Data.Fragment.t Bonsai.Value.t
-  -> activate:(Selection.t -> Vdom.Event.t) Bonsai.Value.t
+  -> activate:(Selection.t -> unit Vdom.Effect.t) Bonsai.Value.t
   -> t Bonsai.Computation.t

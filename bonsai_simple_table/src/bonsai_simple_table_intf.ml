@@ -102,7 +102,7 @@ module type S = sig
       ; view_for_testing : string Lazy.t
       ; key_handler : Vdom_keyboard.Keyboard_event_handler.t
       ; focus_row : (Row.Id.t * Row.t) option
-      ; inject : Action.t -> Vdom.Event.t
+      ; inject : Action.t -> unit Vdom.Effect.t
       }
   end
 

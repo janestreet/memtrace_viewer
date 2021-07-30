@@ -13,7 +13,7 @@ module type Tab = sig
   val component
     :  t
     -> input:Input.t
-    -> select_tab:(t -> Vdom.Event.t) Bonsai.Value.t
+    -> select_tab:(t -> unit Vdom.Effect.t) Bonsai.Value.t
     -> (Vdom.Node.t * Output.t) Bonsai.Computation.t
 
   val enabled : input:Input.t -> (t -> bool) Bonsai.Value.t
@@ -25,7 +25,7 @@ module type Tab_panel = sig
   type ('tab, 'output) t =
     { view : Vdom.Node.t
     ; selected_tab : 'tab
-    ; select_tab : 'tab -> Vdom.Event.t
+    ; select_tab : 'tab -> unit Vdom.Effect.t
     ; output : 'output
     }
 

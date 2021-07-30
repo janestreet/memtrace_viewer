@@ -10,8 +10,8 @@ let wrap ~view ~key_handler =
   let open Vdom in
   let on_keydown event =
     match Vdom_keyboard.Keyboard_event_handler.handle_event key_handler event with
-    | Some action -> Event.Many [ action; Event.Stop_propagation ]
-    | None -> Event.Ignore
+    | Some action -> Effect.Many [ action; Effect.Stop_propagation ]
+    | None -> Effect.Ignore
   in
   let view =
     Node.div

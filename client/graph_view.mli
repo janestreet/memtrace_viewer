@@ -33,5 +33,5 @@ val component
   -> height:int Bonsai.Value.t
   -> start_time:Time_ns.t Bonsai.Value.t
   -> time_view:Time_view.t Bonsai.Value.t
-  -> set_time_view:(Time_view.t -> Vdom.Event.t) Bonsai.Value.t
+  -> set_time_view:(Time_view.t -> unit Vdom.Effect.t) Bonsai.Value.t
   -> Vdom.Node.t Bonsai.Computation.t

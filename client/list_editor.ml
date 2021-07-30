@@ -50,7 +50,7 @@ let component ?(extra_attrs = []) ?(add_item_text = "Add") here item =
      and index_set, set_index_set = index_set_state
      and next_index, set_next_index = next_index_state in
      let add_item () =
-       Vdom.Event.Many
+       Vdom.Effect.Many
          [ set_index_set (Int.Map.add_exn index_set ~key:next_index ~data:())
          ; set_next_index (next_index + 1)
          ]

@@ -255,7 +255,7 @@ type t =
   { view : Vdom.Node.t
   ; key_handler : Keyboard_event_handler.t
   ; selection : Selection.t option
-  ; reset_selection : Data.Fragment.t -> Default_selection.t -> Ui_event.t
+  ; reset_selection : Data.Fragment.t -> Default_selection.t -> unit Ui_effect.t
   }
 
 let component ~trie ~focus ~activate =
@@ -277,7 +277,7 @@ let component ~trie ~focus ~activate =
       let%map activate = activate
       and set_state = set_state in
       fun selector ->
-        Ui_event.Many
+        Ui_effect.Many
           [ set_state (Some (State.of_selector selector))
           ; activate (Selection.of_selector selector)
           ]

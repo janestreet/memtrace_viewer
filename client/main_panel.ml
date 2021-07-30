@@ -47,16 +47,16 @@ module Selection = struct
     type t =
       | Flame of
           { fragment : Data.Fragment.t
-          ; extend_focus_to : unit -> Vdom.Event.t
+          ; extend_focus_to : unit -> unit Vdom.Effect.t
           }
       | Icicle of
           { fragment : Data.Fragment.t
-          ; extend_focus_to : unit -> Vdom.Event.t
+          ; extend_focus_to : unit -> unit Vdom.Effect.t
           }
       | Focus of
           { location : Data.Location.t
-          ; retract_callees_from_focus : (unit -> Vdom.Event.t) option
-          ; retract_callers_from_focus : (unit -> Vdom.Event.t) option
+          ; retract_callees_from_focus : (unit -> unit Vdom.Effect.t) option
+          ; retract_callers_from_focus : (unit -> unit Vdom.Effect.t) option
           }
 
     let location selection =
@@ -70,7 +70,7 @@ module Selection = struct
   module Table = struct
     type t =
       { fragment : Data.Fragment.t
-      ; extend_focus_to : (unit -> Vdom.Event.t) option
+      ; extend_focus_to : (unit -> unit Vdom.Effect.t) option
       }
 
     let location ~orient { fragment; _ } = Data.Fragment.first ~orient fragment
@@ -81,7 +81,7 @@ module Selection = struct
     | Table of
         { orient : Data.Orientation.t
         ; selection : Table.t option
-        ; retract_from_focus : (unit -> Vdom.Event.t) option
+        ; retract_from_focus : (unit -> unit Vdom.Effect.t) option
         }
 
   let location = function
@@ -97,7 +97,7 @@ module Tab = struct
     type t =
       { data : Data.t Bonsai.Value.t
       ; focus : Data.Fragment.t Bonsai.Value.t
-      ; inject : (State.Action.t -> Ui_event.t) Bonsai.Value.t
+      ; inject : (State.Action.t -> unit Ui_effect.t) Bonsai.Value.t
       }
   end
 
@@ -111,7 +111,7 @@ module Tab = struct
     type t =
       { key_handler : Vdom_keyboard.Keyboard_event_handler.t
       ; selection : Selection.t
-      ; reset_selection : Data.Fragment.t -> Default_selection.t -> Ui_event.t
+      ; reset_selection : Data.Fragment.t -> Default_selection.t -> unit Ui_effect.t
       }
   end
 
@@ -198,7 +198,7 @@ module Tab = struct
         let new_focus = fragment in
         let default_selection = Default_selection.First_caller in
         inject { State.Action.new_focus; default_selection }
-      | Flame_graph_panel.Selection.Focus _ -> Vdom.Event.Ignore
+      | Flame_graph_panel.Selection.Focus _ -> Vdom.Effect.Ignore
     in
     let%sub flame_graph_panel = Flame_graph_panel.component ~trie ~focus ~activate in
     return
@@ -244,7 +244,7 @@ type t =
   ; key_handler : Vdom_keyboard.Keyboard_event_handler.t
   ; selection : Selection.t
   ; focus : Data.Fragment.t
-  ; set_focus : Data.Fragment.t -> Vdom.Event.t
+  ; set_focus : Data.Fragment.t -> unit Vdom.Effect.t
   }
 
 let component ~(data : Data.t Bonsai.Value.t) : t Bonsai.Computation.t =

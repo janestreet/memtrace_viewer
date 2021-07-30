@@ -18,5 +18,5 @@ val component
   :  trie:Data.Fragment_trie.t Bonsai.Value.t
   -> hot_paths:Data.Fragment.t list Bonsai.Value.t
   -> hot_call_sites:Data.Fragment.t list Bonsai.Value.t
-  -> set_focus:(Data.Fragment.t -> Ui_event.t) Bonsai.Value.t
+  -> set_focus:(Data.Fragment.t -> unit Ui_effect.t) Bonsai.Value.t
   -> t Bonsai.Computation.t

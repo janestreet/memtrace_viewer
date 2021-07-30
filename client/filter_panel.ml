@@ -88,7 +88,7 @@ let graph_view
 module Submission_handling = struct
   type t =
     { button : Vdom.Node.t
-    ; on_submit : Vdom.Event.t
+    ; on_submit : unit Vdom.Effect.t
     }
 
   let component ~server_state ~inject_outgoing ~filter =
@@ -101,11 +101,11 @@ module Submission_handling = struct
          match filter with
          | Some filter ->
            inject_outgoing (Action.Set_filter filter)
-         | None -> Vdom.Event.Ignore
+         | None -> Vdom.Effect.Ignore
        in
        let on_submit =
-         Vdom.Event.Many
-           [ Vdom.Event.Prevent_default (* don't do a real HTML submit! *); do_submit ]
+         Vdom.Effect.Many
+           [ Vdom.Effect.Prevent_default (* don't do a real HTML submit! *); do_submit ]
        in
        let server_is_up = Server_state.Status.is_up Server_state.(server_state.status) in
        let filter_is_valid = Option.is_some filter in
@@ -186,16 +186,18 @@ let panel
   let form =
     Node.create
       "form"
-      [ Attr.id "filter-form"
-      ; Attr.on_submit (fun _ -> on_submit)
-      ; (* Browser-level validation isn't our friend - it rejects numeric inputs if the
-           user inputs too many digits (as decided by the step) *)
-        Attr.create "novalidate" ""
-      ; (* This effectively disables the table or flame graph's keyboard event handler
-           whenever the focus is anywhere in the form, so that Enter, arrow keys, etc.
-           all work correcly *)
-        Attr.on_keydown (fun _ -> Vdom.Event.Stop_propagation)
-      ]
+      ~attr:
+        (Attr.many
+           [ Attr.id "filter-form"
+           ; Attr.on_submit (fun _ -> on_submit)
+           ; (* Browser-level validation isn't our friend - it rejects numeric inputs if the
+                user inputs too many digits (as decided by the step) *)
+             Attr.create "novalidate" ""
+           ; (* This effectively disables the table or flame graph's keyboard event handler
+                whenever the focus is anywhere in the form, so that Enter, arrow keys, etc.
+                all work correcly *)
+             Attr.on_keydown (fun _ -> Vdom.Effect.Stop_propagation)
+           ])
       [ region_legend
       ; And_view.view filter_clauses
       ; Node.div [ button_node; connection_lost_message ]
@@ -252,7 +254,7 @@ let component
      last known valid input as a side effect. It could instead be in the style of a
      state machine:
 
-     [is_valid:('a -> bool) -> ('a * ('a -> Vdom.Event.t)) Bonsai.Computation.t]
+     [is_valid:('a -> bool) -> ('a * ('a -> unit Vdom.Effect.t)) Bonsai.Computation.t]
 
      but now, to fire that event, all the components in the filter editor would have to
      support an on_changed event, which is a much more painful workaround than just

@@ -170,15 +170,45 @@ module Make (Row : Row) (Col_id : Id) = struct
       ;;
     end
 
-    let apply_action input model ~inject:_ =
-      let%map focus_row = model >>| Model.focus_row
-      and focus = Focus.create input in
-      fun ~schedule_event:_ action ->
+    let serialize_row_id row_id =
+      Sexp.to_string_mach (Row.Id.sexp_of_t row_id)
+      |> String.map ~f:(function
+        (* This mapping probably maps two inputs to the same output, but this
+           is unlikely enough that it should be fine. *)
+        | '\"' -> '_'
+        | c -> c)
+    ;;
+
+    let scroll_to_row_effect =
+      Effect.of_sync_fun (fun row_id ->
+        if not am_running_test
+        then (
+          let row_id = serialize_row_id row_id in
+          let open Js_of_ocaml in
+          match
+            Dom_html.document##querySelector
+              (Js.string [%string "[data-row-id=\"%{row_id}\"]"])
+            |> Js.Opt.to_option
+          with
+          | Some element ->
+            let scrollable =
+              (Js.Unsafe.coerce element
+               : < scrollIntoViewIfNeeded : bool Js.t -> unit Js.meth > Js.t)
+            in
+            scrollable##scrollIntoViewIfNeeded (Js.bool false)
+          | None -> ()))
+    ;;
+
+    let apply_action input ~inject:_ =
+      let%map focus = Focus.create input in
+      fun ~schedule_event { Model.focus_row } action ->
         let focus_row =
           match (action : Action.t) with
           | Set_focus_row focus_row -> focus_row
           | Move_focus dir -> Focus.move focus focus_row ~dir
         in
+        Option.iter focus_row ~f:(fun row_id ->
+          schedule_event (scroll_to_row_effect row_id));
         { Model.focus_row }
     ;;
 
@@ -348,15 +378,22 @@ module Make (Row : Row) (Col_id : Id) = struct
                   Vdom.Node.td ~attr:(Vdom.Attr.many_without_merge attrs) [ node ])
               in
               let focus_attr =
-                if focused then Some (Vdom.Attr.class_ "focused") else None
+                if focused then Vdom.Attr.class_ "focused" else Vdom.Attr.empty
               in
-              let on_click =
+              let on_click_attr =
                 Vdom.Attr.on_click (fun _ev ->
                   inject (Action.Set_focus_row (Some row_id)))
               in
               Vdom.Node.tr
                 ~attr:
-                  (Vdom.Attr.many_without_merge (on_click :: Option.to_list focus_attr))
+                  Vdom.Attr.(
+                    on_click_attr
+                    @ focus_attr
+                    (* We use "data-row-id" instead of "id" because it can
+                       handle a wider range of strings, which is necessary for
+                       handling sexps. In addition, we also want to avoid
+                       collisions with existing "id"s *)
+                    @ create "data-row-id" (serialize_row_id row_id))
                 (List.map col_ids_in_order ~f:(fun col_id -> Map.find_exn cells col_id)))
           and keys = t.row_ids_in_order in
           List.filter_map keys ~f:(Map.find rendered_rows_by_key)
@@ -364,7 +401,7 @@ module Make (Row : Row) (Col_id : Id) = struct
           match%map t.cols with
           | `Without_groups cols ->
             ( List.map cols ~f:(fun c ->
-                Vdom.Node.create "col" [ Vdom.Attr.classes c.classes ] [])
+                Vdom.Node.create "col" ~attr:(Vdom.Attr.classes c.classes) [])
             , [ Vdom.Node.tr
                   (List.map cols ~f:(fun c ->
                      Vdom.Node.th
@@ -384,9 +421,12 @@ module Make (Row : Row) (Col_id : Id) = struct
                        let colgroup_tag =
                          Vdom.Node.create
                            "colgroup"
-                           [ Vdom.Attr.create "span" (Int.to_string num_cols) ]
+                           ~attr:(Vdom.Attr.create "span" (Int.to_string num_cols))
                            (List.map cols_in_group ~f:(fun column ->
-                              Vdom.Node.create "col" [ Vdom.Attr.classes column.classes ] []))
+                              Vdom.Node.create
+                                "col"
+                                ~attr:(Vdom.Attr.classes column.classes)
+                                []))
                        in
                        let group_th =
                          let group_name =
@@ -472,7 +512,7 @@ module Make (Row : Row) (Col_id : Id) = struct
         ; view_for_testing : string Lazy.t
         ; key_handler : Vdom_keyboard.Keyboard_event_handler.t
         ; focus_row : (Row.Id.t * Row.t) option
-        ; inject : Action.t -> Vdom.Event.t
+        ; inject : Action.t -> unit Vdom.Effect.t
         }
     end
 

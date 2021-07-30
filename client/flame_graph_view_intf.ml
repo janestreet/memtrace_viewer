@@ -66,9 +66,9 @@ module type S = sig
     :  Graph.t Bonsai.Value.t
     -> width:int Bonsai.Value.t
     -> selection:Selector.t option Bonsai.Value.t
-    -> select:(Selector.t -> Vdom.Event.t) Bonsai.Value.t
-    -> navigate_to:(Selector.t -> Vdom.Event.t) Bonsai.Value.t
-    -> activate:(Selector.t -> Vdom.Event.t) Bonsai.Value.t
+    -> select:(Selector.t -> unit Vdom.Effect.t) Bonsai.Value.t
+    -> navigate_to:(Selector.t -> unit Vdom.Effect.t) Bonsai.Value.t
+    -> activate:(Selector.t -> unit Vdom.Effect.t) Bonsai.Value.t
     -> t Bonsai.Computation.t
 end
 

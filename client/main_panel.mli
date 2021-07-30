@@ -7,23 +7,23 @@ module Selection : sig
     type t =
       | Flame of
           { fragment : Data.Fragment.t
-          ; extend_focus_to : unit -> Vdom.Event.t
+          ; extend_focus_to : unit -> unit Vdom.Effect.t
           }
       | Icicle of
           { fragment : Data.Fragment.t
-          ; extend_focus_to : unit -> Vdom.Event.t
+          ; extend_focus_to : unit -> unit Vdom.Effect.t
           }
       | Focus of
           { location : Data.Location.t
-          ; retract_callees_from_focus : (unit -> Vdom.Event.t) option
-          ; retract_callers_from_focus : (unit -> Vdom.Event.t) option
+          ; retract_callees_from_focus : (unit -> unit Vdom.Effect.t) option
+          ; retract_callers_from_focus : (unit -> unit Vdom.Effect.t) option
           }
   end
 
   module Table : sig
     type t =
       { fragment : Data.Fragment.t
-      ; extend_focus_to : (unit -> Vdom.Event.t) option
+      ; extend_focus_to : (unit -> unit Vdom.Effect.t) option
       }
   end
 
@@ -32,7 +32,7 @@ module Selection : sig
     | Table of
         { orient : Data.Orientation.t
         ; selection : Table.t option
-        ; retract_from_focus : (unit -> Vdom.Event.t) option
+        ; retract_from_focus : (unit -> unit Vdom.Effect.t) option
         }
 
   val location : t -> Data.Location.t option
@@ -43,7 +43,7 @@ type t =
   ; key_handler : Vdom_keyboard.Keyboard_event_handler.t
   ; selection : Selection.t
   ; focus : Data.Fragment.t
-  ; set_focus : Data.Fragment.t -> Vdom.Event.t
+  ; set_focus : Data.Fragment.t -> unit Vdom.Effect.t
   }
 
 val component : data:Data.t Bonsai.Value.t -> t Bonsai.Computation.t

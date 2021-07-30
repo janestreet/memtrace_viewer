@@ -5,7 +5,7 @@ include Tab_panel_intf
 type ('tab, 'output) t =
   { view : Vdom.Node.t
   ; selected_tab : 'tab
-  ; select_tab : 'tab -> Vdom.Event.t
+  ; select_tab : 'tab -> unit Vdom.Effect.t
   ; output : 'output
   }
 
@@ -13,7 +13,7 @@ module Component (Tab : Tab) = struct
   module Tab_bar = struct
     type t =
       { selected_tab : Tab.t
-      ; select_tab : Tab.t -> Vdom.Event.t
+      ; select_tab : Tab.t -> unit Vdom.Effect.t
       ; view : Vdom.Node.t
       }
 

@@ -18,7 +18,7 @@ module Extend_or_retract = struct
 end
 
 type focus_behavior =
-  | Action of (unit -> Ui_event.t)
+  | Action of (unit -> unit Ui_effect.t)
   | Disabled
 
 let selection_focus_behavior_flame_graph
@@ -150,16 +150,16 @@ let button_bar ~trie ~(orientations : Orientations.t) ~selection ~poi ~focus ~se
            focus_button ~behavior ~text))
   in
   let retract_focus_buttons =
-    match orientations with
-    | Only orient ->
-      let behavior = retract_focus_behavior ~orient ~selection in
-      focus_button ~behavior ~text:"Zoom out to selected"
-    | Both ->
-      (match selection with
-       | Table _ ->
-         let behavior = retract_focus_by_one_behavior ~selection in
-         focus_button ~behavior ~text:"Zoom out"
-       | Flame_graph _ ->
+    match selection with
+    | Table _ ->
+      let behavior = retract_focus_by_one_behavior ~selection in
+      focus_button ~behavior ~text:"Zoom out"
+    | Flame_graph _ ->
+      (match orientations with
+       | Only orient ->
+         let behavior = retract_focus_behavior ~orient ~selection in
+         focus_button ~behavior ~text:"Zoom out to selected"
+       | Both ->
          double_button ~f:(fun ~orient ->
            let behavior = retract_focus_behavior ~orient ~selection in
            let text =
@@ -182,12 +182,15 @@ let button_bar ~trie ~(orientations : Orientations.t) ~selection ~poi ~focus ~se
     focus_button ~behavior ~text
   in
   let refocus_button =
-    match orientations with
-    | Both ->
-      let behavior = refocus_behavior ~trie ~selection ~focus ~set_focus in
-      let text = "Focus on selected node only" in
-      focus_button ~behavior ~text
-    | Only _ -> Node.None
+    match selection with
+    | Table _ -> Node.None
+    | Flame_graph _ ->
+      (match orientations with
+       | Only _ -> Node.None
+       | Both ->
+         let behavior = refocus_behavior ~trie ~selection ~focus ~set_focus in
+         let text = "Focus on selected node only" in
+         focus_button ~behavior ~text)
   in
   Node.div
     ~attr:(Attr.class_ "button-bar")

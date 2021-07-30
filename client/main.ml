@@ -28,8 +28,7 @@ let run () =
     let handle_outgoing_staged =
       Effect.of_deferred_fun (handle_outgoing ~conn ~data ~server_state)
     in
-    fun action ->
-      Effect.inject_ignoring_response (Staged.unstage handle_outgoing_staged action)
+    fun action -> handle_outgoing_staged action
   in
   let _app_handle =
     Start.start
