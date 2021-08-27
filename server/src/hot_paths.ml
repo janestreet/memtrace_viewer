@@ -61,9 +61,8 @@ end
 let hot_paths trie =
   let queue = Fragment_queue.create () in
   let rec enqueue_all_representatives node =
-    if
-      (not (Data.Fragment.is_empty node))
-      && Data.Fragment.same node (Data.Fragment.representative node)
+    if (not (Data.Fragment.is_empty node))
+    && Data.Fragment.same node (Data.Fragment.representative node)
     then Fragment_queue.add_exn queue node;
     List.iter
       (Data.Fragment.one_frame_extensions node ~orient:Callees)

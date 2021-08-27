@@ -28,15 +28,13 @@ let selection_focus_behavior_flame_graph
   =
   match selection with
   | Flame { extend_focus_to; _ } ->
-    if
-      Option.for_all ~f:(Extend_or_retract.equal Extend) sort
-      && Option.for_all ~f:(Data.Orientation.equal Callees) orient
+    if Option.for_all ~f:(Extend_or_retract.equal Extend) sort
+    && Option.for_all ~f:(Data.Orientation.equal Callees) orient
     then Action extend_focus_to
     else Disabled
   | Icicle { extend_focus_to; _ } ->
-    if
-      Option.for_all ~f:(Extend_or_retract.equal Extend) sort
-      && Option.for_all ~f:(Data.Orientation.equal Callers) orient
+    if Option.for_all ~f:(Extend_or_retract.equal Extend) sort
+    && Option.for_all ~f:(Data.Orientation.equal Callers) orient
     then Action extend_focus_to
     else Disabled
   | Focus { retract_callees_from_focus; retract_callers_from_focus; _ } ->
@@ -64,9 +62,8 @@ let selection_focus_behavior ~sort ~orient ~(selection : Selection.t) =
   | Flame_graph { selection = Some selection } ->
     selection_focus_behavior_flame_graph ~sort ~orient ~selection
   | Table { selection = Some selection; orient = table_orient; _ } ->
-    if
-      Option.for_all ~f:(Extend_or_retract.equal Extend) sort
-      && Option.for_all ~f:(Data.Orientation.equal table_orient) orient
+    if Option.for_all ~f:(Extend_or_retract.equal Extend) sort
+    && Option.for_all ~f:(Data.Orientation.equal table_orient) orient
     then selection_focus_behavior_table ~selection
     else Disabled
   | Flame_graph { selection = None } | Table { selection = None; _ } -> Disabled
