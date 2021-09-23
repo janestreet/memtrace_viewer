@@ -230,7 +230,7 @@ module type Data = sig
   end
 
   module Fragment_trie : sig
-    type t [@@deriving sexp, bin_io]
+    type t [@@deriving sexp]
 
     module type Suffix_tree =
       Suffix_tree with type entry := Entry.t and type location := Location.t
@@ -262,6 +262,14 @@ module type Data = sig
       -> init:'a
       -> f:(location:Location.t -> fragment:Fragment.t -> 'a -> 'a)
       -> 'a
+
+    module Serialized : sig
+      type unserialized := t
+      type t [@@deriving sexp, bin_io]
+
+      val serialize : unserialized -> t
+      val unserialize : t -> unserialized
+    end
   end
 
   module type Suffix_tree = Fragment_trie.Suffix_tree
@@ -289,7 +297,15 @@ module type Data = sig
     ; hot_call_sites : Fragment.t list
     ; info : Info.t option
     }
-  [@@deriving sexp, bin_io]
+  [@@deriving sexp]
 
   val empty : t
+
+  module Serialized : sig
+    type unserialized := t
+    type t [@@deriving sexp, bin_io]
+
+    val serialize : unserialized -> t
+    val unserialize : t -> unserialized
+  end
 end

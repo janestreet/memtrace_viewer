@@ -694,7 +694,7 @@ module Fragment_trie = struct
     { Fragment.Iterator.prefix; suffix }
   ;;
 
-  module Serialized_form = struct
+  module Serialized = struct
     module Unserialized_fragment = Fragment
 
     module Fragment = struct
@@ -752,13 +752,13 @@ module Fragment_trie = struct
       }
     [@@deriving sexp, bin_io]
 
-    let of_trie (trie : trie) =
+    let serialize (trie : trie) =
       let root = Fragment.of_trie_node trie.root in
       let total_allocations = trie.total_allocations in
       { root; total_allocations }
     ;;
 
-    let to_trie t : trie =
+    let unserialize t : trie =
       (* Two passes:
 
          1. Create the trie by a simple traversal, leaving the caller children and
@@ -854,26 +854,12 @@ module Fragment_trie = struct
 
   include
     Sexpable.Of_sexpable
-      (Serialized_form)
+      (Serialized)
       (struct
         type nonrec t = t
 
-        let to_sexpable = Serialized_form.of_trie
-        let of_sexpable = Serialized_form.to_trie
-      end)
-
-  include
-    Binable.Of_binable_with_uuid
-      (Serialized_form)
-      (struct
-        type nonrec t = t
-
-        let to_binable = Serialized_form.of_trie
-        let of_binable = Serialized_form.to_trie
-
-        let caller_identity =
-          "8a41d09e-dd79-41c7-99ea-c03ff2ee8cdf" |> Bin_prot.Shape.Uuid.of_string
-        ;;
+        let to_sexpable = Serialized.serialize
+        let of_sexpable = Serialized.unserialize
       end)
 end
 
@@ -903,11 +889,11 @@ type t =
   ; info : Info.t option
   }
 
-module Serialized_form = struct
+module Serialized = struct
   type t =
     { graph : Graph.t
     ; filtered_graph : Graph.t option
-    ; trie : Fragment_trie.t
+    ; serialized_trie : Fragment_trie.Serialized.t
     ; total_allocations_unfiltered : Byte_units.Stable.V2.t
     ; hot_path_backtraces : Backtrace.t list
     ; hot_call_site_locations : Location.t list
@@ -929,11 +915,12 @@ module Serialized_form = struct
     let hot_call_site_locations =
       List.map ~f:(Fragment.first ~orient:Callers) hot_call_sites
     in
+    let serialized_trie = Fragment_trie.Serialized.serialize trie in
     { hot_path_backtraces
     ; hot_call_site_locations
     ; graph
     ; filtered_graph
-    ; trie
+    ; serialized_trie
     ; total_allocations_unfiltered
     ; info
     }
@@ -944,11 +931,12 @@ module Serialized_form = struct
         ; hot_call_site_locations
         ; graph
         ; filtered_graph
-        ; trie
+        ; serialized_trie
         ; total_allocations_unfiltered
         ; info
         }
     =
+    let trie = Fragment_trie.Serialized.unserialize serialized_trie in
     let hot_paths =
       hot_path_backtraces
       |> List.map ~f:(fun backtrace ->
@@ -972,26 +960,12 @@ end
 
 include
   Sexpable.Of_sexpable
-    (Serialized_form)
+    (Serialized)
     (struct
       type nonrec t = t
 
-      let to_sexpable = Serialized_form.serialize
-      let of_sexpable = Serialized_form.unserialize
-    end)
-
-include
-  Binable.Of_binable_with_uuid
-    (Serialized_form)
-    (struct
-      type nonrec t = t
-
-      let to_binable = Serialized_form.serialize
-      let of_binable = Serialized_form.unserialize
-
-      let caller_identity =
-        "9232d992-2e98-457d-849d-0e4f1ec460a8" |> Bin_prot.Shape.Uuid.of_string
-      ;;
+      let to_sexpable = Serialized.serialize
+      let of_sexpable = Serialized.unserialize
     end)
 
 let empty =

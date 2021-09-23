@@ -5,7 +5,9 @@ open Memtrace_viewer_common
 let init global_state =
   let f user_state () =
     User_state.reset global_state user_state;
-    return (User_state.data user_state)
+    let data = User_state.data user_state in
+    let serialized = Data.Serialized.serialize data in
+    return serialized
   in
   Rpc.Rpc.implement Protocol.Init.t f
 ;;
@@ -13,7 +15,9 @@ let init global_state =
 let update global_state =
   let f user_state action =
     User_state.update global_state user_state action;
-    return (User_state.data user_state)
+    let data = User_state.data user_state in
+    let serialized = Data.Serialized.serialize data in
+    return serialized
   in
   Rpc.Rpc.implement Protocol.Update.t f
 ;;

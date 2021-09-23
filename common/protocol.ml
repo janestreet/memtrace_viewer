@@ -7,7 +7,7 @@ module Init = struct
       ~name:"init"
       ~version:0
       ~bin_query:[%bin_type_class: Unit.t]
-      ~bin_response:[%bin_type_class: Data.t]
+      ~bin_response:[%bin_type_class: Data.Serialized.t]
   ;;
 end
 
@@ -17,6 +17,6 @@ module Update = struct
       ~name:"update"
       ~version:0
       ~bin_query:[%bin_type_class: Action.t]
-      ~bin_response:[%bin_type_class: Data.t]
+      ~bin_response:[%bin_type_class: Data.Serialized.t]
   ;;
 end

@@ -5,13 +5,16 @@ open Async_js
 open Memtrace_viewer_common
 
 let initialize ~conn ~data =
-  let%map data' = Rpc.Rpc.dispatch_exn Protocol.Init.t conn () in
-  Bonsai.Var.update data ~f:(fun _ -> data')
+  let%map serialized = Rpc.Rpc.dispatch_exn Protocol.Init.t conn () in
+  let unserialized = Data.Serialized.unserialize serialized in
+  Bonsai.Var.update data ~f:(fun _ -> unserialized)
 ;;
 
 let handle_outgoing ~conn ~data ~server_state action =
   match%map Rpc.Rpc.dispatch Protocol.Update.t conn action with
-  | Ok data' -> Bonsai.Var.set data data'
+  | Ok serialized ->
+    let unserialized = Data.Serialized.unserialize serialized in
+    Bonsai.Var.set data unserialized
   | Error error ->
     Js_of_ocaml.Firebug.console##error
       (error |> Error.to_string_hum |> Js_of_ocaml.Js.string);
