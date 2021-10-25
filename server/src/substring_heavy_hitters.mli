@@ -57,4 +57,28 @@ module Make (X : Char) : sig
   val root : t -> Node.Root.t
   val is_heavy : t -> Node.t -> bool
   val contains_heavy : t -> Node.t -> bool
+  val dump_subtree : t -> Node.t -> Sexp.t
+
+  module Elaborated : sig
+    module Plain_node = Node
+
+    module Node : sig
+      type t [@@deriving sexp_of]
+
+      val plain : t -> Plain_node.t
+      val parent : t -> t
+      val suffix : t -> t
+      val children : t -> (X.t array, t) List.Assoc.t
+      val prefixes : t -> (X.t array, t) List.Assoc.t
+    end
+
+    type t
+
+    (** Construct the elaborated tree for the given unelaborated root. If [merge_prefixes]
+        is true, combine uninteresting suffix links in a similar manner to the way edges
+        are compressed. This makes for a far more compact display. *)
+    val of_root : Plain_node.Root.t -> merge_prefixes:bool -> t
+
+    val find_node_exn : t -> Plain_node.t -> Node.t
+  end
 end

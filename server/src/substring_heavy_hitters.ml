@@ -64,13 +64,17 @@ module Make (X : Char) = struct
     val suffix : t -> t
     val parent : t -> t
     val compress : root:Root.t -> threshold:int -> unit
+    val has_summary : t -> bool
     val reset_summary : t -> unit
-    val update_parents_summary : t -> root:Root.t -> heaviness_threshold:int -> unit
+    val update_parent_totals : t -> root:Root.t -> unit
+    val update_delta_from_parents : t -> root:Root.t -> unit
+    val update_parent_heavy_totals : t -> root:Root.t -> heaviness_threshold:int -> unit
     val finalize_summary : t -> heaviness_threshold:int -> unit
     val iter_children : t -> root:Root.t -> f:(t -> unit) -> unit
     val fold_children : t -> root:Root.t -> init:'a -> f:(t -> 'a -> 'a) -> 'a
     val is_heavy : t -> heaviness_threshold:int -> bool
     val contains_heavy : t -> heaviness_threshold:int -> bool
+    val count : t -> int
     val total_count : t -> int
     val light_count : t -> int
     val representative : t -> t
@@ -101,8 +105,16 @@ module Make (X : Char) = struct
       ; mutable summary : summary
       ; mutable queue_item : queue_item
       ; mutable count : int
+      (* Upper bound on how much has been squashed along the edge to the parent. A node
+         may be created and squashed again any number of times; this is a bound on how
+         much count we've thrown away in doing so for this node. (Edge merging muddies the
+         picture, since it may not have been precisely _this_ node, but you get the
+         picture.) *)
       ; mutable max_edge_squashed : int
+      (* Upper bound on how much has been squashed along any one edge to a child *)
       ; mutable max_child_squashed : int
+      (* Upper bound on how much the total count could be low *)
+      ; mutable delta : int
       }
 
     and queue_item =
@@ -140,6 +152,7 @@ module Make (X : Char) = struct
       let edge_key = X.dummy in
       let refcount = 0 in
       let count = 0 in
+      let delta = 0 in
       let max_child_squashed = 0 in
       let max_edge_squashed = 0 in
       let summary = No_summary in
@@ -156,6 +169,7 @@ module Make (X : Char) = struct
       ; summary
       ; queue_item = dummy_queue_item
       ; count
+      ; delta
       ; max_edge_squashed
       ; max_child_squashed
       }
@@ -292,6 +306,7 @@ module Make (X : Char) = struct
         let queue_item = Queue.Item.root in
         let summary = No_summary in
         let count = 0 in
+        let delta = 0 in
         let max_child_squashed = 0 in
         let max_edge_squashed = 0 in
         let rec node =
@@ -308,6 +323,7 @@ module Make (X : Char) = struct
           ; summary
           ; queue_item
           ; count
+          ; delta
           ; max_edge_squashed
           ; max_child_squashed
           }
@@ -420,8 +436,9 @@ module Make (X : Char) = struct
       let summary = No_summary in
       let count = 0 in
       let refcount = 0 in
-      let max_edge_squashed = parent.max_child_squashed in
-      let max_child_squashed = parent.max_child_squashed in
+      let delta = parent.max_child_squashed in
+      let max_edge_squashed = delta in
+      let max_child_squashed = delta in
       { id
       ; edge_array
       ; edge_start
@@ -435,6 +452,7 @@ module Make (X : Char) = struct
       ; summary
       ; queue_item
       ; count
+      ; delta
       ; max_edge_squashed
       ; max_child_squashed
       }
@@ -464,8 +482,9 @@ module Make (X : Char) = struct
           let queue_item = dummy_queue_item in
           let summary = No_summary in
           let count = 0 in
-          let max_edge_squashed = child.max_edge_squashed in
-          let max_child_squashed = child.max_edge_squashed in
+          let delta = child.max_edge_squashed in
+          let max_edge_squashed = delta in
+          let max_child_squashed = delta in
           { id
           ; edge_array
           ; edge_start
@@ -479,6 +498,7 @@ module Make (X : Char) = struct
           ; summary
           ; queue_item
           ; count
+          ; delta
           ; max_edge_squashed
           ; max_child_squashed
           }
@@ -611,9 +631,11 @@ module Make (X : Char) = struct
     module Debug = struct
       type nonrec t = t
 
-      let sexp_of_t ({ id; _ } as node) =
+      let sexp_of_t ({ id; count; delta; _ } as node) =
         [%message
           (id : Id.t)
+            (count : int)
+            (delta : int)
             ~total_count:
               (match node.summary with
                | No_summary -> [%sexp "???"]
@@ -670,26 +692,37 @@ module Make (X : Char) = struct
         | Summary { representative; _ } -> representative
       ;;
 
-      let add_grand_child t ~grand_child_total_count ~grand_child_heavy_count =
+      let add_grand_child t ~grand_child_total_count =
         match t with
         | No_summary -> failwith "No summary"
         | Summary s ->
-          s.descendents_count <- s.descendents_count - grand_child_total_count;
-          s.heavy_descendents_count <- s.heavy_descendents_count - grand_child_heavy_count
+          s.descendents_count <- s.descendents_count - grand_child_total_count
       ;;
 
-      let add_child t ~child ~child_total_count ~child_heavy_count =
+      let add_child t ~child_total_count =
+        match t with
+        | No_summary -> failwith "No summary"
+        | Summary s -> s.descendents_count <- s.descendents_count + child_total_count
+      ;;
+
+      let add_child_heavy_count t ~child ~child_heavy_count =
         match t with
         | No_summary -> failwith "No summary"
         | Summary s ->
           (match child.summary with
            | No_summary -> failwith "No summary"
            | Summary { heavy_descendents; representative; _ } ->
-             s.descendents_count <- s.descendents_count + child_total_count;
              s.heavy_descendents_count <- s.heavy_descendents_count + child_heavy_count;
              s.heavy_descendents <- Set.union s.heavy_descendents heavy_descendents;
              if Set.length heavy_descendents = Set.length s.heavy_descendents
              then s.representative <- representative)
+      ;;
+
+      let add_grand_child_heavy_count t ~grand_child_heavy_count =
+        match t with
+        | No_summary -> failwith "No summary"
+        | Summary s ->
+          s.heavy_descendents_count <- s.heavy_descendents_count - grand_child_heavy_count
       ;;
 
       let add_heavy_descendent t ~node =
@@ -713,6 +746,12 @@ module Make (X : Char) = struct
       ;;
     end
 
+    let has_summary t =
+      match t.summary with
+      | No_summary -> false
+      | Summary _ -> true
+    ;;
+
     let reset_summary t = t.summary <- Summary.empty t
     let descendents_count t = Summary.descendents_count t.summary
     let heavy_descendents_count t = Summary.heavy_descendents_count t.summary
@@ -723,7 +762,7 @@ module Make (X : Char) = struct
 
     let is_heavy t ~heaviness_threshold =
       let light_count = light_count t in
-      let delta = t.max_edge_squashed in
+      let delta = t.delta in
       light_count + delta > heaviness_threshold
     ;;
 
@@ -733,7 +772,7 @@ module Make (X : Char) = struct
 
     let contains_heavy t ~heaviness_threshold =
       let total_count = total_count t in
-      let delta = t.max_edge_squashed in
+      let delta = t.delta in
       total_count + delta > heaviness_threshold
     ;;
 
@@ -743,16 +782,25 @@ module Make (X : Char) = struct
       let rec sexp_of_t
                 ({ id
                  ; count
+                 ; delta
                  ; max_edge_squashed
+                 ; max_child_squashed
                  ; edge_array
                  ; edge_start
                  ; edge_len
                  ; parent
                  ; suffix_link
                  ; summary
+                 ; first_child
                  ; _
                  } as node)
         =
+        let child_ids =
+          let rec siblings node =
+            if is_real node then node :: siblings node.next_sibling else []
+          in
+          siblings first_child |> List.map ~f:(fun node -> node.id)
+        in
         let summary_data =
           match summary with
           | No_summary -> [%sexp "No_summary"]
@@ -762,6 +810,7 @@ module Make (X : Char) = struct
                 ~total_count:(total_count node : int)
                 ~light_count:(light_count node : int)
                 ~max_light_count:(light_count node + max_edge_squashed : int)
+                ~heavy_descendents_count:(heavy_descendents_count node : int)
                 ~heavy_descendents:(heavy_descendents node : Id.Set.t)]
         in
         let representative =
@@ -776,42 +825,88 @@ module Make (X : Char) = struct
           (id : Id.t)
             ~label:(label node : X.t array)
             (count : int)
+            (delta : int)
             (max_edge_squashed : int)
+            (max_child_squashed : int)
             (summary_data : Sexp.t)
             ~edge:(Array.sub edge_array ~pos:edge_start ~len:edge_len : X.t array)
             (parent.id : Id.t)
             (suffix_link.id : Id.t)
+            (child_ids : Id.t list)
             (representative : Sexp.t)]
       ;;
     end
 
-    let update_parents_summary t ~root ~heaviness_threshold =
+    let update_parent_totals t ~root =
       if not (Root.is_node root t)
       then (
         let total_count = total_count t in
+        let parent = t.parent in
+        let suffix = t.suffix_link in
+        let grand_parent = t.parent.suffix_link in
+        if is_real parent
+        then Summary.add_child parent.summary ~child_total_count:total_count;
+        if is_real suffix
+        then Summary.add_child suffix.summary ~child_total_count:total_count;
+        if is_real grand_parent
+        then
+          Summary.add_grand_child
+            grand_parent.summary
+            ~grand_child_total_count:total_count)
+    ;;
+
+    let update_delta_from_parent_or_suffix t ~parent_or_suffix ~root =
+      if not (Root.is_node root t)
+      then
+        if Root.is_node root parent_or_suffix
+        then
+          (* Funny things happen at the root node - its total count actually ends up being
+             the number of _entries_ and in general has no relation to the total counts of
+             its children. *)
+          ()
+        else (
+          let parent_total_count = total_count parent_or_suffix in
+          let parent_delta = parent_or_suffix.delta in
+          let total_count = total_count t in
+          let delta = t.delta in
+          if total_count + delta > parent_total_count + parent_delta
+          then (
+            (* The above inequality can't hold for the "true" values of [delta] and
+               [parent_delta], so (since [parent_delta] is an overapproximation) we know
+               that the true delta is at most this: *)
+            let delta = parent_total_count + parent_delta - total_count in
+            assert (delta >= 0);
+            t.delta <- delta))
+    ;;
+
+    let update_delta_from_parents t ~root =
+      update_delta_from_parent_or_suffix t ~parent_or_suffix:t.parent ~root;
+      update_delta_from_parent_or_suffix t ~parent_or_suffix:t.suffix_link ~root
+    ;;
+
+    let update_parent_heavy_totals t ~root ~heaviness_threshold =
+      if not (Root.is_node root t)
+      then (
         let heavy_count = heavy_count t ~heaviness_threshold in
         let parent = t.parent in
         let suffix = t.suffix_link in
         let grand_parent = t.parent.suffix_link in
         if is_real parent
         then
-          Summary.add_child
+          Summary.add_child_heavy_count
             parent.summary
             ~child:t
-            ~child_total_count:total_count
             ~child_heavy_count:heavy_count;
         if is_real suffix
         then
-          Summary.add_child
+          Summary.add_child_heavy_count
             suffix.summary
             ~child:t
-            ~child_total_count:total_count
             ~child_heavy_count:heavy_count;
         if is_real grand_parent
         then
-          Summary.add_grand_child
+          Summary.add_grand_child_heavy_count
             grand_parent.summary
-            ~grand_child_total_count:total_count
             ~grand_child_heavy_count:heavy_count)
     ;;
 
@@ -893,7 +988,7 @@ module Make (X : Char) = struct
         if is_removable suffix_refcount
         then (
           let count = suffix.count in
-          let delta = suffix.max_edge_squashed in
+          let delta = suffix.delta in
           let upper_bound = count + delta in
           if upper_bound < threshold
           then
@@ -913,14 +1008,17 @@ module Make (X : Char) = struct
 
     let maybe_squash_item ~root ~queue ~threshold ~depth item =
       let node = item.node in
-      let count = node.count in
-      let delta = node.max_edge_squashed in
-      let upper_bound = count + delta in
-      if upper_bound < threshold
-      then (
-        Queue.remove ~node ~item;
-        let refcount = node.refcount in
-        squash ~root ~queue ~threshold ~depth ~count ~upper_bound ~refcount node)
+      let refcount = node.refcount in
+      if not (is_mergable_or_removable refcount)
+      then Queue.remove ~node ~item
+      else (
+        let count = node.count in
+        let delta = node.delta in
+        let upper_bound = count + delta in
+        if upper_bound < threshold
+        then (
+          Queue.remove ~node ~item;
+          squash ~root ~queue ~threshold ~depth ~count ~upper_bound ~refcount node))
     ;;
 
     let compress ~root ~threshold =
@@ -1116,6 +1214,134 @@ module Make (X : Char) = struct
     ;;
   end
 
+  module Elaborated : sig
+    module Plain_node = Node
+
+    module Node : sig
+      type t [@@deriving sexp_of]
+
+      val plain : t -> Plain_node.t
+      val parent : t -> t
+      val suffix : t -> t
+      val children : t -> (X.t array, t) List.Assoc.t
+      val prefixes : t -> (X.t array, t) List.Assoc.t
+    end
+
+    type t
+
+    val of_root : Plain_node.Root.t -> merge_prefixes:bool -> t
+    val find_node_exn : t -> Plain_node.t -> Node.t
+  end = struct
+    module Plain_node = Node
+
+    module Node = struct
+      type t =
+        { plain : Plain_node.t
+        ; mutable parent : t
+        ; mutable suffix : t
+        ; children : (X.t array, t) List.Assoc.t
+        ; mutable prefixes : (X.t array, t) List.Assoc.t
+        }
+
+      let plain t = t.plain
+      let parent t = t.parent
+      let suffix t = t.suffix
+      let children t = t.children
+      let prefixes t = t.prefixes
+
+      let rec sexp_of_t t =
+        let total_count =
+          if Plain_node.has_summary t.plain
+          then [%sexp (Plain_node.total_count t.plain : int)]
+          else [%sexp "???"]
+        in
+        [%message
+          ""
+            ~count:(Plain_node.count t.plain : int)
+            (total_count : Sexp.t)
+            ~id:(Plain_node.id t.plain : Plain_node.Id.t)
+            ~prefixes:(t.prefixes : (X.t array, t) List.Assoc.t)
+            ~children:(t.children : (X.t array, t) List.Assoc.t)]
+      ;;
+    end
+
+    type t = Node.t Plain_node.Id.Table.t
+
+    let find_node_exn t node = Hashtbl.find_exn t (Plain_node.id node)
+
+    let of_root plain_root ~merge_prefixes : t =
+      let t = Plain_node.Id.Table.create () in
+      let plain_root_node = Plain_node.Root.node plain_root in
+      let rec dummy : Node.t =
+        { plain = plain_root_node
+        ; parent = dummy
+        ; suffix = dummy
+        ; children = []
+        ; prefixes = []
+        }
+      in
+      let rec mk_node plain : Node.t =
+        let children =
+          Plain_node.fold_children
+            plain
+            ~root:plain_root
+            ~init:[]
+            ~f:(fun plain_child children ->
+              let edge =
+                Array.sub
+                  (Plain_node.edge_array plain_child)
+                  ~pos:(Plain_node.edge_start plain_child)
+                  ~len:(Plain_node.edge_length plain_child)
+              in
+              let child = mk_node plain_child in
+              (edge, child) :: children)
+        in
+        let parent = dummy (* fix in second pass *) in
+        let suffix = dummy (* fix in second pass *) in
+        let prefixes = [] (* fix in second pass *) in
+        let node : Node.t = { plain; parent; suffix; children; prefixes } in
+        Hashtbl.add_exn t ~key:(Plain_node.id plain) ~data:node;
+        node
+      in
+      let root = mk_node plain_root_node in
+      root.parent <- root;
+      root.suffix <- root;
+      let rec fix_back_pointers (node : Node.t) ~parent ~leading_edge =
+        node.parent <- parent;
+        let suffix = find_node_exn t (Plain_node.suffix node.plain) in
+        node.suffix <- suffix;
+        suffix.prefixes <- (leading_edge, node) :: suffix.prefixes;
+        List.iter node.children ~f:(fun (_, child) ->
+          fix_back_pointers child ~parent:node ~leading_edge)
+      in
+      List.iter root.children ~f:(fun (edge, child) ->
+        let leading_edge =
+          (* Just the part of the edge taken off by the suffix link, which is to say, the
+             first character *)
+          [| edge.(0) |]
+        in
+        fix_back_pointers child ~parent:root ~leading_edge);
+      let rec do_merge_prefixes (node : Node.t) =
+        node.prefixes
+        <- List.map node.prefixes ~f:(fun (leading_edge, child) ->
+          (* Find a chain of prefixes with count 0, only one prefix, and no children *)
+          let rec chain (desc : Node.t) edges =
+            if Plain_node.count desc.plain <> 0
+            then edges, desc
+            else (
+              match desc.children, desc.prefixes with
+              | [], [ (edge, child) ] -> chain child (edge :: edges)
+              | _ -> edges, desc)
+          in
+          let edges, last_child = chain child [ leading_edge ] in
+          Array.concat edges, last_child);
+        List.iter node.children ~f:(fun (_, child) -> do_merge_prefixes child)
+      in
+      if merge_prefixes then do_merge_prefixes root;
+      t
+    ;;
+  end
+
   type state =
     | Uncompressed
     | Compressed of X.t array
@@ -1167,10 +1393,23 @@ module Make (X : Char) = struct
       Node.iter_children ~root ~f:(loop depth) node
     in
     loop 0 (Node.Root.node root);
+    (* We can improve the deltas once we know the total counts (see
+       [Node.update_delta_from_parent]), but deltas figure in what's a heavy hitter,
+       so we end up with three passes:
+
+       1. Accumulate totals (bottom-up)
+       2. Use totals to improve deltas (top-down)
+       3. Use deltas to calculate heavy hitters (bottom-up) *)
+    for i = t.max_length downto 0 do
+      List.iter nodes.(i) ~f:(fun node -> Node.update_parent_totals ~root node)
+    done;
+    for i = 1 to t.max_length do
+      List.iter nodes.(i) ~f:(fun node -> Node.update_delta_from_parents ~root node)
+    done;
     for i = t.max_length downto 0 do
       List.iter nodes.(i) ~f:(fun node ->
         Node.finalize_summary ~heaviness_threshold node;
-        Node.update_parents_summary ~root ~heaviness_threshold node)
+        Node.update_parent_heavy_totals ~root ~heaviness_threshold node)
     done
   ;;
 
@@ -1184,6 +1423,7 @@ module Make (X : Char) = struct
   ;;
 
   let insert t ~common_prefix array ~count =
+    assert (count > 0);
     let len = Array.length array in
     let total_len = common_prefix + len in
     if total_len > t.max_length then t.max_length <- total_len;
@@ -1266,5 +1506,11 @@ module Make (X : Char) = struct
 
   let contains_heavy t node =
     Node.contains_heavy node ~heaviness_threshold:t.heaviness_threshold
+  ;;
+
+  let dump_subtree t node =
+    let elaborated_tree = Elaborated.of_root t.root ~merge_prefixes:true in
+    let elaborated_node = Elaborated.find_node_exn elaborated_tree node in
+    Elaborated.Node.sexp_of_t elaborated_node
   ;;
 end

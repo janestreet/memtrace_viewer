@@ -1,6 +1,8 @@
 open! Core
 include Data_intf
 
+let enable_invariants = false
+
 module Location = struct
   module T = struct
     type t =
@@ -494,6 +496,86 @@ module Fragment_trie = struct
   module type Suffix_tree =
     Data_intf.Suffix_tree with type entry := Entry.t and type location := Location.t
 
+  let invariant_on_suffix_tree
+        (type tree)
+        (module Tree : Suffix_tree with type t = tree)
+        (tree : tree)
+    =
+    let backtraces_by_id : Backtrace.Reversed.t Tree.Node.Id.Table.t =
+      let table = Tree.Node.Id.Table.create () in
+      let rec loop ~node ~backtrace_rev =
+        Hashtbl.set table ~key:(Tree.Node.id node) ~data:backtrace_rev;
+        List.iter (Tree.Node.children node) ~f:(fun (edge, child) ->
+          let backtrace_rev = Backtrace.Reversed.cons edge backtrace_rev in
+          loop ~node:child ~backtrace_rev)
+      in
+      loop ~node:(Tree.root tree) ~backtrace_rev:Backtrace.Reversed.nil;
+      table
+    in
+    List.iter
+      (Tree.Node.children (Tree.root tree))
+      ~f:(fun (_edge, child_of_root) ->
+        let rec loop ~node ~suffix_backtrace_rev =
+          let suffix =
+            match Tree.Node.suffix node with
+            | None ->
+              raise_s [%message "Non-root node has no suffix" (node : Tree.Node.Debug.t)]
+            | Some suffix -> suffix
+          in
+          let actual_suffix_backtrace_rev =
+            match Hashtbl.find backtraces_by_id (Tree.Node.id suffix) with
+            | Some backtrace -> backtrace
+            | None ->
+              raise_s
+                [%message
+                  "Node's suffix not found by id"
+                    (node : Tree.Node.Debug.t)
+                    (suffix : Tree.Node.Debug.t)]
+          in
+          if not
+               (Backtrace.Reversed.equal suffix_backtrace_rev actual_suffix_backtrace_rev)
+          then
+            raise_s
+              [%message
+                "Node's suffix has wrong backtrace"
+                  (node : Tree.Node.Debug.t)
+                  (suffix : Tree.Node.Debug.t)
+                  ~expected_suffix:(suffix_backtrace_rev : Backtrace.Reversed.Debug.t)
+                  ~found_suffix:(actual_suffix_backtrace_rev : Backtrace.Reversed.Debug.t)];
+          List.iter (Tree.Node.children node) ~f:(fun (edge, child) ->
+            let suffix_backtrace_rev =
+              Backtrace.Reversed.cons edge suffix_backtrace_rev
+            in
+            loop ~node:child ~suffix_backtrace_rev)
+        in
+        loop ~node:child_of_root ~suffix_backtrace_rev:Backtrace.Reversed.nil)
+  ;;
+
+  let invariant t =
+    Fragment.deep_fold_callees
+      t.root
+      ~init:()
+      ~backtrace_rev:Backtrace.Reversed.nil
+      ~f:(fun ~backtrace_rev ~fragment () ->
+        if not (Backtrace.Reversed.equal backtrace_rev (Fragment.backtrace_rev fragment))
+        then
+          raise_s
+            [%message
+              "Fragment's reversed backtrace doesn't match accumulator"
+                (backtrace_rev : Backtrace.Reversed.Debug.t)
+                (Fragment.backtrace_rev fragment : Backtrace.Reversed.Debug.t)];
+        let rev_of_backtrace =
+          Fragment.backtrace fragment |> List.rev |> Backtrace.Reversed.of_reversed_list
+        in
+        if not (Backtrace.Reversed.equal backtrace_rev rev_of_backtrace)
+        then
+          raise_s
+            [%message
+              "Fragment's forward and backward backtraces don't match"
+                (backtrace_rev : Backtrace.Reversed.Debug.t)
+                (rev_of_backtrace : Backtrace.Reversed.Debug.t)])
+  ;;
+
   let create ~(root : Fragment.t) ~total_allocations =
     assert (
       List.equal
@@ -502,6 +584,7 @@ module Fragment_trie = struct
         root.extensions_by_callee);
     let children_of_root = Location.Table.of_alist_exn root.extensions_by_callee in
     let t = { root; children_of_root; total_allocations } in
+    if enable_invariants then invariant t;
     t
   ;;
 
@@ -564,6 +647,7 @@ module Fragment_trie = struct
         (tree : tree)
     : t
     =
+    if enable_invariants then invariant_on_suffix_tree (module Tree) tree;
     let id_gen = Fragment.Id.Generator.create () in
     let old_root_node = Tree.root tree in
     let old_root_children = Tree.Node.children old_root_node in
