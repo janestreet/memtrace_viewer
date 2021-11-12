@@ -182,6 +182,41 @@ module S_time_ns : S with type t = Time_ns.t and type Diff.t = Time_ns.Span.t = 
   ;;
 end
 
+module Diff_byte_units : Diff with type t = Byte_units.t = struct
+  type t = Byte_units.t
+
+  let ( / ) = Byte_units.( / )
+  let one_kilobyte = 1. |> Byte_units.of_kilobytes
+  let one_megabyte = 1. |> Byte_units.of_megabytes
+  let one_gigabyte = 1. |> Byte_units.of_gigabytes
+
+  let round_to_nice ~dir x =
+    if Byte_units.(x < one_kilobyte)
+    then
+      nice_num (x |> Byte_units.bytes_float) ~round_dir:dir
+      |> Byte_units.of_bytes_float_exn
+    else if Byte_units.(x < one_megabyte)
+    then nice_num (x |> Byte_units.kilobytes) ~round_dir:dir |> Byte_units.of_kilobytes
+    else if Byte_units.(x < one_gigabyte)
+    then nice_num (x |> Byte_units.megabytes) ~round_dir:dir |> Byte_units.of_megabytes
+    else nice_num (x |> Byte_units.gigabytes) ~round_dir:dir |> Byte_units.of_gigabytes
+  ;;
+end
+
+module S_byte_units : S with type t = Byte_units.t and type Diff.t = Byte_units.t = struct
+  module Diff = Diff_byte_units
+  include Byte_units
+
+  let round_to_multiple_of_nice ~relative_to ~dir t d =
+    S_float.round_to_multiple_of_nice
+      ~relative_to:(relative_to |> Byte_units.bytes_float)
+      ~dir
+      (t |> Byte_units.bytes_float)
+      (d |> Byte_units.bytes_float)
+    |> Byte_units.of_bytes_float_exn
+  ;;
+end
+
 module Make (T : S) = struct
   let round x = T.Diff.round_to_nice ~dir:`Near x
   let round_down x = T.Diff.round_to_nice ~dir:`Down x
@@ -237,4 +272,10 @@ module Time_ns = struct
 
     let loose_labels = loose_labels ~relative_to:Time_ns.Span.zero
   end
+end
+
+module Byte_units = struct
+  include Make (S_byte_units)
+
+  let loose_labels = loose_labels ~relative_to:Byte_units.zero
 end

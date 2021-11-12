@@ -1,7 +1,7 @@
 open! Core
 open Memtrace_viewer_common.Range
 
-module Tests_on_int_ranges = struct
+module _ = struct
   open Make (Int)
 
   let%expect_test "inter" =
@@ -34,7 +34,7 @@ module Tests_on_int_ranges = struct
   ;;
 end
 
-module Quickcheck_tests = struct
+module _ = struct
   open Make (Int)
 
   let assert_equal_by ~equal ~sexp_of_t ans1 ans2 =
@@ -144,7 +144,7 @@ module Quickcheck_tests = struct
       ()
   ;;
 
-  module Or_empty = struct
+  module _ = struct
     open! Or_empty
 
     let assert_equal ans1 ans2 =

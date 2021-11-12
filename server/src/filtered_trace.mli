@@ -16,6 +16,7 @@ module Event : sig
     | Promote of Obj_id.t
     | Collect of Obj_id.t
     | End
+  [@@deriving sexp_of]
 end
 
 type t
@@ -26,7 +27,8 @@ val create
   -> filter:Filter.t
   -> t
 
-val trace : t -> Memtrace.Trace.Reader.t
+val word_size : t -> Byte_units.t
+val sample_rate : t -> float
 
 module Mode : sig
   type t =

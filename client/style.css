@@ -215,7 +215,13 @@ table.location-table tbody tr:hover {
 }
 .graph-label {
   font-size: 15px;
+}
+.graph-label-x {
   text-anchor: middle;
+}
+.graph-label-y {
+  text-anchor: end;
+  dominant-baseline: central;
 }
 .graph-label.graph-label-long {
   text-anchor: start;

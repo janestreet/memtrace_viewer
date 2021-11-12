@@ -8,8 +8,8 @@ module Series : sig
   val create
     :  ?css_class:string
     -> max_x:Time_ns.Span.t
-    -> max_y:float
-    -> (Time_ns.Span.t * float) list
+    -> max_y:Byte_units.t
+    -> (Time_ns.Span.t * Byte_units.t) list
     -> t
 end
 

@@ -46,15 +46,17 @@ let time_span_of_timedelta time =
   Int64.(us * 1000L) |> Int63.of_int64_exn |> Time_ns.Span.of_int63_ns
 ;;
 
-let bytes_of_int_words ~trace words =
-  let info = Memtrace.Trace.Reader.info trace in
-  words * info.word_size |> Byte_units.of_bytes_int
+let word_size trace =
+  (Memtrace.Trace.Reader.info trace).word_size / 8 |> Byte_units.of_bytes_int
 ;;
 
+let bytes_of_words ~trace words = Byte_units.scale (word_size trace) words
+let bytes_of_int_words ~trace words = bytes_of_words ~trace (words |> Float.of_int)
+
 let bytes_of_nsamples ~trace nsamples =
-  let info = Memtrace.Trace.Reader.info trace in
-  let words = Float.of_int nsamples /. info.sample_rate in
-  words *. (info.word_size |> Float.of_int) |> Byte_units.of_bytes_float_exn
+  let sample_rate = (Memtrace.Trace.Reader.info trace).sample_rate in
+  let words = Float.of_int nsamples /. sample_rate in
+  bytes_of_words ~trace words
 ;;
 
 module Cached_predicate : sig
@@ -247,7 +249,8 @@ type t =
   ; collect_on_promotion : bool
   }
 
-let trace { trace; _ } = trace
+let word_size t = word_size t.trace
+let sample_rate t = (Memtrace.Trace.Reader.info t.trace).sample_rate
 
 let create ~trace ~loc_cache ~filter =
   let interesting =
@@ -269,10 +272,18 @@ let create ~trace ~loc_cache ~filter =
 ;;
 
 module Event = struct
+  module Source = struct
+    type t = Memtrace.Trace.Allocation_source.t =
+      | Minor
+      | Major
+      | External
+    [@@deriving sexp_of]
+  end
+
   type t =
     | Alloc of
         { obj_id : Obj_id.t
-        ; source : Memtrace.Trace.Allocation_source.t
+        ; source : Source.t
         ; single_allocation_size : Byte_units.t
         ; nsamples : int
         ; size : Byte_units.t
@@ -283,6 +294,51 @@ module Event = struct
     | Promote of Obj_id.t
     | Collect of Obj_id.t
     | End
+
+  module As_sexp = struct
+    type t =
+      | Alloc of
+          { obj_id : Obj_id.t
+          ; source : Source.t
+          ; single_allocation_size : Byte_units.t
+          ; nsamples : int
+          ; size : Byte_units.t
+          ; backtrace : Location.t array
+          ; common_prefix : int
+          }
+      | Promote of { obj_id : Obj_id.t }
+      | Collect of { obj_id : Obj_id.t }
+      | End
+    [@@deriving sexp_of]
+  end
+
+  let as_sexp : t -> As_sexp.t = function
+    | Alloc
+        { obj_id
+        ; source
+        ; single_allocation_size
+        ; nsamples
+        ; size
+        ; backtrace_buffer
+        ; backtrace_length
+        ; common_prefix
+        } ->
+      let backtrace = Array.sub backtrace_buffer ~pos:0 ~len:backtrace_length in
+      Alloc
+        { obj_id
+        ; source
+        ; single_allocation_size
+        ; nsamples
+        ; size
+        ; backtrace
+        ; common_prefix
+        }
+    | Promote obj_id -> Promote { obj_id }
+    | Collect obj_id -> Collect { obj_id }
+    | End -> End
+  ;;
+
+  let sexp_of_t t = As_sexp.sexp_of_t (t |> as_sexp)
 end
 
 module Mode = struct

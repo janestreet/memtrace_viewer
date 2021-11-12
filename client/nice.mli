@@ -55,3 +55,7 @@ module Time_ns : sig
       -> Time_ns.Span.t list
   end
 end
+
+module Byte_units : sig
+  val loose_labels : ?max_count:int -> Byte_units.t -> Byte_units.t -> Byte_units.t list
+end

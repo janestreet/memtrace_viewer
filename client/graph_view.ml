@@ -9,9 +9,9 @@ module Node_svg = Virtual_dom_svg.Node
 module Series = struct
   type t =
     { css_class : string option
-    ; points : (Time_ns.Span.t * float) list
+    ; points : (Time_ns.Span.t * Byte_units.t) list
     ; max_x : Time_ns.Span.t
-    ; max_y : float
+    ; max_y : Byte_units.t
     }
 
   let create ?css_class ~max_x ~max_y points = { css_class; points; max_x; max_y }
@@ -46,12 +46,12 @@ module Viewport : sig
     -> height:float
     -> pos:float * float
     -> max_x:Time_ns.Span.t
-    -> max_y:float
+    -> max_y:Byte_units.t
     -> t
 
   val x_coord_of : t -> Time_ns.Span.t -> float
-  val y_coord_of : t -> float -> float
-  val coords_of : t -> Time_ns.Span.t * float -> float * float
+  val y_coord_of : t -> Byte_units.t -> float
+  val coords_of : t -> Time_ns.Span.t * Byte_units.t -> float * float
   val left : t -> float
   val right : t -> float
   val top : t -> float
@@ -81,12 +81,16 @@ end = struct
     let scale_x =
       if Time_ns.Span.(max_x = zero) then 0. else width /. (max_x |> Time_ns.Span.to_sec)
     in
-    let scale_y = if Float.(max_y = 0.) then 0. else ~-.height /. max_y in
+    let scale_y =
+      if Byte_units.(max_y = zero)
+      then 0.
+      else ~-.height /. (max_y |> Byte_units.bytes_float)
+    in
     { origin_x; origin_y; scale_x; scale_y; top; right; width; height }
   ;;
 
   let x_coord_of t x = t.origin_x +. ((x |> Time_ns.Span.to_sec) *. t.scale_x)
-  let y_coord_of t y = t.origin_y +. (y *. t.scale_y)
+  let y_coord_of t y = t.origin_y +. ((y |> Byte_units.bytes_float) *. t.scale_y)
   let coords_of t (x, y) = x_coord_of t x, y_coord_of t y
   let left t = t.origin_x
   let right t = t.right
@@ -125,12 +129,10 @@ let component ~series ~regions ~width ~height ~start_time ~time_view ~set_time_v
     let max_x, max_y =
       List.fold_left
         series
-        ~init:(Time_ns.Span.zero, 0.)
+        ~init:(Time_ns.Span.zero, Byte_units.zero)
         ~f:(fun (max_x, max_y) (series : Series.t) ->
-          Time_ns.Span.max max_x series.max_x, Float.max max_y series.max_y)
+          Time_ns.Span.max max_x series.max_x, Byte_units.max max_y series.max_y)
     in
-    (* Add a bit of headroom so that points at the top of the range are still visible *)
-    let max_y = max_y *. 1.05 in
     max_x, max_y
   in
   let viewport =
@@ -138,13 +140,13 @@ let component ~series ~regions ~width ~height ~start_time ~time_view ~set_time_v
     and width = width
     and height = height
     and time_view = time_view in
-    let data_pos_x = width *. 0.05 in
-    let data_pos_y = 0. in
-    let data_width = width *. 0.9 in
+    let data_pos_x = width *. 0.1 in
+    let data_pos_y = height *. 0.05 in
+    let data_width = width *. 0.85 in
     let data_height =
       match time_view with
-      | Time_view.Elapsed_seconds -> 0.9 *. height
-      | Wall_time -> 0.75 *. height
+      | Time_view.Elapsed_seconds -> 0.85 *. height
+      | Wall_time -> 0.7 *. height
     in
     Viewport.create
       ~width:data_width
@@ -161,10 +163,11 @@ let component ~series ~regions ~width ~height ~start_time ~time_view ~set_time_v
      and start_time = start_time
      and time_view = time_view
      and set_time_view = set_time_view
-     and max_x, _ = max_xy
+     and max_x, max_y = max_xy
      and viewport = viewport
      and graph_lines = graph_lines in
-     let ticks =
+     let tick_length = Viewport.height viewport /. 20. in
+     let x_ticks =
        match time_view with
        | Elapsed_seconds ->
          (* Don't use Nice.Time_ns.Span yet because the ticks are (for now) just labeled as a
@@ -182,26 +185,40 @@ let component ~series ~regions ~width ~height ~start_time ~time_view ~set_time_v
            end_time
          |> List.map ~f:(fun t -> Time_ns.diff t start_time)
      in
-     let tick_marks : Node.t list =
-       List.map ticks ~f:(fun x ->
+     let y_ticks = Nice.Byte_units.loose_labels ~max_count:11 Byte_units.zero max_y in
+     let x_tick_marks : Node.t list =
+       List.map x_ticks ~f:(fun x ->
          let x = Viewport.x_coord_of viewport x in
          Node_svg.line
            ~attr:
              (Attr.many
                 [ Attr.class_ "graph-tick-mark"
                 ; Attr_svg.x1 x
-                ; Attr_svg.y1
-                    (Viewport.bottom viewport -. (Viewport.height viewport /. 20.))
+                ; Attr_svg.y1 (Viewport.bottom viewport -. tick_length)
                 ; Attr_svg.x2 x
                 ; Attr_svg.y2 (Viewport.bottom viewport)
                 ])
            [])
      in
-     let tick_labels : Node.t list =
+     let y_tick_marks : Node.t list =
+       List.map y_ticks ~f:(fun y ->
+         let y = Viewport.y_coord_of viewport y in
+         Node_svg.line
+           ~attr:
+             (Attr.many
+                [ Attr.class_ "graph-tick-mark"
+                ; Attr_svg.x1 (Viewport.left viewport +. tick_length)
+                ; Attr_svg.y1 y
+                ; Attr_svg.x2 (Viewport.left viewport)
+                ; Attr_svg.y2 y
+                ])
+           [])
+     in
+     let x_tick_labels : Node.t list =
        if Time_ns.Span.(max_x = zero)
        then []
        else
-         List.map ticks ~f:(fun x ->
+         List.map x_ticks ~f:(fun x ->
            let label_x =
              match time_view with
              | Elapsed_seconds -> Viewport.x_coord_of viewport x
@@ -220,24 +237,40 @@ let component ~series ~regions ~width ~height ~start_time ~time_view ~set_time_v
            in
            let classes =
              match time_view with
-             | Elapsed_seconds -> [ "graph-label" ]
-             | Wall_time -> [ "graph-label"; "graph-label-long" ]
+             | Elapsed_seconds -> [ "graph-label"; "graph-label-x" ]
+             | Wall_time -> [ "graph-label"; "graph-label-long"; "graph-label-x" ]
            in
            let transform_attrs =
              match time_view with
-             | Elapsed_seconds -> []
+             | Elapsed_seconds -> Attr.empty
              | Wall_time ->
-               [ Attr_svg.transform
-                   [ Rotate { a = `Deg 20.; x = label_x; y = label_y } ]
-               ]
+               Attr_svg.transform [ Rotate { a = `Deg 20.; x = label_x; y = label_y } ]
            in
            Node_svg.text
              ~attr:
                (Attr.many
-                  (List.concat
-                     [ [ Attr.classes classes; Attr_svg.x label_x; Attr_svg.y label_y ]
-                     ; transform_attrs
-                     ]))
+                  [ Attr.classes classes
+                  ; Attr_svg.x label_x
+                  ; Attr_svg.y label_y
+                  ; transform_attrs
+                  ])
+             [ Vdom.Node.text label ])
+     in
+     let y_tick_labels : Node.t list =
+       if Byte_units.(max_y = zero)
+       then []
+       else
+         List.map y_ticks ~f:(fun y ->
+           let label_x = Viewport.left viewport -. 5. in
+           let label_y = Viewport.y_coord_of viewport y in
+           let label = Byte_units.Short.to_string y in
+           Node_svg.text
+             ~attr:
+               (Attr.many
+                  [ Attr.classes [ "graph-label"; "graph-label-y" ]
+                  ; Attr_svg.x label_x
+                  ; Attr_svg.y label_y
+                  ])
              [ Vdom.Node.text label ])
      in
      let region_box (region : Region.t) =
@@ -340,9 +373,11 @@ let component ~series ~regions ~width ~height ~start_time ~time_view ~set_time_v
                         ])
                    []
                ; Node_svg.g graph_lines
-               ; Node_svg.g tick_marks
+               ; Node_svg.g x_tick_marks
+               ; Node_svg.g y_tick_marks
                ]
-           ; Node_svg.g tick_labels
+           ; Node_svg.g x_tick_labels
+           ; Node_svg.g y_tick_labels
            ; Node_svg.g region_boxes
            ]
        ; Node.div ~attr:(Attr.class_ "graph-x-axis-label") [ time_view_control ]

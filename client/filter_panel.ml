@@ -3,7 +3,6 @@ open! Bonsai_web
 module Attr = Vdom.Attr
 module Node = Vdom.Node
 module Node_svg = Virtual_dom_svg.Node
-module Attr_svg = Virtual_dom_svg.Attr
 open Memtrace_viewer_common
 
 let graph_view
@@ -29,18 +28,15 @@ let graph_view
         Time_ns.Span.max (Data.Graph.max_x graph) (Data.Graph.max_x filtered_graph)
     in
     let series_of_data_graph css_class (graph : Data.Graph.t) =
-      let max_y = Data.Graph.max_y graph |> Byte_units.bytes_float in
-      let points_rev =
-        List.rev_map (Data.Graph.points graph) ~f:(fun (x, y) ->
-          x, y |> Byte_units.bytes_float)
-      in
+      let max_y = Data.Graph.max_y graph in
+      let points_rev = List.rev (Data.Graph.points graph) in
       (* Make sure the graph has points at x=0 and x=max_x so that it ranges through the
          whole timeline. We can assume that the total allocations start at 0 and don't
          change after the last reported point. *)
       let last_x, last_y =
         match points_rev with
         | last_point :: _ -> last_point
-        | [] -> Time_ns.Span.zero, 0.
+        | [] -> Time_ns.Span.zero, Byte_units.zero
       in
       let points_rev =
         if Time_ns.Span.(last_x < max_x)
@@ -51,7 +47,7 @@ let graph_view
       let points =
         match points with
         | (x, _) :: _ when Time_ns.Span.(x = zero) -> points
-        | _ -> (Time_ns.Span.zero, 0.) :: points
+        | _ -> (Time_ns.Span.zero, Byte_units.zero) :: points
       in
       Graph_view.Series.create ~css_class ~max_x ~max_y points
     in

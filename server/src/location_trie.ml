@@ -1,5 +1,4 @@
 open! Core
-open Memtrace
 open Memtrace_viewer_common
 module Loc_hitters = Substring_heavy_hitters.Make (Location)
 
@@ -265,9 +264,8 @@ let trie_of_shh ~loc_cache ~rate ~word_size ~significance_frequency shh =
 ;;
 
 let build ~trace ~loc_cache ~tolerance ~significance_frequency =
-  let tinfo = Trace.Reader.info (Filtered_trace.trace trace) in
-  let rate = tinfo.sample_rate in
-  let word_size = tinfo.word_size / 8 |> Byte_units.of_bytes_int in
+  let rate = Filtered_trace.sample_rate trace in
+  let word_size = Filtered_trace.word_size trace in
   let shh = find_heavy_hitters ~trace ~tolerance in
   trie_of_shh shh ~loc_cache ~rate ~word_size ~significance_frequency
 ;;

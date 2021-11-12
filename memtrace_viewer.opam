@@ -16,7 +16,6 @@ depends: [
   "async_rpc_kernel"
   "bonsai"
   "core_kernel"
-  "incr_dom_keyboard"
   "ppx_jane"
   "async_rpc_websocket"
   "virtual_dom"
