@@ -1,3 +1,2 @@
 (library (name memtrace_viewer_common) (public_name memtrace_viewer.common)
- (libraries core_kernel.core async_kernel async_rpc_kernel)
- (preprocess (pps ppx_jane)))
+ (libraries core async_kernel async_rpc_kernel) (preprocess (pps ppx_jane)))
