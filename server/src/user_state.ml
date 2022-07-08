@@ -14,56 +14,37 @@ let default_tolerance = 0.01 |> percent
 (* Number of points in the time series produced for the graph. *)
 let graph_size = 450
 
-let time_ns_of_memtrace_timestamp ts =
-  Int64.(1000L * (ts |> Memtrace.Trace.Timestamp.to_int64))
-  |> Int63.of_int64_exn
-  |> Time_ns.of_int63_ns_since_epoch
-;;
-
-let info_of_trace_info
-      { Memtrace.Trace.Info.sample_rate
-      ; word_size
-      ; executable_name
-      ; host_name
-      ; ocaml_runtime_params
-      ; pid
-      ; start_time
-      ; context
-      }
-  =
-  { Data.Info.sample_rate
-  ; word_size
-  ; executable_name
-  ; host_name
-  ; ocaml_runtime_params
-  ; pid
-  ; start_time = start_time |> time_ns_of_memtrace_timestamp
-  ; context
-  }
-;;
-
 module Initial = struct
   type t =
-    { trace : Memtrace.Trace.Reader.t
+    { trace : Raw_trace.t
     ; loc_cache : Location.Cache.t
     ; graph : Data.Graph.t
     ; trie : Data.Fragment_trie.t
-    ; info : Data.Info.t
+    ; peak_allocations : Byte_units.t
+    ; peak_allocations_time : Time_ns.Span.t
+    ; call_sites : Data.Call_sites.t
     }
 
   let of_trace trace =
     let loc_cache = Location.Cache.create ~trace () in
+    let trace = Raw_trace.of_memtrace_trace trace in
     let filtered_trace = Filtered_trace.create ~trace ~loc_cache ~filter:Filter.default in
     let graph = Graph.build ~trace:filtered_trace ~size:graph_size in
-    let trie =
+    let trie, call_sites =
       Location_trie.build
         ~trace:filtered_trace
         ~loc_cache
         ~tolerance:default_tolerance
         ~significance_frequency:default_significance_frequency
     in
-    let info = info_of_trace_info (Memtrace.Trace.Reader.info trace) in
-    { trace; loc_cache; graph; trie; info }
+    let Peak.{ allocations = peak_allocations; time = peak_allocations_time } =
+      (* Note that we're computing this now, without a filter applied. This implies that
+         "live at peak" means live at the time of peak memory usage, not the time at which
+         the filtered allocations are at their maximum. This is both easier to deal with
+         and probably more useful. *)
+      Peak.find_peak_allocations trace
+    in
+    { trace; loc_cache; graph; trie; peak_allocations; peak_allocations_time; call_sites }
   ;;
 end
 
@@ -73,14 +54,26 @@ type t =
   }
 [@@deriving fields]
 
-let compute ~initial_state:Initial.{ trace; loc_cache; trie; graph; info } ~filter =
+let compute
+      ~initial_state:
+      Initial.
+        { trace
+        ; loc_cache
+        ; trie
+        ; peak_allocations
+        ; peak_allocations_time
+        ; call_sites
+        ; graph
+        }
+      ~filter
+  =
   let total_allocations_unfiltered = Data.Fragment_trie.total_allocations trie in
-  let trie, filtered_graph =
+  let trie, call_sites, filtered_graph =
     if Filter.is_default filter
-    then trie, None
+    then trie, call_sites, None
     else (
       let filtered_trace = Filtered_trace.create ~trace ~loc_cache ~filter in
-      let trie =
+      let trie, call_sites =
         Location_trie.build
           ~trace:filtered_trace
           ~loc_cache
@@ -88,17 +81,20 @@ let compute ~initial_state:Initial.{ trace; loc_cache; trie; graph; info } ~filt
           ~significance_frequency:default_significance_frequency
       in
       let filtered_graph = Graph.build ~trace:filtered_trace ~size:graph_size in
-      trie, Some filtered_graph)
+      trie, call_sites, Some filtered_graph)
   in
   let hot_paths = Hot_paths.hot_paths trie in
-  let hot_call_sites = Hot_call_sites.hot_call_sites trie in
-  let info = Some info in
+  let hot_locations = Hot_call_sites.hot_locations trie in
+  let info = Some (Raw_trace.info trace) in
   { Data.graph
   ; filtered_graph
   ; trie
+  ; peak_allocations
+  ; peak_allocations_time
   ; total_allocations_unfiltered
+  ; call_sites
   ; hot_paths
-  ; hot_call_sites
+  ; hot_locations
   ; info
   }
 ;;

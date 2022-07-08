@@ -43,8 +43,27 @@ module Make (Row : Row) (Col_id : Id) = struct
         ; row_ids_in_order : [ `All_in_default_order | `These of Row.Id.t list ]
         ; col_ids_in_order : Col_id.t list
         ; table_attrs : Vdom.Attr.t list
+        ; percentage_rendered : Percent.t
         }
       [@@deriving fields]
+
+      let create
+            ?(percentage_rendered = Percent.one_hundred_percent)
+            ~rows
+            ~cols
+            ~row_ids_in_order
+            ~col_ids_in_order
+            ~table_attrs
+            ()
+        =
+        Fields.create
+          ~percentage_rendered
+          ~rows
+          ~cols
+          ~row_ids_in_order
+          ~col_ids_in_order
+          ~table_attrs
+      ;;
     end
 
     module Model = struct
@@ -83,14 +102,12 @@ module Make (Row : Row) (Col_id : Id) = struct
             ~init:Row.Id.Map.empty
             ~add:(fun ~key ~data:_ t ->
               let before =
-                Option.map
-                  (Map.closest_key t `Less_than key)
-                  ~f:(fun (key', elt) -> key', { elt with after = Some key })
+                Option.map (Map.closest_key t `Less_than key) ~f:(fun (key', elt) ->
+                  key', { elt with after = Some key })
               in
               let after =
-                Option.map
-                  (Map.closest_key t `Greater_than key)
-                  ~f:(fun (key', elt) -> key', { elt with before = Some key })
+                Option.map (Map.closest_key t `Greater_than key) ~f:(fun (key', elt) ->
+                  key', { elt with before = Some key })
               in
               let set_opt thing map =
                 match thing with
@@ -199,17 +216,15 @@ module Make (Row : Row) (Col_id : Id) = struct
           | None -> ()))
     ;;
 
-    let apply_action input ~inject:_ =
-      let%map focus = Focus.create input in
-      fun ~schedule_event { Model.focus_row } action ->
-        let focus_row =
-          match (action : Action.t) with
-          | Set_focus_row focus_row -> focus_row
-          | Move_focus dir -> Focus.move focus focus_row ~dir
-        in
-        Option.iter focus_row ~f:(fun row_id ->
-          schedule_event (scroll_to_row_effect row_id));
-        { Model.focus_row }
+    let apply_action ~inject:_ ~schedule_event focus { Model.focus_row } action =
+      let focus_row =
+        match (action : Action.t) with
+        | Set_focus_row focus_row -> focus_row
+        | Move_focus dir -> Focus.move focus focus_row ~dir
+      in
+      Option.iter focus_row ~f:(fun row_id ->
+        schedule_event (scroll_to_row_effect row_id));
+      { Model.focus_row }
     ;;
 
     module Rendered = struct
@@ -227,12 +242,13 @@ module Make (Row : Row) (Col_id : Id) = struct
 
       type row =
         { focused : bool
-        ; cells : cell Col_id.Map.t
+        ; cells : cell Col_id.Map.t Lazy.t
         }
 
       type t =
         { cols : [ `With_groups of col_group list | `Without_groups of col list ] Incr.t
-        ; rows : row Row.Id.Map.t Incr.t
+        ; rendered_rows : row Row.Id.Map.t Incr.t
+        ; unrendered_rows_length : int Incr.t
         ; row_ids_in_order : Row.Id.t list Incr.t
         ; table_attrs : Vdom.Attr.t list Incr.t
         }
@@ -263,10 +279,26 @@ module Make (Row : Row) (Col_id : Id) = struct
               ~f:(fun a -> a.render)
           in
           Incr.Map.mapi (input >>| Input.rows) ~f:(fun ~key:row_id ~data:row ->
-            let cells = Map.map column_renderers ~f:(fun render -> render row_id row) in
+            let cells =
+              lazy (Map.map column_renderers ~f:(fun render -> render row_id row))
+            in
             { cells; focused = false })
         in
-        let rows =
+        let%pattern_bind row_ids_in_order, unrendered_rows_length =
+          let%map row_ids_in_order = row_ids_in_order
+          and percentage_rendered = input >>| Input.percentage_rendered in
+          if Percent.(percentage_rendered = one_hundred_percent)
+          then row_ids_in_order, 0
+          else (
+            let take =
+              Percent.to_mult percentage_rendered
+              *. Int.to_float (List.length row_ids_in_order)
+              |> Float.round_down
+              |> Float.to_int
+            in
+            List.take row_ids_in_order take, List.length row_ids_in_order - take)
+        in
+        let rendered_rows =
           (* after everything else, just come in and tweak the one element that
              has focus. *)
           let%map rows = rows
@@ -307,12 +339,17 @@ module Make (Row : Row) (Col_id : Id) = struct
                  { group; cols_in_group = List.map cols ~f:mk_col })))
           else `Without_groups (List.map cols_in_order ~f:mk_col)
         in
-        { table_attrs = input >>| Input.table_attrs; rows; row_ids_in_order; cols }
+        { table_attrs = input >>| Input.table_attrs
+        ; rendered_rows
+        ; unrendered_rows_length
+        ; row_ids_in_order
+        ; cols
+        }
       ;;
 
       let view_for_testing t =
         let%map cols = t.cols
-        and rows = t.rows
+        and rendered_rows = t.rendered_rows
         and row_ids_in_order = t.row_ids_in_order in
         lazy
           (let node_to_string node =
@@ -333,7 +370,7 @@ module Make (Row : Row) (Col_id : Id) = struct
                  ^ Option.value header_for_testing ~default:(node_to_string header.node)
                in
                Ascii_table_kernel.Column.create header (fun (row : row) ->
-                 node_to_string (Map.find_exn row.cells id).node)
+                 node_to_string (Map.find_exn (Lazy.force row.cells) id).node)
              in
              let data_cols =
                match cols with
@@ -344,7 +381,7 @@ module Make (Row : Row) (Col_id : Id) = struct
              in
              focus_col :: data_cols
            in
-           let rows = List.filter_map row_ids_in_order ~f:(Map.find rows) in
+           let rows = List.filter_map row_ids_in_order ~f:(Map.find rendered_rows) in
            Ascii_table_kernel.draw
              columns
              rows
@@ -365,38 +402,51 @@ module Make (Row : Row) (Col_id : Id) = struct
             List.map cols_in_group ~f:(fun { id; _ } -> id))
       ;;
 
+      (* use "\u{00a0}" (aka &nbsp;) to get the rows to render and take up vertical
+         space on the page even when empty. *)
+      let empty_row = Vdom.Node.tr [ Vdom.Node.td [ Vdom.Node.text "\u{00a0}" ] ]
+
       let view t ~inject =
         let col_ids_in_order = col_ids_in_order t in
         Incr.set_cutoff col_ids_in_order (Incr.Cutoff.of_equal [%equal: Col_id.t list]);
         let%map rows =
           let%bind col_ids_in_order = col_ids_in_order in
           let%map rendered_rows_by_key =
-            Incr.Map.mapi t.rows ~f:(fun ~key:row_id ~data:row ->
+            Incr.Map.mapi t.rendered_rows ~f:(fun ~key:row_id ~data:row ->
               let { cells; focused } = row in
-              let cells =
-                Map.mapi cells ~f:(fun ~key:_col_id ~data:{ node; attrs } ->
-                  Vdom.Node.td ~attr:(Vdom.Attr.many_without_merge attrs) [ node ])
-              in
-              let focus_attr =
-                if focused then Vdom.Attr.class_ "focused" else Vdom.Attr.empty
-              in
-              let on_click_attr =
-                Vdom.Attr.on_click (fun _ev ->
-                  inject (Action.Set_focus_row (Some row_id)))
-              in
-              Vdom.Node.tr
-                ~attr:
-                  Vdom.Attr.(
-                    on_click_attr
-                    @ focus_attr
-                    (* We use "data-row-id" instead of "id" because it can
-                       handle a wider range of strings, which is necessary for
-                       handling sexps. In addition, we also want to avoid
-                       collisions with existing "id"s *)
-                    @ create "data-row-id" (serialize_row_id row_id))
-                (List.map col_ids_in_order ~f:(fun col_id -> Map.find_exn cells col_id)))
-          and keys = t.row_ids_in_order in
-          List.filter_map keys ~f:(Map.find rendered_rows_by_key)
+              Vdom.Node.lazy_
+                (Lazy.map cells ~f:(fun cells ->
+                   let cells =
+                     Map.mapi cells ~f:(fun ~key:_col_id ~data:{ node; attrs } ->
+                       Vdom.Node.td
+                         ~attr:(Vdom.Attr.many_without_merge attrs)
+                         [ node ])
+                   in
+                   let focus_attr =
+                     if focused then Vdom.Attr.class_ "focused" else Vdom.Attr.empty
+                   in
+                   let on_click_attr =
+                     Vdom.Attr.on_click (fun _ev ->
+                       inject (Action.Set_focus_row (Some row_id)))
+                   in
+                   Vdom.Node.tr
+                     ~attr:
+                       Vdom.Attr.(
+                         on_click_attr
+                         @ focus_attr
+                         (* We use "data-row-id" instead of "id" because it can
+                            handle a wider range of strings, which is necessary for
+                            handling sexps. In addition, we also want to avoid
+                            collisions with existing "id"s *)
+                         @ create "data-row-id" (serialize_row_id row_id))
+                     (List.map col_ids_in_order ~f:(fun col_id ->
+                        Map.find_exn cells col_id)))))
+          and keys = t.row_ids_in_order
+          and unrendered_rows_length = t.unrendered_rows_length in
+          let unrendered_rows =
+            List.init unrendered_rows_length ~f:(fun _ -> empty_row)
+          in
+          List.filter_map keys ~f:(Map.find rendered_rows_by_key) @ unrendered_rows
         and col_defn_tags, header_rows =
           match%map t.cols with
           | `Without_groups cols ->
@@ -493,8 +543,10 @@ module Make (Row : Row) (Col_id : Id) = struct
             ~keys:[ key KeyJ; key ArrowDown ]
             ~description:"Move focus down"
             (fun _ev -> inject (Move_focus `Next))
-        ; command ~keys:[ key KeyK; key ArrowUp ] ~description:"Move focus up" (fun _ev ->
-            inject (Move_focus `Prev))
+        ; command
+            ~keys:[ key KeyK; key ArrowUp ]
+            ~description:"Move focus up"
+            (fun _ev -> inject (Move_focus `Prev))
         ]
     ;;
 
@@ -524,15 +576,26 @@ module Make (Row : Row) (Col_id : Id) = struct
       and focus_row = focus_row input model in
       { Result.view; view_for_testing; key_handler; focus_row; inject }
     ;;
-
-    let name = Source_code_position.to_string [%here]
   end
 
   include T
+  open Bonsai.Let_syntax
 
-  let bonsai =
-    Bonsai.Arrow_deprecated.With_incr.of_module
-      (module T)
-      ~default_model:(Model.create ())
+  let bonsai input =
+    let%sub focus = Bonsai.Incr.compute input ~f:Focus.create in
+    let%sub model, inject =
+      Bonsai.state_machine1
+        (module Model)
+        (module Action)
+        ~default_model:(Model.create ())
+        ~apply_action
+        focus
+    in
+    Bonsai.Incr.compute
+      (Tuple3.create <$> input <*> model <*> inject)
+      ~f:(fun params ->
+        let%pattern_bind.Incr input, model, inject = params in
+        let%bind.Incr inject = inject in
+        T.compute input model ~inject)
   ;;
 end

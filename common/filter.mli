@@ -20,6 +20,7 @@ type t =
   { allocated_range : Range.Time_ns_span.t
   ; collected_range : Range.Time_ns_span.Or_empty.t
   ; size_range : Range.Byte_units.t
+  ; lifetime_range : Range.Time_ns_span.t
   ; required_locations : Location_predicate.t list
   ; forbidden_locations : Location_predicate.t list
   ; hidden_locations : Location_predicate.t list

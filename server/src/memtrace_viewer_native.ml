@@ -2,7 +2,7 @@ open! Core
 open! Async
 open Memtrace
 open Memtrace_viewer_common
-module Time = Time_unix
+module Time = Time_float_unix
 
 let initialize_connection initial_state filter _ _ _ _ =
   User_state.create ~initial_state ~filter
@@ -98,5 +98,8 @@ let command =
 ;;
 
 module For_testing = struct
+  module Filtered_trace = Filtered_trace
+  module Location = Location
+  module Raw_trace = Raw_trace
   module Substring_heavy_hitters = Substring_heavy_hitters
 end

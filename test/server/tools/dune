@@ -1,0 +1,2 @@
+(executables (names generate_test_data)
+ (libraries core_unix.command_unix memtrace) (preprocess (pps ppx_jane)))

@@ -1,0 +1,5 @@
+(library (name memtrace_viewer_client) (modes byte) (flags :standard -w -31)
+ (libraries async_kernel async_js core bonsai.web memtrace_viewer_common
+  bonsai_simple_table bonsai.web_ui_element_size_hooks virtual_dom.keyboard
+  virtual_dom.input_widgets virtual_dom.svg)
+ (preprocess (pps js_of_ocaml-ppx ppx_jane)))

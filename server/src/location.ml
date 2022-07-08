@@ -15,77 +15,136 @@ module Code = struct
   include Hashable.Make_plain (T)
 end
 
-let convert_loc (loc : Memtrace.Trace.Location.t) =
-  Data.Location.create
-    ~filename:loc.filename
-    ~defname:loc.defname
-    ~line:loc.line
-    ~start_char:loc.start_char
-    ~end_char:loc.end_char
-;;
+module Trace_location = struct
+  module T = struct
+    type t = Memtrace.Trace.Location.t =
+      { filename : string
+      ; line : int
+      ; start_char : int
+      ; end_char : int
+      ; defname : string
+      }
+    [@@deriving sexp, compare, hash]
+  end
+
+  include T
+  include Hashable.Make_plain (T)
+
+  let to_call_site t =
+    Data.Call_site.create
+      ~filename:t.filename
+      ~line:t.line
+      ~start_char:t.start_char
+      ~end_char:t.end_char
+      ~defname:t.defname
+  ;;
+end
 
 module T : sig
   include Identifier.S
 
-  val allocation_site : t
+  val allocator : t
   val toplevel : t
   val dummy : t
 end = struct
   include Identifier.Make ()
 
-  let allocation_site = first_special
-  let toplevel = next_special allocation_site
+  let allocator = first_special
+  let toplevel = next_special allocator
   let dummy = max_value
 end
 
 module Cache = struct
+  module Call_site_entry = struct
+    type t =
+      { func : T.t
+      ; data : Data.Call_site.t
+      }
+  end
+
   type t =
     { trace : Memtrace.Trace.Reader.t
     ; loc_gen : T.Generator.t
-    ; code_table : T.t list Code.Table.t
-    ; data_table : Data.Location.t T.Table.t
-    ; location_table : T.t Data.Location.Table.t
+    ; call_site_gen : Call_site.Generator.t
+    ; code_table : Call_site.t list Code.Table.t
+    ; call_site_data_table : Call_site_entry.t Call_site.Table.t
+    ; call_sites_by_trace_loc : Call_site.t Trace_location.Table.t
+    ; loc_data_table : Data.Location.t T.Table.t
+    ; functions_by_defname : T.t String.Table.t
+    ; allocation_sites_by_call_site : T.t Call_site.Table.t
     }
-
-  let dummy_data =
-    Data.Location.create
-      ~filename:"(none)"
-      ~defname:"(none)"
-      ~start_char:0
-      ~end_char:0
-      ~line:0
-  ;;
 
   let create ~trace () =
-    let data_table = T.Table.create () in
-    T.Table.add_exn data_table ~key:T.allocation_site ~data:Data.Location.allocation_site;
-    T.Table.add_exn data_table ~key:T.toplevel ~data:Data.Location.toplevel;
-    T.Table.add_exn data_table ~key:T.dummy ~data:dummy_data;
+    let loc_data_table : Data.Location.t T.Table.t = T.Table.create () in
+    T.Table.add_exn loc_data_table ~key:T.allocator ~data:Data.Location.allocator;
+    T.Table.add_exn loc_data_table ~key:T.toplevel ~data:Data.Location.toplevel;
+    T.Table.add_exn loc_data_table ~key:T.dummy ~data:Data.Location.dummy;
     { trace
     ; loc_gen = T.Generator.create ()
+    ; call_site_gen = Call_site.Generator.create ()
     ; code_table = Code.Table.create ()
-    ; data_table
-    ; location_table = Data.Location.Table.create ()
+    ; call_site_data_table = Call_site.Table.create ()
+    ; call_sites_by_trace_loc = Trace_location.Table.create ()
+    ; loc_data_table
+    ; functions_by_defname = String.Table.create ()
+    ; allocation_sites_by_call_site = Call_site.Table.create ()
     }
   ;;
 
-  let loc_from_data t loc_data =
-    Data.Location.Table.find_or_add t.location_table loc_data ~default:(fun () ->
+  let function_from_defname t defname =
+    String.Table.find_or_add t.functions_by_defname defname ~default:(fun () ->
       let loc = T.Generator.generate t.loc_gen in
       assert (T.(loc < dummy));
-      T.Table.add_exn t.data_table ~key:loc ~data:loc_data;
+      let entry = Data.Location.create_function (Data.Function.create ~defname) in
+      T.Table.add_exn t.loc_data_table ~key:loc ~data:entry;
       loc)
   ;;
 
-  let locs_from_code t loc_code : T.t list =
-    Code.Table.find_or_add t.code_table loc_code ~default:(fun () ->
-      let locs = Memtrace.Trace.Reader.lookup_location_code t.trace loc_code in
-      List.map locs ~f:(fun loc_data ->
-        let loc_data = convert_loc loc_data in
-        loc_from_data t loc_data))
+  let call_site_from_trace_location t tloc =
+    Trace_location.Table.find_or_add t.call_sites_by_trace_loc tloc ~default:(fun () ->
+      let call_site = Call_site.Generator.generate t.call_site_gen in
+      let func = function_from_defname t tloc.defname in
+      let data = Trace_location.to_call_site tloc in
+      let entry : Call_site_entry.t = { func; data } in
+      Call_site.Table.add_exn t.call_site_data_table ~key:call_site ~data:entry;
+      call_site)
   ;;
 
-  let get_data t loc : Data.Location.t = T.Table.find_exn t.data_table loc
+  let call_sites_from_code t loc_code : Call_site.t list =
+    Code.Table.find_or_add t.code_table loc_code ~default:(fun () ->
+      let call_sites = Memtrace.Trace.Reader.lookup_location_code t.trace loc_code in
+      List.map call_sites ~f:(fun call_site ->
+        call_site_from_trace_location t call_site))
+  ;;
+
+  let get_defname t loc : string =
+    let data = T.Table.find_exn t.loc_data_table loc in
+    Data.Location.defname data
+  ;;
+
+  let call_site_entry t call_site : Call_site_entry.t =
+    Call_site.Table.find_exn t.call_site_data_table call_site
+  ;;
+
+  let get_call_site_data t call_site : Data.Call_site.t =
+    (call_site_entry t call_site).data
+  ;;
+
+  let get_function_of_call_site t call_site : T.t = (call_site_entry t call_site).func
+
+  let get_allocation_site_of_call_site t call_site : T.t =
+    Call_site.Table.find_or_add
+      t.allocation_sites_by_call_site
+      call_site
+      ~default:(fun () ->
+        let loc = T.Generator.generate t.loc_gen in
+        let data = get_call_site_data t call_site in
+        let entry = Data.Location.create_allocation_site data in
+        T.Table.add_exn t.loc_data_table ~key:loc ~data:entry;
+        loc)
+  ;;
+
+  let get_loc_data t loc : Data.Location.t = T.Table.find_exn t.loc_data_table loc
 end
 
 include T

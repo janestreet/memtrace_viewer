@@ -16,7 +16,7 @@ let rec less_than_fragment_callees fragment location1 location2 =
     | Some next -> less_than_fragment_callees next location1 location2)
 ;;
 
-let hot_call_sites trie =
+let hot_locations trie =
   let tbl = Fragment.Id.Table.create () in
   let () =
     Fragment_trie.fold_singletons trie ~init:() ~f:(fun ~location ~fragment () ->

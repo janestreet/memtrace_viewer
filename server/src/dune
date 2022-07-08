@@ -4,6 +4,6 @@
  (preprocess (pps ppx_jane)))
 
 (rule (targets embedded_files.ml embedded_files.mli)
- (deps %{bin:ocaml-embed-file} ../../client/main.bc.js
-  ../../client/style.css)
+ (deps %{bin:ocaml-embed-file} ../../client/bin/main.bc.js
+  ../../client/src/style.css)
  (action (bash "%{deps} -output embedded_files")))

@@ -55,6 +55,7 @@ module Make (X : Char) = struct
       -> find_result
 
     val get_child : root:Root.t -> t -> X.t -> t
+    val get_child_opt : root:Root.t -> t -> X.t -> t option
     val edge_array : t -> X.t array
     val edge_start : t -> int
     val edge_length : t -> int
@@ -601,21 +602,34 @@ module Make (X : Char) = struct
             first_child.next_sibling)
     ;;
 
+    exception No_such_child
+
     let rec get_child_in_list current char =
       if X.equal current.edge_key char
       then current
       else if is_dummy current
-      then failwith "get_child_in_list: No such child"
+      then raise No_such_child
       else get_child_in_list current.next_sibling char
     ;;
 
-    let get_child ~root t char =
+    let get_child0 ~root t char =
       if Root.is_node root t
       then (
         match X.Table.find (Root.children root) char with
         | Some child -> child
-        | None -> failwith "get_child: No such child")
+        | None -> raise No_such_child)
       else get_child_in_list t.first_child char
+    ;;
+
+    let get_child ~root t char =
+      try get_child0 ~root t char with
+      | No_such_child -> failwith "get_child: No such child"
+    ;;
+
+    let get_child_opt ~root t char =
+      match get_child0 ~root t char with
+      | child -> Some child
+      | exception No_such_child -> None
     ;;
 
     let edge_array t = t.edge_array

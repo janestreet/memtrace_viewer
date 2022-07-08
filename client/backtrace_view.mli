@@ -1,5 +1,0 @@
-open! Core
-open Memtrace_viewer_common
-open Bonsai_web
-
-val render : Data.Backtrace.t -> Vdom.Node.t

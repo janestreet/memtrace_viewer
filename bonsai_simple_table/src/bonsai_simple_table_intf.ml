@@ -86,7 +86,18 @@ module type S = sig
       ; row_ids_in_order : [ `All_in_default_order | `These of Row.Id.t list ]
       ; col_ids_in_order : Col_id.t list
       ; table_attrs : Vdom.Attr.t list
+      ; percentage_rendered : Percent.t
       }
+
+    val create
+      :  ?percentage_rendered:Percent.t
+      -> rows:Row.t Row.Id.Map.t
+      -> cols:Column.t Col_id.Map.t
+      -> row_ids_in_order:[ `All_in_default_order | `These of Row.Id.t list ]
+      -> col_ids_in_order:Col_id.t list
+      -> table_attrs:Vdom.Attr.t list
+      -> unit
+      -> t
   end
 
   module Action : sig
@@ -106,7 +117,7 @@ module type S = sig
       }
   end
 
-  val bonsai : (Input.t, Result.t) Bonsai.Arrow_deprecated.t
+  val bonsai : Input.t Value.t -> Result.t Computation.t
 end
 
 module type Bonsai_simple_table = sig

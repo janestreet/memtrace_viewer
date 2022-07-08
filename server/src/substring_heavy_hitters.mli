@@ -29,6 +29,7 @@ module Make (X : Char) : sig
     end
 
     val get_child : root:Root.t -> t -> X.t -> t
+    val get_child_opt : root:Root.t -> t -> X.t -> t option
     val edge_length : t -> int
     val edge_char : t -> int -> X.t
     val iter_children : t -> root:Root.t -> f:(t -> unit) -> unit

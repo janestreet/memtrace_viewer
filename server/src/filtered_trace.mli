@@ -2,31 +2,12 @@ open! Core
 open Memtrace_viewer_common
 
 module Event : sig
-  type t = private
-    | Alloc of
-        { obj_id : Obj_id.t
-        ; source : Memtrace.Trace.Allocation_source.t
-        ; single_allocation_size : Byte_units.t
-        ; nsamples : int
-        ; size : Byte_units.t
-        ; backtrace_buffer : Location.t array
-        ; backtrace_length : int
-        ; common_prefix : int
-        }
-    | Promote of Obj_id.t
-    | Collect of Obj_id.t
-    | End
-  [@@deriving sexp_of]
+  type t = Location.t Event.t [@@deriving sexp_of]
 end
 
 type t
 
-val create
-  :  trace:Memtrace.Trace.Reader.t
-  -> loc_cache:Location.Cache.t
-  -> filter:Filter.t
-  -> t
-
+val create : trace:Raw_trace.t -> loc_cache:Location.Cache.t -> filter:Filter.t -> t
 val word_size : t -> Byte_units.t
 val sample_rate : t -> float
 
@@ -41,3 +22,21 @@ module Mode : sig
 end
 
 val iter : t -> mode:Mode.t -> (Time_ns.Span.t -> Event.t -> unit) -> unit
+
+module Call_sites : sig
+  module Callees_from_call_site : sig
+    type t = Location.Hash_set.t
+  end
+
+  module Calls_from_location : sig
+    type t = Callees_from_call_site.t Call_site.Table.t
+  end
+
+  type t = Calls_from_location.t Location.Table.t
+end
+
+val iter_and_gather_call_sites
+  :  t
+  -> mode:Mode.t
+  -> (Time_ns.Span.t -> Event.t -> unit)
+  -> Call_sites.t

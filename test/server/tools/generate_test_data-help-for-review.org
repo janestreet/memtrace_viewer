@@ -1,0 +1,11 @@
+* generate_test_data.exe
+
+: Generate some test data for Memtrace
+: 
+:   generate_test_data.exe FILENAME
+: 
+: === flags ===
+: 
+:   [-build-info]              . print info about this build and exit
+:   [-version]                 . print the version of this build and exit
+:   [-help], -?                . print this help text and exit
