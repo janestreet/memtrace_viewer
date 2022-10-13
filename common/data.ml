@@ -193,7 +193,7 @@ module Call_sites = struct
     |> Function.Table.of_alist_exn
   ;;
 
-  let for_function t func = Function.Table.find t func |> Option.value ~default:[]
+  let for_function t func = Hashtbl.find t func |> Option.value ~default:[]
 
   let for_location t (loc : Location.t) =
     match loc with
@@ -204,7 +204,7 @@ module Call_sites = struct
   module Serialized = struct
     type t = (Function.t * Call_site.t list) list [@@deriving bin_io, sexp]
 
-    let serialize t = t |> Function.Table.to_alist
+    let serialize t = t |> Hashtbl.to_alist
     let unserialize t = t |> Function.Table.of_alist_exn
   end
 end

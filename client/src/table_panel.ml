@@ -10,19 +10,18 @@ module State = struct
   let empty = { expanded_backtraces = Data.Backtrace.Set.empty }
 
   let expand { expanded_backtraces } fragment =
-    { expanded_backtraces =
-        Data.Backtrace.Set.add expanded_backtraces (Data.Fragment.backtrace fragment)
+    { expanded_backtraces = Set.add expanded_backtraces (Data.Fragment.backtrace fragment)
     }
   ;;
 
   let collapse { expanded_backtraces } fragment =
     { expanded_backtraces =
-        Data.Backtrace.Set.remove expanded_backtraces (Data.Fragment.backtrace fragment)
+        Set.remove expanded_backtraces (Data.Fragment.backtrace fragment)
     }
   ;;
 
   let is_expanded { expanded_backtraces } fragment =
-    Data.Backtrace.Set.mem expanded_backtraces (Data.Fragment.backtrace fragment)
+    Set.mem expanded_backtraces (Data.Fragment.backtrace fragment)
   ;;
 end
 

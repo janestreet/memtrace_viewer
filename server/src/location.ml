@@ -76,9 +76,9 @@ module Cache = struct
 
   let create ~trace () =
     let loc_data_table : Data.Location.t T.Table.t = T.Table.create () in
-    T.Table.add_exn loc_data_table ~key:T.allocator ~data:Data.Location.allocator;
-    T.Table.add_exn loc_data_table ~key:T.toplevel ~data:Data.Location.toplevel;
-    T.Table.add_exn loc_data_table ~key:T.dummy ~data:Data.Location.dummy;
+    Hashtbl.add_exn loc_data_table ~key:T.allocator ~data:Data.Location.allocator;
+    Hashtbl.add_exn loc_data_table ~key:T.toplevel ~data:Data.Location.toplevel;
+    Hashtbl.add_exn loc_data_table ~key:T.dummy ~data:Data.Location.dummy;
     { trace
     ; loc_gen = T.Generator.create ()
     ; call_site_gen = Call_site.Generator.create ()
@@ -92,38 +92,38 @@ module Cache = struct
   ;;
 
   let function_from_defname t defname =
-    String.Table.find_or_add t.functions_by_defname defname ~default:(fun () ->
+    Hashtbl.find_or_add t.functions_by_defname defname ~default:(fun () ->
       let loc = T.Generator.generate t.loc_gen in
       assert (T.(loc < dummy));
       let entry = Data.Location.create_function (Data.Function.create ~defname) in
-      T.Table.add_exn t.loc_data_table ~key:loc ~data:entry;
+      Hashtbl.add_exn t.loc_data_table ~key:loc ~data:entry;
       loc)
   ;;
 
   let call_site_from_trace_location t tloc =
-    Trace_location.Table.find_or_add t.call_sites_by_trace_loc tloc ~default:(fun () ->
+    Hashtbl.find_or_add t.call_sites_by_trace_loc tloc ~default:(fun () ->
       let call_site = Call_site.Generator.generate t.call_site_gen in
       let func = function_from_defname t tloc.defname in
       let data = Trace_location.to_call_site tloc in
       let entry : Call_site_entry.t = { func; data } in
-      Call_site.Table.add_exn t.call_site_data_table ~key:call_site ~data:entry;
+      Hashtbl.add_exn t.call_site_data_table ~key:call_site ~data:entry;
       call_site)
   ;;
 
   let call_sites_from_code t loc_code : Call_site.t list =
-    Code.Table.find_or_add t.code_table loc_code ~default:(fun () ->
+    Hashtbl.find_or_add t.code_table loc_code ~default:(fun () ->
       let call_sites = Memtrace.Trace.Reader.lookup_location_code t.trace loc_code in
       List.map call_sites ~f:(fun call_site ->
         call_site_from_trace_location t call_site))
   ;;
 
   let get_defname t loc : string =
-    let data = T.Table.find_exn t.loc_data_table loc in
+    let data = Hashtbl.find_exn t.loc_data_table loc in
     Data.Location.defname data
   ;;
 
   let call_site_entry t call_site : Call_site_entry.t =
-    Call_site.Table.find_exn t.call_site_data_table call_site
+    Hashtbl.find_exn t.call_site_data_table call_site
   ;;
 
   let get_call_site_data t call_site : Data.Call_site.t =
@@ -133,18 +133,15 @@ module Cache = struct
   let get_function_of_call_site t call_site : T.t = (call_site_entry t call_site).func
 
   let get_allocation_site_of_call_site t call_site : T.t =
-    Call_site.Table.find_or_add
-      t.allocation_sites_by_call_site
-      call_site
-      ~default:(fun () ->
-        let loc = T.Generator.generate t.loc_gen in
-        let data = get_call_site_data t call_site in
-        let entry = Data.Location.create_allocation_site data in
-        T.Table.add_exn t.loc_data_table ~key:loc ~data:entry;
-        loc)
+    Hashtbl.find_or_add t.allocation_sites_by_call_site call_site ~default:(fun () ->
+      let loc = T.Generator.generate t.loc_gen in
+      let data = get_call_site_data t call_site in
+      let entry = Data.Location.create_allocation_site data in
+      Hashtbl.add_exn t.loc_data_table ~key:loc ~data:entry;
+      loc)
   ;;
 
-  let get_loc_data t loc : Data.Location.t = T.Table.find_exn t.loc_data_table loc
+  let get_loc_data t loc : Data.Location.t = Hashtbl.find_exn t.loc_data_table loc
 end
 
 include T

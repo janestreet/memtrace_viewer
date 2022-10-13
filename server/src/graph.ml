@@ -12,12 +12,12 @@ let full_graph_and_max_time ~trace : (Time_ns.Span.t * Byte_units.t) list * Time
   Filtered_trace.iter trace ~mode:Preserve_times (fun time event ->
     (match event with
      | Alloc { obj_id; size; _ } ->
-       Obj_id.Table.add_exn objects ~key:obj_id ~data:{ size };
+       Hashtbl.add_exn objects ~key:obj_id ~data:{ size };
        total_size := Byte_units.(!total_size + size)
      | Promote _ -> ()
      | Collect obj_id ->
-       let obj_info = Obj_id.Table.find_exn objects obj_id in
-       Obj_id.Table.remove objects obj_id;
+       let obj_info = Hashtbl.find_exn objects obj_id in
+       Hashtbl.remove objects obj_id;
        total_size := Byte_units.(!total_size - obj_info.size)
      | End -> max_time := time);
     points := (time, !total_size) :: !points);

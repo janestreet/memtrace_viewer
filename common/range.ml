@@ -56,6 +56,10 @@ module Make (Point : Point) = struct
   type t = Point.t range [@@deriving sexp, bin_io, equal, quickcheck]
 
   let range lower_bound upper_bound = { lower_bound; upper_bound }
+  let at_least point = range (Closed point) No_bound
+  let at_most point = range No_bound (Closed point)
+  let greater_than point = range (Open point) No_bound
+  let less_than point = range No_bound (Open point)
   let all = { lower_bound = No_bound; upper_bound = No_bound }
 
   let is_all = function
@@ -135,6 +139,10 @@ module Make (Point : Point) = struct
     type t = Point.t or_empty [@@deriving sexp, bin_io, equal, quickcheck]
 
     let range lower_bound upper_bound = Non_empty { lower_bound; upper_bound }
+    let at_least point = Non_empty (at_least point)
+    let at_most point = Non_empty (at_most point)
+    let greater_than point = Non_empty (greater_than point)
+    let less_than point = Non_empty (less_than point)
     let all = Non_empty all
 
     let is_all t =

@@ -83,14 +83,14 @@ module Test_tree = struct
       else (
         let children = mk_children ~parent_id:id ~remaining in
         let suffix_id = String.subo id ~pos:1 in
-        let suffix = lazy (Node.Id.Table.find_exn nodes suffix_id) in
+        let suffix = lazy (Hashtbl.find_exn nodes suffix_id) in
         let node : Node.t = { id; entry; incoming_edge; children; suffix } in
-        Node.Id.Table.add_exn nodes ~key:id ~data:node;
+        Hashtbl.add_exn nodes ~key:id ~data:node;
         Some node)
     and mk_children ~parent_id ~remaining =
-      Char.Set.fold_right remaining ~init:[] ~f:(fun edge children ->
+      Set.fold_right remaining ~init:[] ~f:(fun edge children ->
         let id = parent_id ^ (edge |> String.of_char) in
-        let remaining = Char.Set.remove remaining edge in
+        let remaining = Set.remove remaining edge in
         match mk_node ~id ~incoming_edge:edge ~remaining with
         | Some child -> child :: children
         | None -> children)
@@ -105,7 +105,7 @@ module Test_tree = struct
       ; suffix = lazy root
       }
     in
-    Node.Id.Table.add_exn nodes ~key:"" ~data:root;
+    Hashtbl.add_exn nodes ~key:"" ~data:root;
     { root }
   ;;
 end
@@ -137,13 +137,13 @@ let check_fragment_trie fragment_trie ~suffix_tree =
       ~fragment_trie
       ~suffix_tree
       ~f:(fun ~fragment ~suffix_tree_node ->
-        Table.add_exn table ~key:suffix_tree_node.id ~data:fragment);
+        Hashtbl.add_exn table ~key:suffix_tree_node.id ~data:fragment);
     table
   in
   traverse_in_parallel ~fragment_trie ~suffix_tree ~f:(fun ~fragment ~suffix_tree_node ->
     let suffix_node = suffix_tree_node.suffix |> force in
     let expected_retracted_fragment =
-      Table.find_exn fragments_by_suffix_tree_id suffix_node.id
+      Hashtbl.find_exn fragments_by_suffix_tree_id suffix_node.id
     in
     match Test_fragment_trie.Fragment.retract fragment ~orient:Callers with
     | None ->

@@ -50,3 +50,7 @@ let main () =
   Incr_dom.Incr.State.set_max_height_allowed Incr_dom.Incr.State.t 1024;
   don't_wait_for (run ())
 ;;
+
+module For_testing = struct
+  module Graph_view = Graph_view
+end

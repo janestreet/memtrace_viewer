@@ -18,7 +18,7 @@ module Make (X : Hashable.S_plain) = struct
     ;;
 
     let find_or_create_child t x =
-      match X.Table.find t.children x with
+      match Hashtbl.find t.children x with
       | Some t -> t
       | None ->
         let count = 0 in
@@ -26,7 +26,7 @@ module Make (X : Hashable.S_plain) = struct
         let child_delta = delta in
         let children = X.Table.create () in
         let child = { count; delta; child_delta; children } in
-        X.Table.add_exn t.children ~key:x ~data:child;
+        Hashtbl.add_exn t.children ~key:x ~data:child;
         child
     ;;
 
@@ -38,8 +38,8 @@ module Make (X : Hashable.S_plain) = struct
 
     let compress t bucket =
       let rec loop parent t =
-        X.Table.filter_map_inplace ~f:(fun child -> loop t child) t.children;
-        let empty = X.Table.length t.children = 0 in
+        Hashtbl.filter_map_inplace ~f:(fun child -> loop t child) t.children;
+        let empty = Hashtbl.length t.children = 0 in
         let infrequent = t.count + t.delta <= bucket in
         if empty && infrequent
         then (
@@ -48,7 +48,7 @@ module Make (X : Hashable.S_plain) = struct
           None)
         else Some t
       in
-      X.Table.filter_map_inplace ~f:(fun child -> loop t child) t.children
+      Hashtbl.filter_map_inplace ~f:(fun child -> loop t child) t.children
     ;;
 
     let output t threshold =
@@ -67,7 +67,7 @@ module Make (X : Hashable.S_plain) = struct
           count, 0, results)
         else count, t.count + light_child_count, results
       and loop_children t =
-        X.Table.fold
+        Hashtbl.fold
           t.children
           ~f:(fun ~key ~data (c, f, r) ->
             let c', f', r' = loop key data in
@@ -78,7 +78,7 @@ module Make (X : Hashable.S_plain) = struct
       results
     ;;
 
-    let children t = X.Table.to_alist t.children
+    let children t = Hashtbl.to_alist t.children
     let samples_excluding_children t = t.count
     let delta t = t.delta
   end

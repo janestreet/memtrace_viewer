@@ -24,7 +24,7 @@ let hot_locations trie =
       then (
         let rep = Fragment.representative fragment in
         let rep_id = Fragment.id rep in
-        Fragment.Id.Table.update tbl rep_id ~f:(function
+        Hashtbl.update tbl rep_id ~f:(function
           | None -> location, fragment
           | Some ((old_location, _) as old_data) ->
             if less_than_fragment_callees rep location old_location
@@ -32,8 +32,7 @@ let hot_locations trie =
             else old_data)))
   in
   let unsorted =
-    Fragment.Id.Table.fold tbl ~init:[] ~f:(fun ~key:_ ~data:(_, fragment) acc ->
-      fragment :: acc)
+    Hashtbl.fold tbl ~init:[] ~f:(fun ~key:_ ~data:(_, fragment) acc -> fragment :: acc)
   in
   List.sort unsorted ~compare:(fun a b ->
     Byte_units.compare

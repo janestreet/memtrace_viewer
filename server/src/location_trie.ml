@@ -327,11 +327,9 @@ let trie_of_shh ~loc_cache ~rate ~word_size ~all_call_sites shh =
   in
   let call_sites =
     all_call_sites
-    |> Location.Table.to_alist
+    |> Hashtbl.to_alist
     |> List.map ~f:(fun (caller, all_call_sites_in_caller) ->
-      let call_sites_and_callees =
-        Call_site.Table.to_alist all_call_sites_in_caller
-      in
+      let call_sites_and_callees = Hashtbl.to_alist all_call_sites_in_caller in
       let call_sites =
         List.filter_map call_sites_and_callees ~f:(fun (call_site, callees) ->
           if Hash_set.exists callees ~f:(fun callee ->

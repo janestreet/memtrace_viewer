@@ -41,19 +41,19 @@ end = struct
 
   let add_exn { queue; elts } fragment =
     let elt = Pairing_heap.add_removable queue (fragment |> Item.of_fragment) in
-    Id.Table.add_exn elts ~key:(Data.Fragment.id fragment) ~data:elt
+    Hashtbl.add_exn elts ~key:(Data.Fragment.id fragment) ~data:elt
   ;;
 
   let pop_max_allocations { queue; elts } =
     let max = Pairing_heap.pop queue in
     Option.map max ~f:(fun { fragment; allocations = _ } ->
-      Id.Table.remove elts (Data.Fragment.id fragment);
+      Hashtbl.remove elts (Data.Fragment.id fragment);
       fragment)
   ;;
 
   let remove { queue; elts } fragment =
     let id = Data.Fragment.id fragment in
-    let elt = Id.Table.find_and_remove elts id in
+    let elt = Hashtbl.find_and_remove elts id in
     Option.iter ~f:(Pairing_heap.remove queue) elt
   ;;
 end

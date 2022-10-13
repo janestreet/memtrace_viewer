@@ -540,10 +540,12 @@ module Make (Row : Row) (Col_id : Id) = struct
       let key = Vdom_keyboard.Keystroke.create' in
       Keyboard_event_handler.of_command_list_exn
         [ command
+            ~cond:Keyboard_event_handler.Condition.(not_ has_input_target)
             ~keys:[ key KeyJ; key ArrowDown ]
             ~description:"Move focus down"
             (fun _ev -> inject (Move_focus `Next))
         ; command
+            ~cond:Keyboard_event_handler.Condition.(not_ has_input_target)
             ~keys:[ key KeyK; key ArrowUp ]
             ~description:"Move focus up"
             (fun _ev -> inject (Move_focus `Prev))

@@ -34,7 +34,7 @@ module Filtered_location_cache = struct
     match t with
     | Trivial loc_cache -> Location.Cache.call_sites_from_code loc_cache code
     | Nontrivial { loc_cache; hidden_locations; cache } ->
-      Location.Code.Table.find_or_add cache code ~default:(fun () ->
+      Hashtbl.find_or_add cache code ~default:(fun () ->
         let call_sites = Location.Cache.call_sites_from_code loc_cache code in
         List.filter call_sites ~f:(fun call_site ->
           not
@@ -79,7 +79,7 @@ end = struct
   let wrap ~loc_cache pred = { pred; cache = Call_site.Table.create (); loc_cache }
 
   let matches { pred; cache; loc_cache } call_site =
-    Call_site.Table.find_or_add cache call_site ~default:(fun () ->
+    Hashtbl.find_or_add cache call_site ~default:(fun () ->
       predicate_matches ~loc_cache pred call_site)
   ;;
 end
@@ -735,7 +735,7 @@ end = struct
         | Preserve_times ->
           (match event with
            | Alloc ({ obj_id; source = Minor; _ } as alloc) when defer_minor_allocations ->
-             Obj_id.Table.add_exn
+             Hashtbl.add_exn
                t.deferring
                ~key:obj_id
                ~data:(Alloc { alloc with source = Major });
@@ -744,7 +744,7 @@ end = struct
              Hash_set.strict_add_exn t.collected_early obj_id;
              return (Collect obj_id)
            | Promote obj_id when defer_minor_allocations ->
-             (match Obj_id.Table.find_and_remove t.deferring obj_id with
+             (match Hashtbl.find_and_remove t.deferring obj_id with
               | None ->
                 raise
                   (Not_found_s
@@ -753,9 +753,8 @@ end = struct
            | Collect obj_id
              when collect_on_promotion && Hash_set.mem t.collected_early obj_id ->
              Hash_set.remove t.collected_early obj_id
-           | Collect obj_id
-             when defer_minor_allocations && Obj_id.Table.mem t.deferring obj_id ->
-             Obj_id.Table.remove t.deferring obj_id
+           | Collect obj_id when defer_minor_allocations && Hashtbl.mem t.deferring obj_id
+             -> Hashtbl.remove t.deferring obj_id
            | _ -> return (event |> conv_event t)))
   ;;
 end

@@ -17,6 +17,10 @@ module type S = sig
   type t = Point.t range [@@deriving sexp, bin_io, equal, quickcheck]
 
   val range : Point.t Bound.t -> Point.t Bound.t -> t
+  val at_least : Point.t -> t
+  val at_most : Point.t -> t
+  val greater_than : Point.t -> t
+  val less_than : Point.t -> t
   val all : t
   val is_all : t -> bool
 
@@ -40,6 +44,10 @@ module type S = sig
 
     val range : Point.t Bound.t -> Point.t Bound.t -> t
     val all : t
+    val at_least : Point.t -> t
+    val at_most : Point.t -> t
+    val greater_than : Point.t -> t
+    val less_than : Point.t -> t
     val is_all : t -> bool
     val empty : t
     val is_empty : t -> bool

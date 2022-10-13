@@ -1,0 +1,4 @@
+(library (name memtrace_viewer_client_tests)
+ (libraries memtrace_viewer_client bonsai.web_test
+  bonsai.web_ui_element_size_hooks)
+ (preprocess (pps ppx_jane)))

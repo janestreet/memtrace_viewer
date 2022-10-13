@@ -483,12 +483,9 @@ module Make (Location : Location) (Entry : Entry) (Metadata : Metadata) :
         ; length = 0
         }
       in
-      Tree.Node.Id.Table.add_exn
-        cache
-        ~key:(Tree.Node.id old_root_node)
-        ~data:new_root_node;
+      Hashtbl.add_exn cache ~key:(Tree.Node.id old_root_node) ~data:new_root_node;
       let node_of old_node =
-        Tree.Node.Id.Table.find_or_add cache (Tree.Node.id old_node) ~default:(fun () ->
+        Hashtbl.find_or_add cache (Tree.Node.id old_node) ~default:(fun () ->
           let id = Fragment.Id.Generator.generate id_gen in
           let entry = Tree.Node.entry old_node in
           let first_caller = (* to be corrected *) Location.dummy in
@@ -559,7 +556,7 @@ module Make (Location : Location) (Entry : Entry) (Metadata : Metadata) :
     ;;
 
     let fold_singletons t ~init ~f =
-      Location.Table.fold t.children_of_root ~init ~f:(fun ~key ~data ->
+      Hashtbl.fold t.children_of_root ~init ~f:(fun ~key ~data ->
         f ~location:key ~fragment:data)
     ;;
 
@@ -567,7 +564,7 @@ module Make (Location : Location) (Entry : Entry) (Metadata : Metadata) :
       match backtrace with
       | [] -> Some t.root
       | first :: backtrace ->
-        let%bind.Option child = Location.Table.find t.children_of_root first in
+        let%bind.Option child = Hashtbl.find t.children_of_root first in
         Fragment.extend_by_callees child backtrace
     ;;
 
@@ -575,11 +572,11 @@ module Make (Location : Location) (Entry : Entry) (Metadata : Metadata) :
       match Backtrace.Reversed.head_and_tail backtrace_rev with
       | None -> Some t.root
       | Some (first, backtrace_rev) ->
-        let%bind.Option child = Location.Table.find t.children_of_root first in
+        let%bind.Option child = Hashtbl.find t.children_of_root first in
         Fragment.extend_by_callers child backtrace_rev
     ;;
 
-    let find_singleton t location = Location.Table.find t.children_of_root location
+    let find_singleton t location = Hashtbl.find t.children_of_root location
 
     let find_iterator t { Fragment.Iterator.Trace.prefix_trace; suffix_trace } =
       let%bind.Option prefix = find_rev t prefix_trace in
@@ -673,7 +670,7 @@ module Make (Location : Location) (Entry : Entry) (Metadata : Metadata) :
           Unserialized_fragment.Id.Table.create ()
         in
         let find_in_cache desc id =
-          match Unserialized_fragment.Id.Table.find fragment_cache id with
+          match Hashtbl.find fragment_cache id with
           | Some fragment -> fragment
           | None -> raise_s [%message desc (id : Unserialized_fragment.Id.t)]
         in
@@ -708,7 +705,7 @@ module Make (Location : Location) (Entry : Entry) (Metadata : Metadata) :
           <- List.Assoc.map
                ~f:(unserialize_without_callers ~retraction_by_callee:fragment)
                (extensions_by_callee |> Array.to_list);
-          Unserialized_fragment.Id.Table.add_exn fragment_cache ~key:id ~data:fragment;
+          Hashtbl.add_exn fragment_cache ~key:id ~data:fragment;
           fragment
         in
         let rec fill_in_callers
@@ -743,7 +740,7 @@ module Make (Location : Location) (Entry : Entry) (Metadata : Metadata) :
           ; length = 0
           }
         in
-        Unserialized_fragment.Id.Table.add_exn fragment_cache ~key:root.id ~data:root;
+        Hashtbl.add_exn fragment_cache ~key:root.id ~data:root;
         root.extensions_by_callee
         <- List.Assoc.map
              ~f:(unserialize_without_callers ~retraction_by_callee:root)

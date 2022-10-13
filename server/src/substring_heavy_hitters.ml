@@ -352,7 +352,7 @@ module Make (X : Char) = struct
 
     let set_child ~root ~parent ~key ~old_child ~new_child =
       if Root.is_node root parent
-      then X.Table.set (Root.children root) ~key ~data:new_child
+      then Hashtbl.set (Root.children root) ~key ~data:new_child
       else (
         let first_child = parent.first_child in
         let second_child = first_child.next_sibling in
@@ -374,7 +374,7 @@ module Make (X : Char) = struct
 
     let add_child ~root ~parent ~key ~child =
       if Root.is_node root parent
-      then X.Table.add_exn (Root.children root) ~key ~data:child
+      then Hashtbl.add_exn (Root.children root) ~key ~data:child
       else (
         parent.refcount <- parent.refcount + 1;
         let first_child = parent.first_child in
@@ -397,7 +397,7 @@ module Make (X : Char) = struct
       if Root.is_node root parent
       then (
         let key = child.edge_key in
-        X.Table.remove (Root.children root) key;
+        Hashtbl.remove (Root.children root) key;
         Int.max_value)
       else (
         let first_child = parent.first_child in
@@ -573,11 +573,11 @@ module Make (X : Char) = struct
       if Root.is_node root parent
       then (
         let children = Root.children root in
-        match X.Table.find children key with
+        match Hashtbl.find children key with
         | Some child -> Found child
         | None ->
           let leaf = fresh_leaf ~root ~parent ~array ~index ~key in
-          X.Table.add_exn children ~key ~data:leaf;
+          Hashtbl.add_exn children ~key ~data:leaf;
           Added leaf)
       else (
         let first_child = parent.first_child in
@@ -615,7 +615,7 @@ module Make (X : Char) = struct
     let get_child0 ~root t char =
       if Root.is_node root t
       then (
-        match X.Table.find (Root.children root) char with
+        match Hashtbl.find (Root.children root) char with
         | Some child -> child
         | None -> raise No_such_child)
       else get_child_in_list t.first_child char
@@ -941,7 +941,7 @@ module Make (X : Char) = struct
 
     let iter_children t ~root ~f =
       if Root.is_node root t
-      then X.Table.iter ~f (Root.children root)
+      then Hashtbl.iter ~f (Root.children root)
       else iter_over_child_list f t.first_child
     ;;
 
@@ -958,7 +958,7 @@ module Make (X : Char) = struct
 
     let fold_children t ~root ~init ~f =
       if Root.is_node root t
-      then X.Table.fold ~f:(fun ~key:_ ~data acc -> f data acc) (Root.children root) ~init
+      then Hashtbl.fold ~f:(fun ~key:_ ~data acc -> f data acc) (Root.children root) ~init
       else fold_over_child_list ~f t.first_child init
     ;;
 
