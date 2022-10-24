@@ -4,7 +4,6 @@ module Node_svg = Virtual_dom_svg.Node
 module Attr_svg = Virtual_dom_svg.Attr
 include Flame_graph_view_intf
 
-
 let node_height = 20.
 let control_area_width = 63.
 let focus_border_thickness = 4. (* needs to match CSS .flame-graph-sequence-border *)
@@ -766,7 +765,7 @@ module Make (Graph : Graph) = struct
       move_event ~dir ~graph ~selection ~navigate_to
     ;;
 
-    let arrow_key_command ~graph ~selection ~navigate_to =
+    let arrow_key_action ~graph ~selection ~navigate_to =
       let open Vdom_keyboard in
       let keys =
         List.map
@@ -784,12 +783,27 @@ module Make (Graph : Graph) = struct
       let description = "Move selection" in
       let group = None in
       let handler = handle_arrow_key ~graph ~selection ~navigate_to in
-      { Keyboard_event_handler.Command.keys; description; group; handler }
+      Keyboard_event_handler.Action.Command { keys; description; group; handler }
     ;;
 
-    let key_handler ~graph ~selection ~navigate_to =
-      Vdom_keyboard.Keyboard_event_handler.of_command_list_exn
-        [ arrow_key_command ~graph ~selection ~navigate_to ]
+    let enter_action ~selection ~activate =
+      let open Vdom_keyboard in
+      let enter = Keystroke.create' Enter in
+      match selection with
+      | None -> Keyboard_event_handler.Action.Disabled_key enter
+      | Some selection ->
+        let keys = [ enter ] in
+        let description = "Extend focus" in
+        let group = None in
+        let handler _ = activate selection in
+        Command { keys; description; group; handler }
+    ;;
+
+    let key_handler ~graph ~selection ~navigate_to ~activate =
+      Vdom_keyboard.Keyboard_event_handler.of_action_list_exn
+        [ arrow_key_action ~graph ~selection ~navigate_to
+        ; enter_action ~selection ~activate
+        ]
     ;;
   end
 
@@ -833,7 +847,9 @@ module Make (Graph : Graph) = struct
        and activate = activate
        and commands = commands in
        let view = render ~width ~set_width ~selection ~select ~activate ~commands graph in
-       let key_handler = Keyboard_navigation.key_handler ~graph ~selection ~navigate_to in
+       let key_handler =
+         Keyboard_navigation.key_handler ~graph ~selection ~navigate_to ~activate
+       in
        { view; key_handler })
   ;;
 end
