@@ -33,15 +33,11 @@ let run () =
     in
     fun action -> handle_outgoing_staged action
   in
-  let _app_handle =
-    Start.start
-      Start.Result_spec.just_the_view
-      ~bind_to_element_with_id:"app"
-      (App.component
-         ~data:(Bonsai.Var.value data)
-         ~server_state:(Bonsai.Var.value server_state)
-         ~inject_outgoing:(Bonsai.Value.return inject_outgoing))
-  in
+  Bonsai_web.Start.start
+    (App.component
+       ~data:(Bonsai.Var.value data)
+       ~server_state:(Bonsai.Var.value server_state)
+       ~inject_outgoing:(Bonsai.Value.return inject_outgoing));
   let%map () = initialize ~conn ~data in
   ()
 ;;

@@ -343,6 +343,7 @@ let component ~series ~regions ~aspect_ratio ~start_time ~time_view ~set_time_vi
      let region_boxes = List.map ~f:region_box regions in
      let time_view_control =
        Vdom_input_widgets.Dropdown.of_values
+         ~merge_behavior:Legacy_dont_merge
          (module Time_view)
          [ Time_view.Elapsed_seconds; Wall_time ]
          ~selected:time_view

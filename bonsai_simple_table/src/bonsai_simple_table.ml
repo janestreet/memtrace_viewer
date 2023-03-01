@@ -217,14 +217,25 @@ module Make (Row : Row) (Col_id : Id) = struct
     ;;
 
     let apply_action ~inject:_ ~schedule_event focus { Model.focus_row } action =
-      let focus_row =
-        match (action : Action.t) with
-        | Set_focus_row focus_row -> focus_row
-        | Move_focus dir -> Focus.move focus focus_row ~dir
-      in
-      Option.iter focus_row ~f:(fun row_id ->
-        schedule_event (scroll_to_row_effect row_id));
-      { Model.focus_row }
+      match focus with
+      | Bonsai.Computation_status.Active focus ->
+        let focus_row =
+          match (action : Action.t) with
+          | Set_focus_row focus_row -> focus_row
+          | Move_focus dir -> Focus.move focus focus_row ~dir
+        in
+        Option.iter focus_row ~f:(fun row_id ->
+          schedule_event (scroll_to_row_effect row_id));
+        { Model.focus_row }
+      | Inactive ->
+        eprint_s
+          [%message
+            [%here]
+              "An action sent to a [state_machine1] has been dropped because its input \
+               was not present. This happens when the [state_machine1] is inactive when \
+               it receives a message."
+              (action : Action.t)];
+        { Model.focus_row }
     ;;
 
     module Rendered = struct

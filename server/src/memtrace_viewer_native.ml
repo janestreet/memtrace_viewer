@@ -95,7 +95,9 @@ let command =
        flag "port" (optional_with_default 8080 int) ~doc:"port on which to serve viewer"
      in
      fun () -> main ~filename ~filter:Filter.default ~port)
+    ~behave_nicely_in_pipeline:false
 ;;
+
 
 module For_testing = struct
   module Filtered_trace = Filtered_trace

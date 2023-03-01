@@ -1,7 +1,7 @@
 open! Core
 include Fragment_trie_intf
 
-let enable_invariants = am_running_inline_test
+let enable_invariants = Ppx_inline_test_lib.am_running
 
 (* Pull this up out of the applicative functor *)
 module Fragment_id = Identifier.Make ()

@@ -60,6 +60,7 @@ let component ~which ~max ~start_time ~time_view =
        ; view =
            Node.span
              [ Vdom_input_widgets.Entry.number
+                 ~merge_behavior:Legacy_dont_merge
                  ~extra_attrs:
                    [ Attr.class_ "bound"
                    ; Attr.create_float "min" 0.
@@ -120,6 +121,7 @@ let component ~which ~max ~start_time ~time_view =
           { value = value, Large
           ; view =
               Vdom_input_widgets.Entry.datetime_local
+                ~merge_behavior:Legacy_dont_merge
                 ~extra_attrs:
                   [ Attr.class_ "bound"
                   ; Attr.create "min" (min_input |> to_html_datetime)
@@ -144,6 +146,7 @@ let component ~which ~max ~start_time ~time_view =
           { value = value, Size.Small
           ; view =
               Vdom_input_widgets.Entry.time
+                ~merge_behavior:Legacy_dont_merge
                 ~extra_attrs:
                   [ Attr.class_ "bound"
                   ; Attr.create "min" (min_input |> Time_ns.Ofday.to_millisecond_string)

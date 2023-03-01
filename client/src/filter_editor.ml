@@ -61,6 +61,7 @@ let dropdown_of_enum_opt (type enum) (module Enum : Enum with type t = enum)
     (let%map value, set_value = state in
      let view =
        Vdom_input_widgets.Dropdown.of_enum_opt
+         ~merge_behavior:Legacy_dont_merge
          (module Enum)
          ~selected:value
          ~on_change:set_value

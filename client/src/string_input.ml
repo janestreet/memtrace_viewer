@@ -10,6 +10,12 @@ let component =
   let%sub state = Bonsai.state (module String_option) ~default_model:None in
   return
     (let%map value, set_value = state in
-     let view = Vdom_input_widgets.Entry.text ~value ~on_input:set_value () in
+     let view =
+       Vdom_input_widgets.Entry.text
+         ~merge_behavior:Legacy_dont_merge
+         ~value
+         ~on_input:set_value
+         ()
+     in
      { And_view.value; view })
 ;;

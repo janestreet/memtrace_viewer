@@ -20,14 +20,25 @@ let component effect =
       (module Action)
       ~default_model:{ activated = false }
       ~apply_action:(fun ~inject:_ ~schedule_event input model action ->
-        match action with
-        | Activate -> { activated = true }
-        | Run_if_active ->
-          if model.activated
-          then (
-            schedule_event input;
-            { activated = false })
-          else model)
+        match input with
+        | Active input ->
+          (match action with
+           | Activate -> { activated = true }
+           | Run_if_active ->
+             if model.activated
+             then (
+               schedule_event input;
+               { activated = false })
+             else model)
+        | Inactive ->
+          eprint_s
+            [%message
+              [%here]
+                "An action sent to a [state_machine1] has been dropped because its input \
+                 was not present. This happens when the [state_machine1] is inactive \
+                 when it receives a message."
+                (action : Action.t)];
+          model)
       effect
   in
   let run_if_active =

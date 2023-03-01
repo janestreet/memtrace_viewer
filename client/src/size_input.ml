@@ -45,6 +45,7 @@ let component =
      let view =
        Node.span
          [ Vdom_input_widgets.Entry.number
+             ~merge_behavior:Legacy_dont_merge
              (module Util.Float_html_syntax)
              ~value
              ~on_input:set_value
@@ -53,6 +54,7 @@ let component =
              ~extra_attrs:[ Attr.min 0.0 ]
          ; Node.text " "
          ; Vdom_input_widgets.Dropdown.of_enum
+             ~merge_behavior:Legacy_dont_merge
              (module Unit)
              ~selected:unit
              ~on_change:set_unit
