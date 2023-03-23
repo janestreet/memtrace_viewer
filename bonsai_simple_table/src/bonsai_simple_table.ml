@@ -429,9 +429,7 @@ module Make (Row : Row) (Col_id : Id) = struct
                 (Lazy.map cells ~f:(fun cells ->
                    let cells =
                      Map.mapi cells ~f:(fun ~key:_col_id ~data:{ node; attrs } ->
-                       Vdom.Node.td
-                         ~attr:(Vdom.Attr.many_without_merge attrs)
-                         [ node ])
+                       Vdom.Node.td ~attrs:[ Vdom.Attr.many_without_merge attrs ] [ node ])
                    in
                    let focus_attr =
                      if focused then Vdom.Attr.class_ "focused" else Vdom.Attr.empty
@@ -441,15 +439,16 @@ module Make (Row : Row) (Col_id : Id) = struct
                        inject (Action.Set_focus_row (Some row_id)))
                    in
                    Vdom.Node.tr
-                     ~attr:
-                       Vdom.Attr.(
-                         on_click_attr
-                         @ focus_attr
-                         (* We use "data-row-id" instead of "id" because it can
-                            handle a wider range of strings, which is necessary for
-                            handling sexps. In addition, we also want to avoid
-                            collisions with existing "id"s *)
-                         @ create "data-row-id" (serialize_row_id row_id))
+                     ~attrs:
+                       [ Vdom.Attr.(
+                           on_click_attr
+                           @ focus_attr
+                           (* We use "data-row-id" instead of "id" because it can
+                              handle a wider range of strings, which is necessary for
+                              handling sexps. In addition, we also want to avoid
+                              collisions with existing "id"s *)
+                           @ create "data-row-id" (serialize_row_id row_id))
+                       ]
                      (List.map col_ids_in_order ~f:(fun col_id ->
                         Map.find_exn cells col_id)))))
           and keys = t.row_ids_in_order
@@ -462,11 +461,11 @@ module Make (Row : Row) (Col_id : Id) = struct
           match%map t.cols with
           | `Without_groups cols ->
             ( List.map cols ~f:(fun c ->
-                Vdom.Node.create "col" ~attr:(Vdom.Attr.classes c.classes) [])
+                Vdom.Node.create "col" ~attrs:[ Vdom.Attr.classes c.classes ] [])
             , [ Vdom.Node.tr
                   (List.map cols ~f:(fun c ->
                      Vdom.Node.th
-                       ~attr:(Vdom.Attr.many_without_merge c.header.attrs)
+                       ~attrs:[ Vdom.Attr.many_without_merge c.header.attrs ]
                        [ c.header.node ]))
               ] )
           | `With_groups groups ->
@@ -474,65 +473,66 @@ module Make (Row : Row) (Col_id : Id) = struct
               List.fold
                 groups
                 ~init:([], [], [])
-                ~f:(fun
-                     (col_defn_tags, groups_row, col_headers_row)
-                     { group; cols_in_group }
-                     ->
-                       let num_cols = List.length cols_in_group in
-                       let colgroup_tag =
-                         Vdom.Node.create
-                           "colgroup"
-                           ~attr:(Vdom.Attr.create "span" (Int.to_string num_cols))
-                           (List.map cols_in_group ~f:(fun column ->
-                              Vdom.Node.create
-                                "col"
-                                ~attr:(Vdom.Attr.classes column.classes)
-                                []))
-                       in
-                       let group_th =
-                         let group_name =
-                           match group with
-                           | None -> Vdom.Node.none
-                           | Some group_name -> Vdom.Node.text (Col_group.to_string group_name)
-                         in
-                         Vdom.Node.th
-                           ~attr:(Vdom.Attr.create "colspan" (Int.to_string num_cols))
-                           [ group_name ]
-                       in
-                       let col_headers_ths =
-                         let last_idx = num_cols - 1 in
-                         List.mapi cols_in_group ~f:(fun idx c ->
-                           let classes =
-                             [ Option.some_if (idx = 0) "simple-table-first-header-in-group"
-                             ; Option.some_if
-                                 (idx = last_idx)
-                                 "simple-table-last-header-in-group"
-                             ]
-                             |> List.filter_opt
-                             |> Vdom.Attr.classes
-                           in
-                           let attrs =
-                             Vdom.Attrs.merge_classes_and_styles (classes :: c.header.attrs)
-                           in
-                           Vdom.Node.th
-                             ~attr:(Vdom.Attr.many_without_merge attrs)
-                             [ c.header.node ])
-                       in
-                       ( col_defn_tags @ [ colgroup_tag ]
-                       , groups_row @ [ group_th ]
-                       , col_headers_row @ col_headers_ths ))
+                ~f:
+                  (fun
+                    (col_defn_tags, groups_row, col_headers_row)
+                    { group; cols_in_group }
+                    ->
+                      let num_cols = List.length cols_in_group in
+                      let colgroup_tag =
+                        Vdom.Node.create
+                          "colgroup"
+                          ~attrs:[ Vdom.Attr.create "span" (Int.to_string num_cols) ]
+                          (List.map cols_in_group ~f:(fun column ->
+                             Vdom.Node.create
+                               "col"
+                               ~attrs:[ Vdom.Attr.classes column.classes ]
+                               []))
+                      in
+                      let group_th =
+                        let group_name =
+                          match group with
+                          | None -> Vdom.Node.none
+                          | Some group_name -> Vdom.Node.text (Col_group.to_string group_name)
+                        in
+                        Vdom.Node.th
+                          ~attrs:[ Vdom.Attr.create "colspan" (Int.to_string num_cols) ]
+                          [ group_name ]
+                      in
+                      let col_headers_ths =
+                        let last_idx = num_cols - 1 in
+                        List.mapi cols_in_group ~f:(fun idx c ->
+                          let classes =
+                            [ Option.some_if (idx = 0) "simple-table-first-header-in-group"
+                            ; Option.some_if
+                                (idx = last_idx)
+                                "simple-table-last-header-in-group"
+                            ]
+                            |> List.filter_opt
+                            |> Vdom.Attr.classes
+                          in
+                          let attrs =
+                            Vdom.Attrs.merge_classes_and_styles (classes :: c.header.attrs)
+                          in
+                          Vdom.Node.th
+                            ~attrs:[ Vdom.Attr.many_without_merge attrs ]
+                            [ c.header.node ])
+                      in
+                      ( col_defn_tags @ [ colgroup_tag ]
+                      , groups_row @ [ group_th ]
+                      , col_headers_row @ col_headers_ths ))
             in
             ( col_defn_tags
             , [ Vdom.Node.tr
-                  ~attr:(Vdom.Attr.class_ "simple-table-header-group-row")
+                  ~attrs:[ Vdom.Attr.class_ "simple-table-header-group-row" ]
                   groups_row
               ; Vdom.Node.tr
-                  ~attr:(Vdom.Attr.class_ "simple-table-header-main-row")
+                  ~attrs:[ Vdom.Attr.class_ "simple-table-header-main-row" ]
                   col_headers_row
               ] )
         and table_attrs = t.table_attrs in
         Vdom.Node.table
-          ~attr:(Vdom.Attr.many_without_merge table_attrs)
+          ~attrs:[ Vdom.Attr.many_without_merge table_attrs ]
           (col_defn_tags @ [ Vdom.Node.thead header_rows; Vdom.Node.tbody rows ])
       ;;
     end

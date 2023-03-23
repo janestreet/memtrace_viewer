@@ -211,13 +211,8 @@ let obj_ids_matching_filter ~trace ~loc_cache (filter : Filter.t) =
     in
     match event with
     | Alloc
-        { obj_id
-        ; single_allocation_size
-        ; source
-        ; backtrace_length
-        ; backtrace_buffer
-        ; _
-        } ->
+        { obj_id; single_allocation_size; source; backtrace_length; backtrace_buffer; _ }
+      ->
       let deferring =
         match source with
         | Minor -> not filter.include_minor_heap
@@ -233,9 +228,7 @@ let obj_ids_matching_filter ~trace ~loc_cache (filter : Filter.t) =
         | External ->
           not filter.include_major_heap
       in
-      let correct_size =
-        should_record_allocation_of_size single_allocation_size filter
-      in
+      let correct_size = should_record_allocation_of_size single_allocation_size filter in
       let interesting_backtrace () =
         (not filtering_by_backtrace)
         || Location_filterer.should_record_allocation_with_backtrace
@@ -734,7 +727,8 @@ end = struct
         | Preserve_backtraces -> return (event |> conv_event t)
         | Preserve_times ->
           (match event with
-           | Alloc ({ obj_id; source = Minor; _ } as alloc) when defer_minor_allocations ->
+           | Alloc ({ obj_id; source = Minor; _ } as alloc) when defer_minor_allocations
+             ->
              Hashtbl.add_exn
                t.deferring
                ~key:obj_id

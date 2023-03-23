@@ -3,7 +3,9 @@ open Bonsai_web
 open Memtrace_viewer_common
 
 let info_linef ?attr pat =
-  pat |> Printf.ksprintf (fun str -> Vdom.(Node.li ?attr [ Node.text str ]))
+  pat
+  |> Printf.ksprintf (fun str ->
+    Vdom.(Node.li ?attrs:(Option.map attr ~f:(fun attr -> [ attr ])) [ Node.text str ]))
 ;;
 
 let info_fieldf ?attr label pat =
@@ -11,8 +13,8 @@ let info_fieldf ?attr label pat =
   |> Printf.ksprintf (fun str ->
     Vdom.(
       Node.li
-        ?attr
-        [ Node.span ~attr:(Attr.class_ "info-label") [ Node.textf "%s: " label ]
+        ?attrs:(Option.map attr ~f:(fun attr -> [ attr ]))
+        [ Node.span ~attrs:[ Attr.class_ "info-label" ] [ Node.textf "%s: " label ]
         ; Node.text str
         ]))
 ;;
@@ -34,9 +36,9 @@ let panel_body ~(info : Data.Info.t option) =
     let word_size_in_bits = 8 * (info.word_size |> Byte_units.bytes_int_exn) in
     let sample_size = Byte_units.scale info.word_size (1.0 /. info.sample_rate) in
     Node.div
-      ~attr:(Attr.class_ "summary")
+      ~attrs:[ Attr.class_ "summary" ]
       [ Node.ul
-          ~attr:(Attr.class_ "info-fields")
+          ~attrs:[ Attr.class_ "info-fields" ]
           [ context_line
           ;
             info_fieldf

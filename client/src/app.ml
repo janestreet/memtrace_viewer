@@ -130,9 +130,7 @@ let component
      and main_panel = main_panel in
      let key_handler = main_panel.key_handler in
      let open Vdom in
-     let div ?(attr = Attr.empty) id body =
-       Node.div ~attr:(Attr.many [ Attr.id id; attr ]) body
-     in
+     let div ?(attr = Attr.empty) id body = Node.div ~attrs:[ Attr.id id; attr ] body in
      div
        "app-container"
        ~attr:(Attr.on_keydown (Keyboard_event_handler.handle_or_ignore_event key_handler))

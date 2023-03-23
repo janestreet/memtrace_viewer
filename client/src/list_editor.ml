@@ -40,15 +40,14 @@ let component
              Node.li
                ~key:(index |> Int.to_string)
                [ Node.button
-                   ~attr:
-                     (Attr.many
-                        [ (* Important to set type="button" here: the default is type="submit",
-                             which makes Enter delete the first item! *)
-                          Attr.type_ "button"
-                        ; Attr.class_ "list-editor-remove-button"
-                        ; Attr.on_click (fun _ -> remove)
-                        ; remove_button_attr
-                        ])
+                   ~attrs:
+                     [ (* Important to set type="button" here: the default is type="submit",
+                          which makes Enter delete the first item! *)
+                       Attr.type_ "button"
+                     ; Attr.class_ "list-editor-remove-button"
+                     ; Attr.on_click (fun _ -> remove)
+                     ; remove_button_attr
+                     ]
                    [ glyph ]
                ; Node.text " "
                ; view
@@ -68,21 +67,20 @@ let component
        Vdom.Node.li
          ~key:"add"
          [ Node.button
-             ~attr:
-               (Attr.many
-                  [ (* Important so that Enter doesn't click this button *)
-                    Attr.type_ "button"
-                  ; Attr.class_ "list-editor-add-item-button"
-                  ; Attr.on_click (fun _ -> add_item ())
-                  ; add_button_attr
-                  ])
+             ~attrs:
+               [ (* Important so that Enter doesn't click this button *)
+                 Attr.type_ "button"
+               ; Attr.class_ "list-editor-add-item-button"
+               ; Attr.on_click (fun _ -> add_item ())
+               ; add_button_attr
+               ]
              [ Node.text add_item_text ]
          ]
      in
      let open Vdom in
      let values_and_views = Map.data (rows : _ Int.Map.t) in
      let row_views = List.map ~f:And_view.view values_and_views in
-     let view = Node.ul ~attr (row_views @ [ add_item_row ]) in
+     let view = Node.ul ~attrs:[ attr ] (row_views @ [ add_item_row ]) in
      let value = List.map ~f:And_view.value values_and_views in
      { And_view.value; view })
 ;;

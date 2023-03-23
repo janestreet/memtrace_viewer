@@ -151,7 +151,7 @@ let component ~(data : Data.t Bonsai.Value.t) ~orient ~focus ~set_focus =
             ; reroll_action ~orient inject selection state
             ])
      in
-     let view = Vdom.Node.div ~attr:(Vdom.Attr.id "table-panel") [ table.view ] in
+     let view = Vdom.Node.div ~attrs:[ Vdom.Attr.id "table-panel" ] [ table.view ] in
      let reset_selection () =
        match table.selection with
        | Some _ ->

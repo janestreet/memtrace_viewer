@@ -651,11 +651,11 @@ module Make (X : Char) = struct
             (count : int)
             (delta : int)
             ~total_count:
-              (match node.summary with
-               | No_summary -> [%sexp "???"]
-               | Summary { descendents_count; _ } ->
-                 [%sexp (node.count + descendents_count : int)]
-                 : Sexp.t)
+              ((match node.summary with
+                 | No_summary -> [%sexp "???"]
+                 | Summary { descendents_count; _ } ->
+                   [%sexp (node.count + descendents_count : int)])
+               : Sexp.t)
             ~label:(label node : X.t array)]
       ;;
     end

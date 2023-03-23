@@ -25,8 +25,9 @@ let component ~interpret ~input =
       (module Unit)
       ~default_model:()
       ~apply_action:
-        (fun ~inject:_ ~schedule_event (Input.{ value; context }, _) () action ->
-           schedule_event (interpret ~value ~context action))
+        (fun
+          ~inject:_ ~schedule_event (Input.{ value; context }, _) () action ->
+          schedule_event (interpret ~value ~context action))
       ~f:(fun _ inject ->
         let%sub input = input ~run_action:inject in
         let%arr input = input

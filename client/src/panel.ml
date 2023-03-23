@@ -44,12 +44,12 @@ let title_bar ~title ~collapsible ~state ~set_state : Vdom.Node.t option Computa
          | Some text ->
            (* Attach the same event handler to handle keyboard activation *)
            Node.button
-             ~attr:(Attr.many [ on_click_attr; Attr.class_ "panel-collapse-indicator" ])
+             ~attrs:[ on_click_attr; Attr.class_ "panel-collapse-indicator" ]
              [ Node.text text ]
          | None -> Node.none
        in
        Node.h2
-         ~attr:(Attr.many [ on_click_attr; Attr.class_ "panel-title" ])
+         ~attrs:[ on_click_attr; Attr.class_ "panel-title" ]
          [ collapse_indicator; Node.text title ]))
 ;;
 
@@ -87,14 +87,12 @@ let panel ?title body ~id ~(collapsible : Collapsible.t) =
        | Expanded -> "panel-expanded"
      in
      Node.section
-       ~attr:
-         (Attr.many
-            [ Attr.classes [ "panel"; state_class; collapsible_class ]; Attr.id id ])
+       ~attrs:[ Attr.classes [ "panel"; state_class; collapsible_class ]; Attr.id id ]
        [ Node.div
-           ~attr:(Attr.class_ "panel-content")
+           ~attrs:[ Attr.class_ "panel-content" ]
            (List.concat
               [ title_bar |> Option.to_list
-              ; [ Node.div ~attr:(Attr.class_ "panel-body") [ body ] ]
+              ; [ Node.div ~attrs:[ Attr.class_ "panel-body" ] [ body ] ]
               ])
        ])
 ;;

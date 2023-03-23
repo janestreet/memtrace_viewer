@@ -108,14 +108,13 @@ module Submission_handling = struct
               to be used as the form's onsubmit instead, thus getting Enter key behavior
               for free
            *)
-           ~attr:
-             (Attr.many
-                [ Attr.type_ "submit"
-                ; Attr.class_ "flat-button"
-                ; Attr.value "Apply"
-                ; Attr.title "Set current filter and redraw views"
-                ; (if not enabled then Attr.disabled else Attr.empty)
-                ])
+           ~attrs:
+             [ Attr.type_ "submit"
+             ; Attr.class_ "flat-button"
+             ; Attr.value "Apply"
+             ; Attr.title "Set current filter and redraw views"
+             ; (if not enabled then Attr.disabled else Attr.empty)
+             ]
            ()
        in
        { button; on_submit })
@@ -135,7 +134,7 @@ let panel_body
   =
   let allocations_line desc bytes =
     Node.p
-      ~attr:(Attr.class_ "total-allocations")
+      ~attrs:[ Attr.class_ "total-allocations" ]
       [ Node.textf "%s: %s" desc (bytes |> Byte_units.Short.to_string) ]
   in
   let total_allocations_line = allocations_line "Total allocations" total_allocations in
@@ -147,10 +146,10 @@ let panel_body
   in
   let swatch swatch_class =
     Node_svg.svg
-      ~attr:(Attr.classes [ "swatch"; swatch_class ])
-      [ Node_svg.rect ~attr:(Attr.class_ "swatch-bg") []
-      ; Node_svg.rect ~attr:(Attr.class_ "swatch-interior") []
-      ; Node_svg.rect ~attr:(Attr.class_ "swatch-border") []
+      ~attrs:[ Attr.classes [ "swatch"; swatch_class ] ]
+      [ Node_svg.rect ~attrs:[ Attr.class_ "swatch-bg" ] []
+      ; Node_svg.rect ~attrs:[ Attr.class_ "swatch-interior" ] []
+      ; Node_svg.rect ~attrs:[ Attr.class_ "swatch-border" ] []
       ]
   in
   let region_legend_text =
@@ -185,28 +184,27 @@ let panel_body
   let form =
     Node.create
       "form"
-      ~attr:
-        (Attr.many
-           [ Attr.id "filter-form"
-           ; Attr.on_submit (fun _ -> on_submit)
-           ; (* Browser-level validation isn't our friend - it rejects numeric inputs if the
-                user inputs too many digits (as decided by the step) *)
-             Attr.create "novalidate" ""
-           ; (* This effectively disables the table or flame graph's keyboard event handler
-                whenever the focus is anywhere in the form, so that Enter, arrow keys, etc.
-                all work correcly *)
-             Attr.on_keydown (fun _ -> Vdom.Effect.Stop_propagation)
-           ])
+      ~attrs:
+        [ Attr.id "filter-form"
+        ; Attr.on_submit (fun _ -> on_submit)
+        ; (* Browser-level validation isn't our friend - it rejects numeric inputs if the
+             user inputs too many digits (as decided by the step) *)
+          Attr.create "novalidate" ""
+        ; (* This effectively disables the table or flame graph's keyboard event handler
+             whenever the focus is anywhere in the form, so that Enter, arrow keys, etc.
+             all work correcly *)
+          Attr.on_keydown (fun _ -> Vdom.Effect.Stop_propagation)
+        ]
       [ region_legend
       ; And_view.view filter_clauses
       ; Node.div [ button_node; connection_lost_message ]
       ]
   in
   Node.div
-    ~attr:(Attr.id "filter-panel-body")
+    ~attrs:[ Attr.id "filter-panel-body" ]
     [ graph_node
     ; Node.div
-        ~attr:(Attr.id "filter-form-area")
+        ~attrs:[ Attr.id "filter-form-area" ]
         [ total_allocations_line; peak_allocations_line; filtered_allocations_line; form ]
     ]
 ;;

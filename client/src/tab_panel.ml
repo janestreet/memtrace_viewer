@@ -47,13 +47,13 @@ module Component (Tab : Tab) = struct
                else Attr.disabled
              in
              Node.li
-               ~attr:(Attr.classes classes)
+               ~attrs:[ Attr.classes classes ]
                [ Node.button
-                   ~attr:(Attr.many [ Attr.class_ "flat-button"; on_click_or_disabled ])
+                   ~attrs:[ Attr.class_ "flat-button"; on_click_or_disabled ]
                    [ Node.text (Tab.name tab) ]
                ]
            in
-           Node.ul ~attr:(Attr.class_ "tab-bar") (List.map ~f:tab_view Tab.all)
+           Node.ul ~attrs:[ Attr.class_ "tab-bar" ] (List.map ~f:tab_view Tab.all)
          in
          { selected_tab; select_tab; view })
     ;;
@@ -73,9 +73,9 @@ module Component (Tab : Tab) = struct
   let view tab_bar_view current_tab_view =
     let open Vdom in
     Node.div
-      ~attr:(Attr.class_ "tab-panel")
+      ~attrs:[ Attr.class_ "tab-panel" ]
       [ tab_bar_view
-      ; Node.div ~attr:(Attr.class_ "tab-panel-content") [ current_tab_view ]
+      ; Node.div ~attrs:[ Attr.class_ "tab-panel-content" ] [ current_tab_view ]
       ]
   ;;
 
@@ -94,10 +94,7 @@ end
 
 let component
       (type tab input output)
-      (module Tab : Tab
-        with type t = tab
-         and type Input.t = input
-         and type Output.t = output)
+      (module Tab : Tab with type t = tab and type Input.t = input and type Output.t = output)
   =
   let module Tab_panel = Component (Tab) in
   Tab_panel.component

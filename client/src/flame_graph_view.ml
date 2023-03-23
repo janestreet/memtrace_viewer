@@ -33,9 +33,7 @@ module Controls = struct
           [ x, y; x +. button_width, y; x +. (0.5 *. button_width), y +. button_height ]
       in
       Node_svg.polygon
-        ~attr:
-          (Vdom.Attr.many
-             [ Attr_svg.points points; Vdom.Attr.class_ "flame-graph-button-glyph" ])
+        ~attrs:[ Attr_svg.points points; Vdom.Attr.class_ "flame-graph-button-glyph" ]
         []
     ;;
   end
@@ -49,23 +47,20 @@ module Controls = struct
       else y
     in
     Node_svg.line
-      ~attr:
-        (Vdom.Attr.many
-           [ Vdom.Attr.class_ "flame-graph-button-motion-line"
-           ; Attr_svg.x1 line_x
-           ; Attr_svg.y1 arrow_base_y
-           ; Attr_svg.x2 line_x
-           ; Attr_svg.y2 end_y
-           ])
+      ~attrs:
+        [ Vdom.Attr.class_ "flame-graph-button-motion-line"
+        ; Attr_svg.x1 line_x
+        ; Attr_svg.y1 arrow_base_y
+        ; Attr_svg.x2 line_x
+        ; Attr_svg.y2 end_y
+        ]
       []
   ;;
 
   let render_button ~glyph ~x ~y ~arrow_base_y ~on_click =
     let on_click _ = on_click in
     Node_svg.g
-      ~attr:
-        (Vdom.Attr.many
-           [ Vdom.Attr.class_ "flame-graph-button"; Vdom.Attr.on_click on_click ])
+      ~attrs:[ Vdom.Attr.class_ "flame-graph-button"; Vdom.Attr.on_click on_click ]
       [ Glyph.render glyph x y; render_motion_line ~x ~y ~arrow_base_y ]
   ;;
 end
@@ -247,7 +242,7 @@ module Make (Graph : Graph) = struct
       | Function -> Vdom.Node.none
       | Allocation_site ->
         Node_svg.tspan
-          ~attr:(Vdom.Attr.class_ "loc-alloc-site-indicator")
+          ~attrs:[ Vdom.Attr.class_ "loc-alloc-site-indicator" ]
           [ Vdom.Node.text "A " ]
     in
     let buttons = render_buttons ~cxt ~y ~selected in
@@ -255,33 +250,31 @@ module Make (Graph : Graph) = struct
       (* Put the node in an embedded <svg> element so that the text gets clipped to the
          rectangle *)
       Node_svg.svg
-        ~attr:
-          (Vdom.Attr.many
-             [ Attr_svg.x x
-             ; Attr_svg.y y
-             ; Attr_svg.width width
-             ; height_attr
-             ; Vdom.Attr.classes [ "flame-graph-node" ]
-             ; node_type_class
-             ; selected_class
-             ; Vdom.Attr.on_click (fun _ -> cxt.select selector)
-             ; Vdom.Attr.on_double_click (fun _ -> cxt.activate selector)
-             ])
+        ~attrs:
+          [ Attr_svg.x x
+          ; Attr_svg.y y
+          ; Attr_svg.width width
+          ; height_attr
+          ; Vdom.Attr.classes [ "flame-graph-node" ]
+          ; node_type_class
+          ; selected_class
+          ; Vdom.Attr.on_click (fun _ -> cxt.select selector)
+          ; Vdom.Attr.on_double_click (fun _ -> cxt.activate selector)
+          ]
         [ Node_svg.rect
-            ~attr:
-              (Vdom.Attr.many
-                 [ color_box_class_attr
-                 ; Vdom.Attr.style css
-                 ; (* Since we set the width on the svg element above, we should be able to
-                      let CSS take care of setting this rect's width to 100% of its container
-                      and be done with it, but Chrome was sporadically making the rect very
-                      small for no apparent reason. Height doesn't seem to have the same
-                      problem. *)
-                   Attr_svg.width width
-                 ])
+            ~attrs:
+              [ color_box_class_attr
+              ; Vdom.Attr.style css
+              ; (* Since we set the width on the svg element above, we should be able to
+                   let CSS take care of setting this rect's width to 100% of its container
+                   and be done with it, but Chrome was sporadically making the rect very
+                   small for no apparent reason. Height doesn't seem to have the same
+                   problem. *)
+                Attr_svg.width width
+              ]
             []
         ; Node_svg.text
-            ~attr:(Vdom.Attr.many [ text_x_attr; text_y_attr ])
+            ~attrs:[ text_x_attr; text_y_attr ]
             [ alloc_site_indicator; Vdom.Node.text (Graph.Node.label ~graph node) ]
         ; Node_svg.title [ Vdom.Node.text (Graph.Node.details ~graph node) ]
         ]
@@ -318,15 +311,14 @@ module Make (Graph : Graph) = struct
     let border y =
       let segment ?(attr = Vdom.Attr.empty) x1 x2 =
         Node_svg.line
-          ~attr:
-            (Vdom.Attr.many
-               [ attr
-               ; Attr_svg.x1 x1
-               ; Attr_svg.y1 y
-               ; Attr_svg.x2 x2
-               ; Attr_svg.y2 y
-               ; Vdom.Attr.class_ "flame-graph-sequence-border"
-               ])
+          ~attrs:
+            [ attr
+            ; Attr_svg.x1 x1
+            ; Attr_svg.y1 y
+            ; Attr_svg.x2 x2
+            ; Attr_svg.y2 y
+            ; Vdom.Attr.class_ "flame-graph-sequence-border"
+            ]
           []
       in
       [ segment
@@ -357,40 +349,37 @@ module Make (Graph : Graph) = struct
         let left_x = middle_x -. bracket_tick_length in
         let line =
           Node_svg.polyline
-            ~attr:
-              (Attr_svg.points
-                 [ right_x, starting_border_y
-                 ; middle_x, starting_border_y
-                 ; middle_x, ending_border_y
-                 ; right_x, ending_border_y
-                 ])
+            ~attrs:
+              [ Attr_svg.points
+                  [ right_x, starting_border_y
+                  ; middle_x, starting_border_y
+                  ; middle_x, ending_border_y
+                  ; right_x, ending_border_y
+                  ]
+              ]
             []
         in
         let middle_y = (starting_border_y +. ending_border_y) /. 2. in
         let tick =
           Node_svg.polyline
-            ~attr:(Attr_svg.points [ middle_x, middle_y; left_x, middle_y ])
+            ~attrs:[ Attr_svg.points [ middle_x, middle_y; left_x, middle_y ] ]
             []
         in
         let text_right_x = left_x -. bracket_margin in
         let text_lines =
           let first = ref true in
           List.map (Graph.Sequence.label ~graph seq) ~f:(fun line ->
-            let dy =
-              if !first then Vdom.Attr.empty else Vdom.Attr.create "dy" "1.2em"
-            in
+            let dy = if !first then Vdom.Attr.empty else Vdom.Attr.create "dy" "1.2em" in
             first := false;
             Node_svg.tspan
-              ~attr:
-                (Vdom.Attr.many
-                   [ Attr_svg.x text_right_x; Attr_svg.y (middle_y -. 3.); dy ])
+              ~attrs:[ Attr_svg.x text_right_x; Attr_svg.y (middle_y -. 3.); dy ]
               [ Vdom.Node.text line ])
         in
         let text =
-          Node_svg.text ~attr:(Vdom.Attr.create "text-anchor" "end") text_lines
+          Node_svg.text ~attrs:[ Vdom.Attr.create "text-anchor" "end" ] text_lines
         in
         [ Node_svg.g
-            ~attr:(Vdom.Attr.class_ "flame-graph-sequence-bracket")
+            ~attrs:[ Vdom.Attr.class_ "flame-graph-sequence-bracket" ]
             [ line; tick; text ]
         ]
     in
@@ -403,14 +392,13 @@ module Make (Graph : Graph) = struct
         let height = Float.abs (starting_border_y -. ending_border_y) in
         let y = Float.min starting_border_y ending_border_y in
         [ Node_svg.rect
-            ~attr:
-              (Vdom.Attr.many
-                 [ Attr_svg.x x
-                 ; Attr_svg.y y
-                 ; Attr_svg.width width
-                 ; Attr_svg.height height
-                 ; Vdom.Attr.class_ "flame-graph-sequence-box"
-                 ])
+            ~attrs:
+              [ Attr_svg.x x
+              ; Attr_svg.y y
+              ; Attr_svg.width width
+              ; Attr_svg.height height
+              ; Vdom.Attr.class_ "flame-graph-sequence-box"
+              ]
             []
         ]
     in
@@ -592,26 +580,25 @@ module Make (Graph : Graph) = struct
     in
     let open Vdom in
     let flame_view =
-      Node_svg.g ~attr:(Attr.class_ "flame-graph-flames") flame_graph_views
+      Node_svg.g ~attrs:[ Attr.class_ "flame-graph-flames" ] flame_graph_views
     in
-    let focus_view = Node_svg.g ~attr:(Attr.class_ "flame-graph-focus") focus_views in
+    let focus_view = Node_svg.g ~attrs:[ Attr.class_ "flame-graph-focus" ] focus_views in
     let icicle_view =
-      Node_svg.g ~attr:(Attr.class_ "flame-graph-icicles") icicle_graph_views
+      Node_svg.g ~attrs:[ Attr.class_ "flame-graph-icicles" ] icicle_graph_views
     in
     let on_size_change =
       Bonsai_web_ui_element_size_hooks.Size_tracker.on_change (fun ~width ~height:_ ->
         set_width width)
     in
     Node.div
-      ~attr:(Attr.class_ "flame-graph-container")
+      ~attrs:[ Attr.class_ "flame-graph-container" ]
       [ Node.div
-          ~attr:(Attr.many [ Attr.class_ "flame-graph-sizer"; on_size_change ])
+          ~attrs:[ Attr.class_ "flame-graph-sizer"; on_size_change ]
           [ Node_svg.svg
-              ~attr:
-                (Attr.many
-                   [ Attr_svg.height height
-                   ; Attr_svg.viewbox ~min_x:0. ~min_y:0. ~width ~height
-                   ])
+              ~attrs:
+                [ Attr_svg.height height
+                ; Attr_svg.viewbox ~min_x:0. ~min_y:0. ~width ~height
+                ]
               [ flame_view; icicle_view; focus_view ]
           ]
       ]

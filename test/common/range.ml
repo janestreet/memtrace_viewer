@@ -10,7 +10,7 @@ module _ = struct
       | Non_empty { lower_bound; upper_bound } ->
         print_s
           [%message
-            "" ~range:(lower_bound, upper_bound : Point.t Bound.t * Point.t Bound.t)]
+            "" ~range:((lower_bound, upper_bound) : Point.t Bound.t * Point.t Bound.t)]
       | Empty -> printf "empty"
     in
     test_inter (range No_bound No_bound) (range (Open 4) No_bound);
@@ -93,7 +93,6 @@ module _ = struct
   let run1_eq = run_eq ~run:run1 ~equal ~sexp_of_t
   let run2_eq = run_eq ~run:run2 ~equal ~sexp_of_t
   let run3_eq = run_eq ~run:run3 ~equal ~sexp_of_t
-
   let%test_unit "commutativity of join" = run2_eq ~f:(fun (a, b) -> join a b, join b a) ()
 
   let%test_unit "associativity of join" =
@@ -101,7 +100,6 @@ module _ = struct
   ;;
 
   let%test_unit "all is zero of join" = run1_eq ~f:(fun a -> join all a, all) ()
-
   let run1_eq_oe = run_eq ~run:run1 ~equal:Or_empty.equal ~sexp_of_t:Or_empty.sexp_of_t
   let run2_eq_oe = run_eq ~run:run2 ~equal:Or_empty.equal ~sexp_of_t:Or_empty.sexp_of_t
   let run3_eq_oe = run_eq ~run:run3 ~equal:Or_empty.equal ~sexp_of_t:Or_empty.sexp_of_t

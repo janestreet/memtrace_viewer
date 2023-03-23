@@ -42,7 +42,7 @@ end
 let view_location extra loc ~call_sites =
   let call_sites = Data.Call_sites.for_location call_sites loc in
   Vdom.Node.span
-    ~attr:(Vdom.Attr.title (Data.Location.full_name loc ~call_sites:(Some call_sites)))
+    ~attrs:[ Vdom.Attr.title (Data.Location.full_name loc ~call_sites:(Some call_sites)) ]
     [ Vdom.Node.text extra; Location.format_dom loc ~call_sites:None ]
 ;;
 
@@ -55,18 +55,20 @@ let location_col ~call_sites ~standard_attrs =
   let render _ (row : Table.Row.t) =
     let node =
       match row.display with
-      | [] -> Node.div ~attr:(Attr.class_ "last-loc") [ Node.text "(empty)" ]
+      | [] -> Node.div ~attrs:[ Attr.class_ "last-loc" ] [ Node.text "(empty)" ]
       | first :: rest ->
         (match List.rev rest with
          | [] ->
-           Node.div ~attr:(Attr.class_ "last-loc") [ view_location "" first ~call_sites ]
+           Node.div
+             ~attrs:[ Attr.class_ "last-loc" ]
+             [ view_location "" first ~call_sites ]
          | last :: _ ->
            Node.span
              [ Node.div
-                 ~attr:(Attr.class_ "last-loc")
+                 ~attrs:[ Attr.class_ "last-loc" ]
                  [ view_location "" last ~call_sites ]
              ; Node.div
-                 ~attr:(Attr.class_ "first-loc")
+                 ~attrs:[ Attr.class_ "first-loc" ]
                  [ view_location "..." first ~call_sites ]
              ])
     in

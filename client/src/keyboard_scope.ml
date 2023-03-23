@@ -15,9 +15,10 @@ let wrap ~view ~key_handler =
   in
   let view =
     Node.div
-      ~attr:
-        (Attr.many_without_merge
-           [ (* Make focusable *) Attr.tabindex (-1); Attr.on_keydown on_keydown ])
+      ~attrs:
+        [ Attr.many_without_merge
+            [ (* Make focusable *) Attr.tabindex (-1); Attr.on_keydown on_keydown ]
+        ]
       [ view ]
   in
   let key_help = Vdom_keyboard.Keyboard_event_handler.get_help_text key_handler in

@@ -422,8 +422,7 @@ module Make (Location : Location) (Entry : Entry) (Metadata : Metadata) :
         ~init:()
         ~backtrace_rev:Backtrace.Reversed.nil
         ~f:(fun ~backtrace_rev ~fragment () ->
-          if not
-               (Backtrace.Reversed.equal backtrace_rev (Fragment.backtrace_rev fragment))
+          if not (Backtrace.Reversed.equal backtrace_rev (Fragment.backtrace_rev fragment))
           then
             raise_s
               [%message

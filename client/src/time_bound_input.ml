@@ -140,7 +140,8 @@ let component ~which ~max ~start_time ~time_view =
           let max_input = max_input |> Time_ns.to_ofday ~zone in
           let on_input ofday =
             on_input
-              (ofday |> Option.map ~f:(fun ofday -> Time_ns.of_date_ofday ~zone date ofday))
+              (ofday
+               |> Option.map ~f:(fun ofday -> Time_ns.of_date_ofday ~zone date ofday))
           in
           let abs_value = abs_value |> Option.map ~f:(Time_ns.to_ofday ~zone) in
           { value = value, Size.Small

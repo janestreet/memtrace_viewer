@@ -330,7 +330,9 @@ end
 let with_conjunction conjunction view =
   let open Vdom in
   Node.span
-    [ Node.span ~attr:(Attr.class_ "conjunction") [ Node.textf "%s " conjunction ]; view ]
+    [ Node.span ~attrs:[ Attr.class_ "conjunction" ] [ Node.textf "%s " conjunction ]
+    ; view
+    ]
 ;;
 
 let toplevel_clause_editor =

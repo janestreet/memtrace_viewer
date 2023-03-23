@@ -113,8 +113,7 @@ module Cache = struct
   let call_sites_from_code t loc_code : Call_site.t list =
     Hashtbl.find_or_add t.code_table loc_code ~default:(fun () ->
       let call_sites = Memtrace.Trace.Reader.lookup_location_code t.trace loc_code in
-      List.map call_sites ~f:(fun call_site ->
-        call_site_from_trace_location t call_site))
+      List.map call_sites ~f:(fun call_site -> call_site_from_trace_location t call_site))
   ;;
 
   let get_defname t loc : string =
