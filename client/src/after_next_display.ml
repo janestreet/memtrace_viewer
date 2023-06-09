@@ -16,8 +16,8 @@ let component effect =
   let open Bonsai.Let_syntax in
   let%sub _, run_action =
     Bonsai.state_machine1
-      (module Model)
-      (module Action)
+      ~equal:[%equal: Model.t]
+      ~sexp_of_action:[%sexp_of: Action.t]
       ~default_model:{ activated = false }
       ~apply_action:(fun ~inject:_ ~schedule_event input model action ->
         match input with

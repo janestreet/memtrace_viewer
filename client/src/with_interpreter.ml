@@ -22,7 +22,8 @@ let component ~interpret ~input =
   let open Bonsai.Let_syntax in
   let%sub Input.{ value; context = _ }, run_action =
     Bonsai.wrap
-      (module Unit)
+      ()
+      ~equal:[%equal: Unit.t]
       ~default_model:()
       ~apply_action:
         (fun

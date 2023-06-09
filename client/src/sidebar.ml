@@ -53,7 +53,7 @@ let view ~attr ~nodes ~(button_position : Button_position.t) ~state ~set_state =
 
 let component ?(attr = Value.return Vdom.Attr.empty) nodes ~button_position =
   let open Bonsai.Let_syntax in
-  let%sub state, set_state = Bonsai.state (module State) ~default_model:Expanded in
+  let%sub state, set_state = Bonsai.state Expanded ~equal:[%equal: State.t] in
   return
     (let%map attr = attr
      and nodes = nodes

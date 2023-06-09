@@ -28,7 +28,7 @@ module Component (Tab : Tab) = struct
       =
       let open Bonsai.Let_syntax in
       let%sub state =
-        Bonsai.state (module State) ~default_model:{ selected_tab = Tab.initial }
+        Bonsai.state { selected_tab = Tab.initial } ~equal:[%equal: State.t]
       in
       return
         (let%map state, set_state = state
@@ -81,14 +81,14 @@ module Component (Tab : Tab) = struct
 
   let component : input:Tab.Input.t -> (Tab.t, Tab.Output.t) t Bonsai.Computation.t =
     fun ~input ->
-      let open Bonsai.Let_syntax in
-      let%sub tab_bar = Tab_bar.component ~tab_is_enabled:(Tab.enabled ~input) in
-      let%sub current_tab = current_tab ~input ~tab_bar in
-      return
-        (let%map { view = tab_bar_view; selected_tab; select_tab } = tab_bar
-         and current_tab_view, output = current_tab in
-         let view = view tab_bar_view current_tab_view in
-         { view; select_tab; selected_tab; output })
+    let open Bonsai.Let_syntax in
+    let%sub tab_bar = Tab_bar.component ~tab_is_enabled:(Tab.enabled ~input) in
+    let%sub current_tab = current_tab ~input ~tab_bar in
+    return
+      (let%map { view = tab_bar_view; selected_tab; select_tab } = tab_bar
+       and current_tab_view, output = current_tab in
+       let view = view tab_bar_view current_tab_view in
+       { view; select_tab; selected_tab; output })
   ;;
 end
 

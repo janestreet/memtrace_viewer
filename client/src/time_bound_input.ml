@@ -22,7 +22,7 @@ end
 
 let component ~which ~max ~start_time ~time_view =
   let open Bonsai.Let_syntax in
-  let%sub state = Bonsai.state (module Time_ns_span_option) ~default_model:None in
+  let%sub state = Bonsai.state None ~equal:[%equal: Time_ns_span_option.t] in
   return
     (let%map value, set_value = state
      and max = max

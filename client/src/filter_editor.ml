@@ -56,7 +56,7 @@ let dropdown_of_enum_opt (type enum) (module Enum : Enum with type t = enum)
   : enum option And_view.t Bonsai.Computation.t
   =
   let open Bonsai.Let_syntax in
-  let%sub state = Bonsai.state (module Option_of_enum (Enum)) ~default_model:None in
+  let%sub state = Bonsai.state None ~equal:[%equal: Enum.t option] in
   return
     (let%map value, set_value = state in
      let view =

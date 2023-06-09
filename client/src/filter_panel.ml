@@ -210,7 +210,7 @@ let panel_body
 ;;
 
 let time_view_holder =
-  Bonsai.state (module Graph_view.Time_view) ~default_model:Elapsed_seconds
+  Bonsai.state Elapsed_seconds ~equal:[%equal: Graph_view.Time_view.t]
 ;;
 
 let component

@@ -36,8 +36,8 @@ end
 
 let component =
   let open Bonsai.Let_syntax in
-  let%sub state = Bonsai.state (module Float_option) ~default_model:None in
-  let%sub unit_state = Bonsai.state (module Unit) ~default_model:Kilobytes in
+  let%sub state = Bonsai.state None ~equal:[%equal: Float_option.t] in
+  let%sub unit_state = Bonsai.state Kilobytes ~equal:[%equal: Unit.t] in
   return
     (let%map value, set_value = state
      and unit, set_unit = unit_state in

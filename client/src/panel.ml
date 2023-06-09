@@ -61,7 +61,7 @@ let panel ?title body ~id ~(collapsible : Collapsible.t) =
       | No -> Expanded
       | Yes { initial_state; _ } -> initial_state
     in
-    Bonsai.state (module State) ~default_model
+    Bonsai.state default_model ~equal:[%equal: State.t]
   in
   let title =
     match title with

@@ -7,7 +7,7 @@ end
 
 let component =
   let open Bonsai.Let_syntax in
-  let%sub state = Bonsai.state (module String_option) ~default_model:None in
+  let%sub state = Bonsai.state None ~equal:[%equal: String_option.t] in
   return
     (let%map value, set_value = state in
      let view =

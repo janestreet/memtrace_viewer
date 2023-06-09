@@ -823,7 +823,7 @@ module Make (Graph : Graph) = struct
 
   let component graph ~selection ~select ~navigate_to ~activate ~commands =
     let open Bonsai.Let_syntax in
-    let%sub width, set_width = Bonsai.state (module Float) ~default_model:500. in
+    let%sub width, set_width = Bonsai.state 500. ~equal:[%equal: Float.t] in
     return
       (let%map graph = graph
        and width = width

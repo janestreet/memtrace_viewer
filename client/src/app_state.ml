@@ -37,7 +37,7 @@ type t =
 
 let component ~trie =
   let open Bonsai.Let_syntax in
-  let%sub state, set_state = Bonsai.state (module State) ~default_model:State.default in
+  let%sub state, set_state = Bonsai.state State.default ~equal:[%equal: State.t] in
   let focus =
     let%map state = state
     and trie = trie in

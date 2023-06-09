@@ -40,7 +40,12 @@ let state_machine =
     | Reset -> State.empty
   in
   let default_model = State.empty in
-  Bonsai.state_machine0 (module State) (module Action) ~apply_action ~default_model
+  Bonsai.state_machine0
+    ()
+    ~equal:[%equal: State.t]
+    ~sexp_of_action:[%sexp_of: Action.t]
+    ~apply_action
+    ~default_model
 ;;
 
 type t =

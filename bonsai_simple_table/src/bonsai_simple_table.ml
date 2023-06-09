@@ -598,8 +598,8 @@ module Make (Row : Row) (Col_id : Id) = struct
     let%sub focus = Bonsai.Incr.compute input ~f:Focus.create in
     let%sub model, inject =
       Bonsai.state_machine1
-        (module Model)
-        (module Action)
+        ~equal:[%equal: Model.t]
+        ~sexp_of_action:[%sexp_of: Action.t]
         ~default_model:(Model.create ())
         ~apply_action
         focus

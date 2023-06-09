@@ -121,7 +121,7 @@ let component ~series ~regions ~aspect_ratio ~start_time ~time_view ~set_time_vi
   : Vdom.Node.t Bonsai.Computation.t
   =
   let open Bonsai.Let_syntax in
-  let%sub width, set_width = Bonsai.state (module Float) ~default_model:450. in
+  let%sub width, set_width = Bonsai.state 450. ~equal:[%equal: Float.t] in
   let height =
     let%map width = width
     and aspect_ratio = aspect_ratio in

@@ -15,10 +15,8 @@ let component
   =
   let open Bonsai.Let_syntax in
   let open Vdom in
-  let%sub index_set_state =
-    Bonsai.state (module Index_set) ~default_model:Int.Map.empty
-  in
-  let%sub next_index_state = Bonsai.state (module Int) ~default_model:0 in
+  let%sub index_set_state = Bonsai.state Int.Map.empty ~equal:[%equal: Index_set.t] in
+  let%sub next_index_state = Bonsai.state 0 ~equal:[%equal: Int.t] in
   let%sub rows =
     let index_set =
       let%map index_set, _ = index_set_state in

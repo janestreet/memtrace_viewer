@@ -313,7 +313,7 @@ type t =
 
 let component ~trie ~call_sites ~focus ~set_focus ~activate =
   let open Bonsai.Let_syntax in
-  let%sub state, set_state = Bonsai.state_opt (module State) in
+  let%sub state, set_state = Bonsai.state_opt () ~equal:[%equal: State.t] in
   let%sub selection =
     return
       (let%map state = state
