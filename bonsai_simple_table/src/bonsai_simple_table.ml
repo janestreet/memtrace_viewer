@@ -216,7 +216,7 @@ module Make (Row : Row) (Col_id : Id) = struct
           | None -> ()))
     ;;
 
-    let apply_action ~inject:_ ~schedule_event focus { Model.focus_row } action =
+    let apply_action context focus { Model.focus_row } action =
       match focus with
       | Bonsai.Computation_status.Active focus ->
         let focus_row =
@@ -225,7 +225,7 @@ module Make (Row : Row) (Col_id : Id) = struct
           | Move_focus dir -> Focus.move focus focus_row ~dir
         in
         Option.iter focus_row ~f:(fun row_id ->
-          schedule_event (scroll_to_row_effect row_id));
+          Bonsai.Apply_action_context.schedule_event context (scroll_to_row_effect row_id));
         { Model.focus_row }
       | Inactive ->
         eprint_s

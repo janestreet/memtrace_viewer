@@ -34,7 +34,7 @@ module Action = struct
 end
 
 let state_machine =
-  let apply_action ~inject:_ ~schedule_event:_ state = function
+  let apply_action (_ : _ Bonsai.Apply_action_context.t) state = function
     | Action.Expand fragment -> State.expand state fragment
     | Collapse fragment -> State.collapse state fragment
     | Reset -> State.empty

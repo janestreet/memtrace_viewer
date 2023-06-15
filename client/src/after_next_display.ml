@@ -19,7 +19,7 @@ let component effect =
       ~equal:[%equal: Model.t]
       ~sexp_of_action:[%sexp_of: Action.t]
       ~default_model:{ activated = false }
-      ~apply_action:(fun ~inject:_ ~schedule_event input model action ->
+      ~apply_action:(fun context input model action ->
         match input with
         | Active input ->
           (match action with
@@ -27,7 +27,7 @@ let component effect =
            | Run_if_active ->
              if model.activated
              then (
-               schedule_event input;
+               Bonsai.Apply_action_context.schedule_event context input;
                { activated = false })
              else model)
         | Inactive ->

@@ -25,10 +25,10 @@ let component ~interpret ~input =
       ()
       ~equal:[%equal: Unit.t]
       ~default_model:()
-      ~apply_action:
-        (fun
-          ~inject:_ ~schedule_event (Input.{ value; context }, _) () action ->
-          schedule_event (interpret ~value ~context action))
+      ~apply_action:(fun apply_action_context (Input.{ value; context }, _) () action ->
+        Bonsai.Apply_action_context.schedule_event
+          apply_action_context
+          (interpret ~value ~context action))
       ~f:(fun _ inject ->
         let%sub input = input ~run_action:inject in
         let%arr input = input
