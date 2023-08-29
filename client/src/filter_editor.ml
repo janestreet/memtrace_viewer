@@ -14,7 +14,7 @@ module Time_parameters = struct
     ; start_time : Time_ns.t
     ; time_view : Graph_view.Time_view.t
     }
-  [@@deriving fields]
+  [@@deriving fields ~getters]
 end
 
 let map_component ~f c =

@@ -217,7 +217,7 @@ module Entry = struct
     ; percentage_string : string
     ; is_heavy : bool
     }
-  [@@deriving sexp, bin_io, fields]
+  [@@deriving sexp, bin_io, fields ~getters]
 
   let empty =
     let allocations = Byte_units.zero in
@@ -264,7 +264,7 @@ module Graph = struct
     ; max_x : Time_ns.Span.t
     ; max_y : Byte_units.Stable.V2.t
     }
-  [@@deriving sexp, bin_io, fields]
+  [@@deriving sexp, bin_io, fields ~getters]
 
   let create points =
     let max_x, max_y =

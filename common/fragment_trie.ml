@@ -94,7 +94,7 @@ module Make (Location : Location) (Entry : Entry) (Metadata : Metadata) :
       ; mutable representative : t
       ; mutable length : int
       }
-    [@@deriving fields]
+    [@@deriving fields ~getters]
 
     let is_empty t = phys_equal t t.retraction_by_caller
     let is_singleton t = (not (is_empty t)) && is_empty t.retraction_by_callee

@@ -52,7 +52,7 @@ type t =
   { mutable data : Data.t
   ; mutable filter : Filter.t
   }
-[@@deriving fields]
+[@@deriving fields ~getters]
 
 let compute
       ~initial_state:

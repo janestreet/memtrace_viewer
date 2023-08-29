@@ -5,7 +5,7 @@ open Vdom_keyboard
 open Memtrace_viewer_common
 
 module State = struct
-  type t = { expanded_backtraces : Data.Backtrace.Set.t } [@@deriving sexp, equal, fields]
+  type t = { expanded_backtraces : Data.Backtrace.Set.t } [@@deriving sexp, equal]
 
   let empty = { expanded_backtraces = Data.Backtrace.Set.empty }
 

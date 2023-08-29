@@ -27,7 +27,7 @@ module Test_tree = struct
       ; children : t list
       ; suffix : t Lazy.t
       }
-    [@@deriving fields]
+    [@@deriving fields ~getters]
 
     let children t = t.children |> List.map ~f:(fun child -> child.incoming_edge, child)
 

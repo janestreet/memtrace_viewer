@@ -29,7 +29,6 @@ module Make (Row : Row) (Col_id : Id) = struct
         ; group : Col_group.t option
         ; classes : string list
         }
-      [@@deriving fields]
 
       let create ?header_for_testing ?(classes = []) ~header ~render ~group () =
         { header_for_testing; header; render; group; classes }
@@ -45,7 +44,7 @@ module Make (Row : Row) (Col_id : Id) = struct
         ; table_attrs : Vdom.Attr.t list
         ; percentage_rendered : Percent.t
         }
-      [@@deriving fields]
+      [@@deriving fields ~getters ~iterators:create]
 
       let create
             ?(percentage_rendered = Percent.one_hundred_percent)
@@ -67,7 +66,7 @@ module Make (Row : Row) (Col_id : Id) = struct
     end
 
     module Model = struct
-      type t = { focus_row : Row.Id.t option } [@@deriving fields, equal, sexp]
+      type t = { focus_row : Row.Id.t option } [@@deriving fields ~getters, equal, sexp]
 
       let create () = { focus_row = None }
     end
