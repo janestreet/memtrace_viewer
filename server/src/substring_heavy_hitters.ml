@@ -101,20 +101,20 @@ module Make (X : Char) = struct
       ; mutable next_sibling : t
       ; mutable first_child : t
       ; mutable refcount : int
-      (* [2 * incoming suffix links + 2 * has count + chidren]
+          (* [2 * incoming suffix links + 2 * has count + chidren]
          A node should be deleted when this is <= 1 *)
       ; mutable summary : summary
       ; mutable queue_item : queue_item
       ; mutable count : int
-      (* Upper bound on how much has been squashed along the edge to the parent. A node
+          (* Upper bound on how much has been squashed along the edge to the parent. A node
          may be created and squashed again any number of times; this is a bound on how
          much count we've thrown away in doing so for this node. (Edge merging muddies the
          picture, since it may not have been precisely _this_ node, but you get the
          picture.) *)
       ; mutable max_edge_squashed : int
-      (* Upper bound on how much has been squashed along any one edge to a child *)
+          (* Upper bound on how much has been squashed along any one edge to a child *)
       ; mutable max_child_squashed : int
-      (* Upper bound on how much the total count could be low *)
+          (* Upper bound on how much the total count could be low *)
       ; mutable delta : int
       }
 
@@ -131,7 +131,7 @@ module Make (X : Char) = struct
           ; mutable heavy_descendents_count : int
           ; mutable heavy_descendents : Id.Set.t
           ; mutable representative : t
-          (* Deepest descendent (possibly itself) with the same set of heavy descendents.
+              (* Deepest descendent (possibly itself) with the same set of heavy descendents.
           *)
           }
 
@@ -652,10 +652,10 @@ module Make (X : Char) = struct
             (delta : int)
             ~total_count:
               ((match node.summary with
-                 | No_summary -> [%sexp "???"]
-                 | Summary { descendents_count; _ } ->
-                   [%sexp (node.count + descendents_count : int)])
-               : Sexp.t)
+                | No_summary -> [%sexp "???"]
+                | Summary { descendents_count; _ } ->
+                  [%sexp (node.count + descendents_count : int)])
+                : Sexp.t)
             ~label:(label node : X.t array)]
       ;;
     end
@@ -794,20 +794,20 @@ module Make (X : Char) = struct
       type nonrec t = t
 
       let rec sexp_of_t
-                ({ id
-                 ; count
-                 ; delta
-                 ; max_edge_squashed
-                 ; max_child_squashed
-                 ; edge_array
-                 ; edge_start
-                 ; edge_len
-                 ; parent
-                 ; suffix_link
-                 ; summary
-                 ; first_child
-                 ; _
-                 } as node)
+        ({ id
+         ; count
+         ; delta
+         ; max_edge_squashed
+         ; max_child_squashed
+         ; edge_array
+         ; edge_start
+         ; edge_len
+         ; parent
+         ; suffix_link
+         ; summary
+         ; first_child
+         ; _
+         } as node)
         =
         let child_ids =
           let rec siblings node =
@@ -1301,14 +1301,14 @@ module Make (X : Char) = struct
             ~root:plain_root
             ~init:[]
             ~f:(fun plain_child children ->
-              let edge =
-                Array.sub
-                  (Plain_node.edge_array plain_child)
-                  ~pos:(Plain_node.edge_start plain_child)
-                  ~len:(Plain_node.edge_length plain_child)
-              in
-              let child = mk_node plain_child in
-              (edge, child) :: children)
+            let edge =
+              Array.sub
+                (Plain_node.edge_array plain_child)
+                ~pos:(Plain_node.edge_start plain_child)
+                ~len:(Plain_node.edge_length plain_child)
+            in
+            let child = mk_node plain_child in
+            (edge, child) :: children)
         in
         let parent = dummy (* fix in second pass *) in
         let suffix = dummy (* fix in second pass *) in
@@ -1337,18 +1337,18 @@ module Make (X : Char) = struct
         fix_back_pointers child ~parent:root ~leading_edge);
       let rec do_merge_prefixes (node : Node.t) =
         node.prefixes
-        <- List.map node.prefixes ~f:(fun (leading_edge, child) ->
-          (* Find a chain of prefixes with count 0, only one prefix, and no children *)
-          let rec chain (desc : Node.t) edges =
-            if Plain_node.count desc.plain <> 0
-            then edges, desc
-            else (
-              match desc.children, desc.prefixes with
-              | [], [ (edge, child) ] -> chain child (edge :: edges)
-              | _ -> edges, desc)
-          in
-          let edges, last_child = chain child [ leading_edge ] in
-          Array.concat edges, last_child);
+          <- List.map node.prefixes ~f:(fun (leading_edge, child) ->
+               (* Find a chain of prefixes with count 0, only one prefix, and no children *)
+               let rec chain (desc : Node.t) edges =
+                 if Plain_node.count desc.plain <> 0
+                 then edges, desc
+                 else (
+                   match desc.children, desc.prefixes with
+                   | [], [ (edge, child) ] -> chain child (edge :: edges)
+                   | _ -> edges, desc)
+               in
+               let edges, last_child = chain child [ leading_edge ] in
+               Array.concat edges, last_child);
         List.iter node.children ~f:(fun (_, child) -> do_merge_prefixes child)
       in
       if merge_prefixes then do_merge_prefixes root;

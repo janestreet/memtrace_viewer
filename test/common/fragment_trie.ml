@@ -36,9 +36,7 @@ module Test_tree = struct
       if phys_equal suffix t then None else Some suffix
     ;;
 
-    let representative t =
-      t
-    ;;
+    let representative t = t
 
     module Show_id_only = struct
       let sexp_of_t t = Id.sexp_of_t t.id
@@ -137,7 +135,7 @@ let check_fragment_trie fragment_trie ~suffix_tree =
       ~fragment_trie
       ~suffix_tree
       ~f:(fun ~fragment ~suffix_tree_node ->
-        Hashtbl.add_exn table ~key:suffix_tree_node.id ~data:fragment);
+      Hashtbl.add_exn table ~key:suffix_tree_node.id ~data:fragment);
     table
   in
   traverse_in_parallel ~fragment_trie ~suffix_tree ~f:(fun ~fragment ~suffix_tree_node ->

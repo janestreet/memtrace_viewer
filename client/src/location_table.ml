@@ -171,13 +171,13 @@ type t =
   }
 
 let component
-      ~total_allocations
-      ~call_sites
-      ~rows
-      ~presorted
-      ~focus
-      ~set_focus
-      ~on_click_row
+  ~total_allocations
+  ~call_sites
+  ~rows
+  ~presorted
+  ~focus
+  ~set_focus
+  ~on_click_row
   =
   let open Bonsai.Let_syntax in
   let%sub input : Table.Input.t Bonsai.Computation.t =
@@ -207,8 +207,8 @@ let component
              ; focus_row
              ; inject
              }
-      =
-      table
+       =
+       table
      and set_focus = set_focus in
      let selection =
        Option.map focus_row ~f:(fun (backtrace, { fragment; _ }) -> backtrace, fragment)

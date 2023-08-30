@@ -93,8 +93,8 @@ module Component (Tab : Tab) = struct
 end
 
 let component
-      (type tab input output)
-      (module Tab : Tab with type t = tab and type Input.t = input and type Output.t = output)
+  (type tab input output)
+  (module Tab : Tab with type t = tab and type Input.t = input and type Output.t = output)
   =
   let module Tab_panel = Component (Tab) in
   Tab_panel.component

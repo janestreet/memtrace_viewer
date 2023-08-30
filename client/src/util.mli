@@ -6,7 +6,6 @@ open Bonsai_web
    only make sense to OCaml. *)
 module Float_html_syntax : Stringable.S with type t = float
 
-
 (* An empty span meant as a placeholder for an element that might exist later. Helps with
    diffs because whenever a new element is inserted, its rightward siblings all get their
    DOM trees rebuilt from scratch. *)

@@ -6,13 +6,13 @@ module Node_svg = Virtual_dom_svg.Node
 open Memtrace_viewer_common
 
 let graph_view
-      ~graph
-      ~filtered_graph
-      ~allocated_range
-      ~collected_range
-      ~start_time
-      ~time_view
-      ~set_time_view
+  ~graph
+  ~filtered_graph
+  ~allocated_range
+  ~collected_range
+  ~start_time
+  ~time_view
+  ~set_time_view
   : Vdom.Node.t Bonsai.Computation.t
   =
   let open Bonsai.Let_syntax in
@@ -91,8 +91,7 @@ module Submission_handling = struct
        and filter = filter in
        let do_submit =
          match filter with
-         | Some filter ->
-           inject_outgoing (Action.Set_filter filter)
+         | Some filter -> inject_outgoing (Action.Set_filter filter)
          | None -> Vdom.Effect.Ignore
        in
        let on_submit =
@@ -104,7 +103,7 @@ module Submission_handling = struct
        let enabled = server_is_up && filter_is_valid in
        let button =
          Node.input
-           (* Don't actually put an onclick handler on the button; just return the handler
+         (* Don't actually put an onclick handler on the button; just return the handler
               to be used as the form's onsubmit instead, thus getting Enter key behavior
               for free
            *)
@@ -122,15 +121,15 @@ module Submission_handling = struct
 end
 
 let panel_body
-      ~server_state
-      ~total_allocations
-      ~filtered_allocations
-      ~peak_allocations
-      ~(filter : Filter.t)
-      ~filter_clauses
-      ~graph_node
-      ~button_node
-      ~on_submit
+  ~server_state
+  ~total_allocations
+  ~filtered_allocations
+  ~peak_allocations
+  ~(filter : Filter.t)
+  ~filter_clauses
+  ~graph_node
+  ~button_node
+  ~on_submit
   =
   let allocations_line desc bytes =
     Node.p
@@ -214,15 +213,15 @@ let time_view_holder =
 ;;
 
 let component
-      ~graph
-      ~filtered_graph
-      ~total_allocations
-      ~filtered_allocations
-      ~peak_allocations
-      ~peak_allocations_time
-      ~start_time
-      ~inject_outgoing
-      ~server_state
+  ~graph
+  ~filtered_graph
+  ~total_allocations
+  ~filtered_allocations
+  ~peak_allocations
+  ~peak_allocations_time
+  ~start_time
+  ~inject_outgoing
+  ~server_state
   : Vdom.Node.t Bonsai.Computation.t
   =
   let open Bonsai.Let_syntax in

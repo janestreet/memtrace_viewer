@@ -12,18 +12,18 @@ let find_heavy_hitters ~trace ~tolerance ~significance_frequency
       ~mode:Preserve_backtraces
       trace
       (fun _time ev ->
-         match ev with
-         | Alloc
-             { obj_id = _
-             ; nsamples
-             ; source = _
-             ; single_allocation_size = _
-             ; size = _
-             ; backtrace_buffer
-             ; backtrace_length
-             ; common_prefix
-             } ->
-           (* Important: Memtrace order of stack frames is *toplevel first*, i.e. the opposite
+      match ev with
+      | Alloc
+          { obj_id = _
+          ; nsamples
+          ; source = _
+          ; single_allocation_size = _
+          ; size = _
+          ; backtrace_buffer
+          ; backtrace_length
+          ; common_prefix
+          } ->
+        (* Important: Memtrace order of stack frames is *toplevel first*, i.e. the opposite
               order to how stack traces are usually displayed. Reversing this here is not
               feasible as SHH's performance relies heavily on passing [common_prefix] through.
 
@@ -38,40 +38,40 @@ let find_heavy_hitters ~trace ~tolerance ~significance_frequency
               Make enough space for the toplevel location, the backtrace minus the common
               prefix, and the allocator location.
            *)
-           let backtrace_length_after_common_prefix = backtrace_length - common_prefix in
-           let space_for_added_toplevel =
-             (* Make room for the [Location.toplevel] in the very first backtrace.
+        let backtrace_length_after_common_prefix = backtrace_length - common_prefix in
+        let space_for_added_toplevel =
+          (* Make room for the [Location.toplevel] in the very first backtrace.
                 Subsequent backtraces will include it in the common prefix. *)
-             if !first then 1 else 0
-           in
-           let space_for_added_allocator =
-             (* Always there at the end *)
-             1
-           in
-           let word_len =
-             space_for_added_toplevel
-             + backtrace_length_after_common_prefix
-             + space_for_added_allocator
-           in
-           let word = Array.create ~len:word_len Location.dummy in
-           if !first then word.(0) <- Location.toplevel;
-           word.(word_len - 1) <- Location.allocator;
-           Array.blit
-             ~src:backtrace_buffer
-             ~src_pos:common_prefix
-             ~dst:word
-             ~dst_pos:space_for_added_toplevel
-             ~len:backtrace_length_after_common_prefix;
-           let common_prefix =
-             if !first
-             then 0
-             else
-               (* Account for the [Location.toplevel] we added the very first time *)
-               common_prefix + 1
-           in
-           first := false;
-           Loc_hitters.insert shh word ~count:nsamples ~common_prefix
-         | Promote _ | Collect _ | End -> ())
+          if !first then 1 else 0
+        in
+        let space_for_added_allocator =
+          (* Always there at the end *)
+          1
+        in
+        let word_len =
+          space_for_added_toplevel
+          + backtrace_length_after_common_prefix
+          + space_for_added_allocator
+        in
+        let word = Array.create ~len:word_len Location.dummy in
+        if !first then word.(0) <- Location.toplevel;
+        word.(word_len - 1) <- Location.allocator;
+        Array.blit
+          ~src:backtrace_buffer
+          ~src_pos:common_prefix
+          ~dst:word
+          ~dst_pos:space_for_added_toplevel
+          ~len:backtrace_length_after_common_prefix;
+        let common_prefix =
+          if !first
+          then 0
+          else
+            (* Account for the [Location.toplevel] we added the very first time *)
+            common_prefix + 1
+        in
+        first := false;
+        Loc_hitters.insert shh word ~count:nsamples ~common_prefix
+      | Promote _ | Collect _ | End -> ())
   in
   Loc_hitters.calculate_totals shh ~heaviness_frequency:significance_frequency;
   shh, call_sites
@@ -329,39 +329,39 @@ let trie_of_shh ~loc_cache ~rate ~word_size ~all_call_sites shh =
     all_call_sites
     |> Hashtbl.to_alist
     |> List.map ~f:(fun (caller, all_call_sites_in_caller) ->
-      let call_sites_and_callees = Hashtbl.to_alist all_call_sites_in_caller in
-      let call_sites =
-        List.filter_map call_sites_and_callees ~f:(fun (call_site, callees) ->
-          if Hash_set.exists callees ~f:(fun callee ->
-            keep_call_site ~caller ~callee ~shh ~loc_cache)
-          then Some call_site
-          else None)
-      in
-      let call_sites =
-        match call_sites with
-        | _ :: _ -> call_sites
-        | [] ->
-          (* Everything was pruned, but we'd like to list at least _one_ call site, so
+         let call_sites_and_callees = Hashtbl.to_alist all_call_sites_in_caller in
+         let call_sites =
+           List.filter_map call_sites_and_callees ~f:(fun (call_site, callees) ->
+             if Hash_set.exists callees ~f:(fun callee ->
+                  keep_call_site ~caller ~callee ~shh ~loc_cache)
+             then Some call_site
+             else None)
+         in
+         let call_sites =
+           match call_sites with
+           | _ :: _ -> call_sites
+           | [] ->
+             (* Everything was pruned, but we'd like to list at least _one_ call site, so
              pick the first one *)
-          let compare cs1 cs2 =
-            let get_data = Location.Cache.get_call_site_data loc_cache in
-            Data.Call_site.compare (get_data cs1) (get_data cs2)
-          in
-          (match List.sort call_sites ~compare with
-           | call_site :: _ -> [ call_site ]
-           | [] -> (* ??? *) [])
-      in
-      let call_sites =
-        List.map ~f:(Location.Cache.get_call_site_data loc_cache) call_sites
-      in
-      let caller =
-        match Location.Cache.get_loc_data loc_cache caller with
-        | Function data -> data
-        | (Allocation_site _ | Toplevel | Allocator | Dummy) as data ->
-          raise_s
-            [%message "Unexpected location data for caller" (data : Data.Location.t)]
-      in
-      caller, call_sites)
+             let compare cs1 cs2 =
+               let get_data = Location.Cache.get_call_site_data loc_cache in
+               Data.Call_site.compare (get_data cs1) (get_data cs2)
+             in
+             (match List.sort call_sites ~compare with
+              | call_site :: _ -> [ call_site ]
+              | [] -> (* ??? *) [])
+         in
+         let call_sites =
+           List.map ~f:(Location.Cache.get_call_site_data loc_cache) call_sites
+         in
+         let caller =
+           match Location.Cache.get_loc_data loc_cache caller with
+           | Function data -> data
+           | (Allocation_site _ | Toplevel | Allocator | Dummy) as data ->
+             raise_s
+               [%message "Unexpected location data for caller" (data : Data.Location.t)]
+         in
+         caller, call_sites)
     |> Data.Call_sites.create
   in
   trie, call_sites

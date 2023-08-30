@@ -1,7 +1,6 @@
 open! Core
 open Memtrace_viewer_common
 
-
 let predicate_matches ~loc_cache (pred : Filter.Location_predicate.t) call_site =
   let data = Location.Cache.get_call_site_data loc_cache call_site in
   let defname = Data.Call_site.defname data in
@@ -169,8 +168,8 @@ let should_keep_object_collected_at time ({ collected_range; _ } : Filter.t) =
     is important because "live at t" is interpreted as "allocated at or before t and
     collected after t". *)
 let should_keep_objects_that_are_never_collected
-      ~time_at_end
-      ({ collected_range; _ } : Filter.t)
+  ~time_at_end
+  ({ collected_range; _ } : Filter.t)
   =
   Range.Time_ns_span.Or_empty.(
     is_empty collected_range || contains_point collected_range time_at_end)
@@ -206,7 +205,7 @@ let obj_ids_matching_filter ~trace ~loc_cache (filter : Filter.t) =
           Hashtbl.remove live obj_id;
           let lifetime = Time_ns.Span.( - ) time alloc_time in
           if should_keep_object_collected_at time filter
-          && should_keep_object_with_lifetime lifetime filter
+             && should_keep_object_with_lifetime lifetime filter
           then Hash_set.strict_add_exn passing obj_id)
     in
     match event with
@@ -225,8 +224,7 @@ let obj_ids_matching_filter ~trace ~loc_cache (filter : Filter.t) =
           *)
           false
         | Major -> not filter.include_major_heap
-        | External ->
-          not filter.include_major_heap
+        | External -> not filter.include_major_heap
       in
       let correct_size = should_record_allocation_of_size single_allocation_size filter in
       let interesting_backtrace () =
@@ -483,9 +481,9 @@ end = struct
     t.call_sites
     |> Hashtbl.to_alist
     |> List.map ~f:(fun (call_site, state) ->
-      let loc = state.location_state.location in
-      let callees = state.callees in
-      loc, call_site, callees)
+         let loc = state.location_state.location in
+         let callees = state.callees in
+         loc, call_site, callees)
     |> Call_sites.of_list
   ;;
 
@@ -497,7 +495,6 @@ end = struct
     Array.blito ~src:array ~dst:new_array ();
     new_array
   ;;
-
 
   let write_to_backtrace t ~index loc =
     (* We could use the [growable_array] library to guard this, but that doesn't let us
@@ -517,7 +514,7 @@ end = struct
     if index >= Array.length t.current_location_codes
     then
       t.current_location_codes
-      <- enlarge t.current_location_codes ~index ~default:Location_code_state.dummy;
+        <- enlarge t.current_location_codes ~index ~default:Location_code_state.dummy;
     t.current_location_codes.(index) <- state
   ;;
 
@@ -525,7 +522,7 @@ end = struct
     if index >= Array.length t.location_code_to_last_call_site
     then
       t.location_code_to_last_call_site
-      <- enlarge t.location_code_to_last_call_site ~index ~default:~-1;
+        <- enlarge t.location_code_to_last_call_site ~index ~default:~-1;
     t.location_code_to_last_call_site.(index) <- state
   ;;
 
@@ -533,7 +530,7 @@ end = struct
     if index >= Array.length t.current_call_sites
     then
       t.current_call_sites
-      <- enlarge t.current_call_sites ~index ~default:Call_site_state.dummy;
+        <- enlarge t.current_call_sites ~index ~default:Call_site_state.dummy;
     t.current_call_sites.(index) <- state
   ;;
 

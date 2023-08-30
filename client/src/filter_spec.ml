@@ -33,9 +33,9 @@ module Range_predicate = struct
     [@@deriving sexp, equal]
 
     let to_range
-          (type point)
-          (r : (module Range.S with type Point.t = point))
-          (t : point t)
+      (type point)
+      (r : (module Range.S with type Point.t = point))
+      (t : point t)
       : point Range.Or_empty.t option
       =
       match t with
@@ -115,11 +115,11 @@ module Clause = struct
   ;;
 
   let intersect_ranges
-        ?allocated_range
-        ?collected_range
-        ?size_range
-        ?lifetime_range
-        (filter : Filter.t)
+    ?allocated_range
+    ?collected_range
+    ?size_range
+    ?lifetime_range
+    (filter : Filter.t)
     =
     let open Option.Let_syntax in
     let%bind allocated_range =

@@ -1,7 +1,6 @@
 type t =
   | Callers
-  |
-    Callees
+  | Callees
 [@@deriving sexp, equal]
 
 val flip : t -> t

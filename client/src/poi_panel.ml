@@ -18,13 +18,13 @@ module Table_tab = struct
   let rows_of fragments = List.map ~f:row_of fragments
 
   let component
-        ~which_table
-        ~total_allocations
-        ~call_sites
-        ~toplevel_fragment
-        ~allocator_fragment
-        ~focus
-        ~set_focus
+    ~which_table
+    ~total_allocations
+    ~call_sites
+    ~toplevel_fragment
+    ~allocator_fragment
+    ~focus
+    ~set_focus
     =
     let open Bonsai.Let_syntax in
     let%sub rows =

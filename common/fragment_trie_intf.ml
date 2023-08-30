@@ -127,7 +127,6 @@ module type Fragment = sig
   val representative : t -> t
   val length : t -> int
 
-
   module Debug : sig
     type nonrec t = t [@@deriving sexp_of]
   end
@@ -196,9 +195,9 @@ module type Trie = sig
 
   module Fragment :
     Fragment
-    with module Location := Location
-     and module Entry := Entry
-     and module Backtrace := Backtrace
+      with module Location := Location
+       and module Entry := Entry
+       and module Backtrace := Backtrace
 
   type t [@@deriving sexp]
 
@@ -258,17 +257,17 @@ module type S = sig
 
   module Fragment :
     Fragment
-    with module Location := Location
-     and module Entry := Entry
-     and module Backtrace := Backtrace
+      with module Location := Location
+       and module Entry := Entry
+       and module Backtrace := Backtrace
 
   module Trie :
     Trie
-    with module Location := Location
-     and module Entry := Entry
-     and module Metadata := Metadata
-     and module Backtrace := Backtrace
-     and module Fragment := Fragment
+      with module Location := Location
+       and module Entry := Entry
+       and module Metadata := Metadata
+       and module Backtrace := Backtrace
+       and module Fragment := Fragment
 
   module For_testing : sig
     module Dumped : sig
@@ -289,7 +288,7 @@ module type Fragment_trie = sig
 
   module Make (Location : Location) (Entry : Entry) (Metadata : Metadata) :
     S
-    with module Location := Location
-     and module Entry := Entry
-     and module Metadata := Metadata
+      with module Location := Location
+       and module Entry := Entry
+       and module Metadata := Metadata
 end

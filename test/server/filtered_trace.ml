@@ -88,7 +88,6 @@ let run_dump_test ?limit () ~filter =
   dump_events ?limit filtered_trace
 ;;
 
-
 let%expect_test "large allocs" =
   run_dump_test
     ()

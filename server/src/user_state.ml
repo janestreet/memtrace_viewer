@@ -55,17 +55,17 @@ type t =
 [@@deriving fields ~getters]
 
 let compute
-      ~initial_state:
-      Initial.
-        { trace
-        ; loc_cache
-        ; trie
-        ; peak_allocations
-        ; peak_allocations_time
-        ; call_sites
-        ; graph
-        }
-      ~filter
+  ~initial_state:
+    Initial.
+      { trace
+      ; loc_cache
+      ; trie
+      ; peak_allocations
+      ; peak_allocations_time
+      ; call_sites
+      ; graph
+      }
+  ~filter
   =
   let total_allocations_unfiltered = Data.Fragment_trie.total_allocations trie in
   let trie, call_sites, filtered_graph =

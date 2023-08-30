@@ -1,7 +1,6 @@
 open! Core
 open Bonsai_web
 
-
 type t = Filter_spec.Clause.t option list And_view.t
 
 module Which_bound = Time_bound_input.Which_bound
@@ -70,9 +69,9 @@ let dropdown_of_enum_opt (type enum) (module Enum : Enum with type t = enum)
 ;;
 
 let phrase_editor
-      (type head)
-      (module Head : Enum with type t = head)
-      ~(body_editor : Head.t -> 'phrase Editor.t)
+  (type head)
+  (module Head : Enum with type t = head)
+  ~(body_editor : Head.t -> 'phrase Editor.t)
   : 'phrase Editor.t
   =
   fun ~time_parameters ->
@@ -131,8 +130,8 @@ end
 open Bonsai.Let_syntax
 
 let range_body_editor
-      ~(bound_editor : which_bound:Which_bound.t -> 'point Editor.t)
-      (head : Range_predicate_head.t)
+  ~(bound_editor : which_bound:Which_bound.t -> 'point Editor.t)
+  (head : Range_predicate_head.t)
   : 'point Filter_spec.Range_predicate.t Editor.t
   =
   match head with
@@ -278,14 +277,14 @@ let function_clause_editor ~clause_ctor ~text_before : Filter_spec.Clause.t Edit
     ~body_editor:(fun relation ->
       string_editor
       |> Editor.map ~f:(fun rhs : Filter_spec.Clause.t option ->
-        let pred : Filter_spec.String_predicate.t =
-          match relation with
-          | Equals -> Equals rhs
-          | Contains -> Contains rhs
-        in
-        Some (clause_ctor (Some pred))))
+           let pred : Filter_spec.String_predicate.t =
+             match relation with
+             | Equals -> Equals rhs
+             | Contains -> Contains rhs
+           in
+           Some (clause_ctor (Some pred))))
   |> Editor.map_view ~f:(fun node ->
-    Vdom.Node.span [ Vdom.Node.textf "%s " text_before; node ])
+       Vdom.Node.span [ Vdom.Node.textf "%s " text_before; node ])
 ;;
 
 let inside_clause_editor : Filter_spec.Clause.t Editor.t =

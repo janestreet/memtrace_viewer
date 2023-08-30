@@ -24,10 +24,9 @@ module type Point = Point
 
 module type S =
   S
-  with type 'a range := 'a t
-  with type 'a or_empty := 'a Or_empty.t
-  with module Bound := Bound
-
+    with type 'a range := 'a t
+    with type 'a or_empty := 'a Or_empty.t
+    with module Bound := Bound
 
 module Make (Point : Point) = struct
   module Point = Point
@@ -120,8 +119,8 @@ module Make (Point : Point) = struct
   let max_by ~f x y = if f x y > 0 then x else y
 
   let join
-        { lower_bound = lower_bound1; upper_bound = upper_bound1 }
-        { lower_bound = lower_bound2; upper_bound = upper_bound2 }
+    { lower_bound = lower_bound1; upper_bound = upper_bound1 }
+    { lower_bound = lower_bound2; upper_bound = upper_bound2 }
     =
     let lower_bound = min_by ~f:compare_lower_bound lower_bound1 lower_bound2 in
     let upper_bound = max_by ~f:compare_upper_bound upper_bound1 upper_bound2 in
@@ -173,8 +172,8 @@ module Make (Point : Point) = struct
     ;;
 
     let inter_ranges
-          { lower_bound = lower_bound1; upper_bound = upper_bound1 }
-          { lower_bound = lower_bound2; upper_bound = upper_bound2 }
+      { lower_bound = lower_bound1; upper_bound = upper_bound1 }
+      { lower_bound = lower_bound2; upper_bound = upper_bound2 }
       =
       let lower_bound = max_by ~f:compare_lower_bound lower_bound1 lower_bound2 in
       let upper_bound = min_by ~f:compare_upper_bound upper_bound1 upper_bound2 in

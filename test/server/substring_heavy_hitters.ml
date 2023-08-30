@@ -1,10 +1,10 @@
 open! Core
 
 module CharHH = Memtrace_viewer_native.For_testing.Substring_heavy_hitters.Make (struct
-    include Char
+  include Char
 
-    let dummy = Char.max_value
-  end)
+  let dummy = Char.max_value
+end)
 
 let process lines =
   let heavy_hitters = CharHH.create ~tolerance:0.01 in

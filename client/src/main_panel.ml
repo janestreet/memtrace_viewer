@@ -60,7 +60,7 @@ module Tab = struct
       ; focus : Data.Fragment.t Bonsai.Value.t
       ; set_focus :
           (Data.Fragment.t -> default_selection:Default_selection.t -> unit Ui_effect.t)
-            Bonsai.Value.t
+          Bonsai.Value.t
       }
   end
 
@@ -119,9 +119,9 @@ module Tab = struct
   ;;
 
   let flame_graph_selection
-        ~focus
-        ~set_focus
-        (selection : Flame_graph_panel.Selection.t option)
+    ~focus
+    ~set_focus
+    (selection : Flame_graph_panel.Selection.t option)
     : Selection.Flame_graph.t option
     =
     match selection with
@@ -177,8 +177,8 @@ module Tab = struct
                ; reset_selection
                ; scroll_focus_into_view
                }
-        =
-        flame_graph_panel
+         =
+         flame_graph_panel
        and focus = focus
        and set_focus = set_focus in
        let selection = flame_graph_selection ~focus ~set_focus selection in
@@ -238,9 +238,9 @@ let component ~(data : Data.t Bonsai.Value.t) ~(app_state : App_state.t Bonsai.V
   end
   in
   let interpret
-        ~value:{ Tab_panel.output = { Tab.Output.reset_selection; _ }; _ }
-        ~context:set_focus_in_app_state
-        (Action.Set_focus { new_focus; default_selection })
+    ~value:{ Tab_panel.output = { Tab.Output.reset_selection; _ }; _ }
+    ~context:set_focus_in_app_state
+    (Action.Set_focus { new_focus; default_selection })
     =
     set_focus_in_app_state new_focus ~default_selection ~reset_selection
   in

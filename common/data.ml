@@ -187,9 +187,9 @@ module Call_sites = struct
   let create list =
     list
     |> List.filter_map ~f:(fun (func, call_sites) ->
-      if List.is_empty call_sites
-      then None
-      else Some (func, call_sites |> List.sort ~compare:Call_site.compare))
+         if List.is_empty call_sites
+         then None
+         else Some (func, call_sites |> List.sort ~compare:Call_site.compare))
     |> Function.Table.of_alist_exn
   ;;
 
@@ -355,10 +355,10 @@ module Fragment_trie = struct
   ;;
 
   let of_suffix_tree
-        (type tree)
-        (module Suffix_tree : Suffix_tree with type t = tree)
-        (tree : tree)
-        ~total_allocations
+    (type tree)
+    (module Suffix_tree : Suffix_tree with type t = tree)
+    (tree : tree)
+    ~total_allocations
     =
     let metadata : Metadata.t = { total_allocations } in
     let is_empty_tree =
@@ -417,17 +417,17 @@ module Serialized = struct
   [@@deriving sexp, bin_io]
 
   let serialize
-        { hot_paths
-        ; hot_locations
-        ; graph
-        ; filtered_graph
-        ; trie
-        ; total_allocations_unfiltered
-        ; peak_allocations
-        ; peak_allocations_time
-        ; call_sites
-        ; info
-        }
+    { hot_paths
+    ; hot_locations
+    ; graph
+    ; filtered_graph
+    ; trie
+    ; total_allocations_unfiltered
+    ; peak_allocations
+    ; peak_allocations_time
+    ; call_sites
+    ; info
+    }
     =
     let hot_path_backtraces = List.map ~f:Fragment.backtrace hot_paths in
     let hot_locations = List.map ~f:(Fragment.first ~orient:Callers) hot_locations in
@@ -447,29 +447,29 @@ module Serialized = struct
   ;;
 
   let unserialize
-        { hot_path_backtraces
-        ; hot_locations
-        ; graph
-        ; filtered_graph
-        ; serialized_trie
-        ; total_allocations_unfiltered
-        ; peak_allocations
-        ; peak_allocations_time
-        ; serialized_call_sites
-        ; info
-        }
+    { hot_path_backtraces
+    ; hot_locations
+    ; graph
+    ; filtered_graph
+    ; serialized_trie
+    ; total_allocations_unfiltered
+    ; peak_allocations
+    ; peak_allocations_time
+    ; serialized_call_sites
+    ; info
+    }
     =
     let trie = Fragment_trie.Serialized.unserialize serialized_trie in
     let call_sites = Call_sites.Serialized.unserialize serialized_call_sites in
     let hot_paths =
       hot_path_backtraces
       |> List.map ~f:(fun backtrace ->
-        Fragment_trie.find trie backtrace |> Option.value_exn)
+           Fragment_trie.find trie backtrace |> Option.value_exn)
     in
     let hot_locations =
       hot_locations
       |> List.map ~f:(fun location ->
-        Fragment_trie.find_singleton trie location |> Option.value_exn)
+           Fragment_trie.find_singleton trie location |> Option.value_exn)
     in
     { hot_paths
     ; hot_locations

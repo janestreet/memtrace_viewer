@@ -134,7 +134,7 @@ let component ~series ~regions ~aspect_ratio ~start_time ~time_view ~set_time_vi
         series
         ~init:(Time_ns.Span.zero, Byte_units.zero)
         ~f:(fun (max_x, max_y) (series : Series.t) ->
-          Time_ns.Span.max max_x series.max_x, Byte_units.max max_y series.max_y)
+        Time_ns.Span.max max_x series.max_x, Byte_units.max max_y series.max_y)
     in
     max_x, max_y
   in
@@ -370,8 +370,7 @@ let component ~series ~regions ~aspect_ratio ~start_time ~time_view ~set_time_vi
                          ]
                        [ Node_svg.rect
                            ~attrs:
-                             [
-                               Attr.class_ "graph-border"
+                             [ Attr.class_ "graph-border"
                              ; Attr_svg.x (Viewport.left viewport)
                              ; Attr_svg.y (Viewport.top viewport)
                              ; Attr_svg.width (Viewport.width viewport)

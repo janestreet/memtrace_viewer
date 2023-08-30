@@ -7,11 +7,11 @@ module Index_set = struct
 end
 
 let component
-      ?(attr = Vdom.Attr.empty)
-      ?(add_button_attr = Vdom.Attr.empty)
-      ?(remove_button_attr = Vdom.Attr.empty)
-      ?(add_item_text = "Add")
-      item
+  ?(attr = Vdom.Attr.empty)
+  ?(add_button_attr = Vdom.Attr.empty)
+  ?(remove_button_attr = Vdom.Attr.empty)
+  ?(add_item_text = "Add")
+  item
   =
   let open Bonsai.Let_syntax in
   let open Vdom in
@@ -35,21 +35,21 @@ let component
            let glyph = Node.text "−" (* U+2212 MINUS SIGN (bigger than hyphen) *) in
            item
            |> And_view.map_view ~f:(fun view ->
-             Node.li
-               ~key:(index |> Int.to_string)
-               [ Node.button
-                   ~attrs:
-                     [ (* Important to set type="button" here: the default is type="submit",
+                Node.li
+                  ~key:(index |> Int.to_string)
+                  [ Node.button
+                      ~attrs:
+                        [ (* Important to set type="button" here: the default is type="submit",
                           which makes Enter delete the first item! *)
-                       Attr.type_ "button"
-                     ; Attr.class_ "list-editor-remove-button"
-                     ; Attr.on_click (fun _ -> remove)
-                     ; remove_button_attr
-                     ]
-                   [ glyph ]
-               ; Node.text " "
-               ; view
-               ])))
+                          Attr.type_ "button"
+                        ; Attr.class_ "list-editor-remove-button"
+                        ; Attr.on_click (fun _ -> remove)
+                        ; remove_button_attr
+                        ]
+                      [ glyph ]
+                  ; Node.text " "
+                  ; view
+                  ])))
   in
   return
     (let%map rows = rows

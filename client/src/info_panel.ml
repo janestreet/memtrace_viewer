@@ -5,18 +5,18 @@ open Memtrace_viewer_common
 let info_linef ?attr pat =
   pat
   |> Printf.ksprintf (fun str ->
-    Vdom.(Node.li ?attrs:(Option.map attr ~f:(fun attr -> [ attr ])) [ Node.text str ]))
+       Vdom.(Node.li ?attrs:(Option.map attr ~f:(fun attr -> [ attr ])) [ Node.text str ]))
 ;;
 
 let info_fieldf ?attr label pat =
   pat
   |> Printf.ksprintf (fun str ->
-    Vdom.(
-      Node.li
-        ?attrs:(Option.map attr ~f:(fun attr -> [ attr ]))
-        [ Node.span ~attrs:[ Attr.class_ "info-label" ] [ Node.textf "%s: " label ]
-        ; Node.text str
-        ]))
+       Vdom.(
+         Node.li
+           ?attrs:(Option.map attr ~f:(fun attr -> [ attr ]))
+           [ Node.span ~attrs:[ Attr.class_ "info-label" ] [ Node.textf "%s: " label ]
+           ; Node.text str
+           ]))
 ;;
 
 let print_timestamp () t =
@@ -40,8 +40,7 @@ let panel_body ~(info : Data.Info.t option) =
       [ Node.ul
           ~attrs:[ Attr.class_ "info-fields" ]
           [ context_line
-          ;
-            info_fieldf
+          ; info_fieldf
               ~attr:(Attr.title info.executable_name)
               "Executable"
               "%s"

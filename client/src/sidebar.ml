@@ -7,7 +7,6 @@ module Button_position = struct
     | Right
 end
 
-
 module State = struct
   type t =
     | Collapsed

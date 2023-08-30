@@ -14,10 +14,10 @@ val sample_rate : t -> float
 module Mode : sig
   type t =
     | Preserve_backtraces
-    (** Events will have backtraces but may not be in the right order and may not have
+        (** Events will have backtraces but may not be in the right order and may not have
         accurate timestamps *)
     | Preserve_times
-    (** Events will come in the correct order, with accurate times, but have empty
+        (** Events will come in the correct order, with accurate times, but have empty
         backtraces *)
 end
 

@@ -154,7 +154,7 @@ module Make (Graph : Graph) = struct
       ; bearing : Bearing.t
       ; data_left : float
       ; focus_border_above : float option
-      (* y-coordinate of the focus border above the section *)
+          (* y-coordinate of the focus border above the section *)
       ; focus_border_below : float option
       }
   end

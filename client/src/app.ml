@@ -24,9 +24,9 @@ let info_panel ~(data : Data.t Bonsai.Value.t) : Vdom.Node.t Bonsai.Computation.
 ;;
 
 let poi_panel
-      ~(app_state : App_state.t Bonsai.Value.t)
-      ~(data : Data.t Bonsai.Value.t)
-      ~(main_panel : Main_panel.t Bonsai.Value.t)
+  ~(app_state : App_state.t Bonsai.Value.t)
+  ~(data : Data.t Bonsai.Value.t)
+  ~(main_panel : Main_panel.t Bonsai.Value.t)
   : Poi_panel.t Bonsai.Computation.t
   =
   let open Bonsai.Let_syntax in
@@ -37,9 +37,9 @@ let poi_panel
 ;;
 
 let filter_panel
-      ~(data : Data.t Bonsai.Value.t)
-      ~(server_state : Server_state.t Bonsai.Value.t)
-      ~(inject_outgoing : (Action.t -> unit Vdom.Effect.t) Bonsai.Value.t)
+  ~(data : Data.t Bonsai.Value.t)
+  ~(server_state : Server_state.t Bonsai.Value.t)
+  ~(inject_outgoing : (Action.t -> unit Vdom.Effect.t) Bonsai.Value.t)
   : Vdom.Node.t Bonsai.Computation.t
   =
   let open Bonsai.Let_syntax in
@@ -84,9 +84,9 @@ let filter_panel
 ;;
 
 let component
-      ~(data : Data.t Bonsai.Value.t)
-      ~(server_state : Server_state.t Bonsai.Value.t)
-      ~(inject_outgoing : (Action.t -> unit Vdom.Effect.t) Bonsai.Value.t)
+  ~(data : Data.t Bonsai.Value.t)
+  ~(server_state : Server_state.t Bonsai.Value.t)
+  ~(inject_outgoing : (Action.t -> unit Vdom.Effect.t) Bonsai.Value.t)
   : Vdom.Node.t Bonsai.Computation.t
   =
   let open Bonsai.Let_syntax in

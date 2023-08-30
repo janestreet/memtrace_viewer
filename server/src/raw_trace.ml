@@ -13,15 +13,15 @@ let time_ns_of_memtrace_timestamp ts =
 ;;
 
 let info_of_trace_info
-      { Memtrace.Trace.Info.sample_rate
-      ; word_size
-      ; executable_name
-      ; host_name
-      ; ocaml_runtime_params
-      ; pid
-      ; start_time
-      ; context
-      }
+  { Memtrace.Trace.Info.sample_rate
+  ; word_size
+  ; executable_name
+  ; host_name
+  ; ocaml_runtime_params
+  ; pid
+  ; start_time
+  ; context
+  }
   =
   { Data.Info.sample_rate
   ; word_size = word_size / 8 |> Byte_units.of_bytes_int

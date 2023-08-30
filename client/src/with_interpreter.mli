@@ -20,7 +20,7 @@ module Input : sig
   (** The input arguments (besides the action) for the interpreter. *)
   type ('value, 'context) t =
     { value : 'value
-    (** The value of the wrapped component. Will also be returned to the outside world
+        (** The value of the wrapped component. Will also be returned to the outside world
         (by [component] below). *)
     ; context : 'context (** Extra context only needed internally by the interpreter. *)
     }
