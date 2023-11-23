@@ -60,6 +60,7 @@ let component ~which ~max ~start_time ~time_view =
        ; view =
            Node.span
              [ Vdom_input_widgets.Entry.number
+                 ~allow_updates_when_focused:`Never
                  ~merge_behavior:Legacy_dont_merge
                  ~extra_attrs:
                    [ Attr.class_ "bound"
@@ -121,6 +122,7 @@ let component ~which ~max ~start_time ~time_view =
           { value = value, Large
           ; view =
               Vdom_input_widgets.Entry.datetime_local
+                ~allow_updates_when_focused:`Never
                 ~merge_behavior:Legacy_dont_merge
                 ~extra_attrs:
                   [ Attr.class_ "bound"
@@ -147,6 +149,7 @@ let component ~which ~max ~start_time ~time_view =
           { value = value, Size.Small
           ; view =
               Vdom_input_widgets.Entry.time
+                ~allow_updates_when_focused:`Never
                 ~merge_behavior:Legacy_dont_merge
                 ~extra_attrs:
                   [ Attr.class_ "bound"

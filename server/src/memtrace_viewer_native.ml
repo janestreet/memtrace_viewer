@@ -9,11 +9,8 @@ let initialize_connection initial_state filter _ _ _ _ =
 ;;
 
 let log_request ?(log = Lazy.force Log.Global.log) inet path =
-  Log.sexp
-    log
-    ~level:`Debug
-    [%message
-      "Serving http request" (inet : Socket.Address.Inet.t) (Time.now () : Time.t) path]
+  [%log.debug
+    log "Serving http request" (inet : Socket.Address.Inet.t) (Time.now () : Time.t) path]
 ;;
 
 let respond_string ~content_type ?flush ?headers ?status s =

@@ -12,6 +12,7 @@ let component =
     (let%map value, set_value = state in
      let view =
        Vdom_input_widgets.Entry.text
+         ~allow_updates_when_focused:`Never
          ~merge_behavior:Legacy_dont_merge
          ~value
          ~on_input:set_value

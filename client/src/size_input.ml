@@ -45,6 +45,7 @@ let component =
      let view =
        Node.span
          [ Vdom_input_widgets.Entry.number
+             ~allow_updates_when_focused:`Never
              ~merge_behavior:Legacy_dont_merge
              (module Util.Float_html_syntax)
              ~value
