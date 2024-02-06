@@ -1,2 +1,6 @@
-(executables (names main) (modes byte) (libraries memtrace_viewer_client)
- (preprocess (pps ppx_jane)))
+(executables
+ (names main)
+ (modes byte)
+ (libraries memtrace_viewer_client)
+ (preprocess
+  (pps ppx_jane)))

@@ -1,3 +1,7 @@
-(executables (names main) (public_names memtrace-viewer)
+(executables
+ (modes byte exe)
+ (names main)
+ (public_names memtrace-viewer)
  (libraries core_unix.command_unix memtrace_viewer_native)
- (preprocess (pps ppx_jane)))
+ (preprocess
+  (pps ppx_jane)))

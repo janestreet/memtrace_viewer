@@ -14,21 +14,27 @@ let default_tolerance = 0.01 |> percent
 (* Number of points in the time series produced for the graph. *)
 let graph_size = 450
 
-module Initial = struct
+module Env = struct
+  type cache_entry =
+    { trie : Data.Fragment_trie.t
+    ; call_sites : Data.Call_sites.t
+    }
+
   type t =
     { trace : Raw_trace.t
     ; loc_cache : Location.Cache.t
-    ; graph : Data.Graph.t
-    ; trie : Data.Fragment_trie.t
+    ; cache_always_true : cache_entry (** Single-slot cache for the always_true filter *)
     ; peak_allocations : Byte_units.t
     ; peak_allocations_time : Time_ns.Span.t
-    ; call_sites : Data.Call_sites.t
+    ; graph : Data.Graph.t
     }
 
   let of_trace trace =
     let loc_cache = Location.Cache.create ~trace () in
     let trace = Raw_trace.of_memtrace_trace trace in
-    let filtered_trace = Filtered_trace.create ~trace ~loc_cache ~filter:Filter.default in
+    let filtered_trace =
+      Filtered_trace.create ~trace ~loc_cache ~filter:Filter.always_true
+    in
     let graph = Graph.build ~trace:filtered_trace ~size:graph_size in
     let trie, call_sites =
       Location_trie.build
@@ -37,6 +43,7 @@ module Initial = struct
         ~tolerance:default_tolerance
         ~significance_frequency:default_significance_frequency
     in
+    let cache_always_true = { trie; call_sites } in
     let Peak.{ allocations = peak_allocations; time = peak_allocations_time } =
       (* Note that we're computing this now, without a filter applied. This implies that
          "live at peak" means live at the time of peak memory usage, not the time at which
@@ -44,7 +51,13 @@ module Initial = struct
          and probably more useful. *)
       Peak.find_peak_allocations trace
     in
-    { trace; loc_cache; graph; trie; peak_allocations; peak_allocations_time; call_sites }
+    { trace
+    ; loc_cache
+    ; cache_always_true
+    ; peak_allocations
+    ; peak_allocations_time
+    ; graph
+    }
   ;;
 end
 
@@ -55,22 +68,23 @@ type t =
 [@@deriving fields ~getters]
 
 let compute
-  ~initial_state:
-    Initial.
+  ~env:
+    Env.
       { trace
       ; loc_cache
-      ; trie
       ; peak_allocations
       ; peak_allocations_time
-      ; call_sites
+      ; cache_always_true
       ; graph
       }
   ~filter
   =
-  let total_allocations_unfiltered = Data.Fragment_trie.total_allocations trie in
+  let total_allocations_unfiltered =
+    Data.Fragment_trie.total_allocations cache_always_true.trie
+  in
   let trie, call_sites, filtered_graph =
-    if Filter.is_default filter
-    then trie, call_sites, None
+    if Filter.is_always_true filter
+    then cache_always_true.trie, cache_always_true.call_sites, None
     else (
       let filtered_trace = Filtered_trace.create ~trace ~loc_cache ~filter in
       let trie, call_sites =
@@ -99,23 +113,24 @@ let compute
   }
 ;;
 
-let create ~initial_state ~filter =
-  let data = compute ~initial_state ~filter in
+let create env =
+  let filter = Filter.always_true in
+  let data = compute ~env ~filter in
   { data; filter }
 ;;
 
-let reset initial_state t =
-  let filter = Filter.default in
+let reset env t =
+  let filter = Filter.always_true in
   t.filter <- filter;
-  let data = compute ~initial_state ~filter in
+  let data = compute ~env ~filter in
   t.filter <- filter;
   t.data <- data
 ;;
 
-let update initial_state t action =
+let update env t action =
   match action with
   | Action.Set_filter filter ->
     t.filter <- filter;
-    let data = compute ~initial_state ~filter in
+    let data = compute ~env ~filter in
     t.data <- data
 ;;

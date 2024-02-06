@@ -92,7 +92,7 @@ let%expect_test "large allocs" =
   run_dump_test
     ()
     ~filter:
-      { Filter.default with
+      { Filter.always_true with
         size_range = Range.Byte_units.range (Open (Byte_units.of_kilobytes 1.0)) No_bound
       };
   [%expect
@@ -108,7 +108,7 @@ let%expect_test "short lifetimes" =
   run_dump_test
     ()
     ~filter:
-      { Filter.default with
+      { Filter.always_true with
         lifetime_range =
           Range.Time_ns_span.range No_bound (Open (Time_ns.Span.of_int_us 5))
       };
@@ -165,7 +165,7 @@ let%expect_test "only array functions" =
   run_dump_test
     ()
     ~filter:
-      { Filter.default with
+      { Filter.always_true with
         required_locations = [ Defname_related { relation = Contains; rhs = "Array" } ]
       };
   [%expect
@@ -184,7 +184,7 @@ let%expect_test "no b" =
   run_dump_test
     ()
     ~filter:
-      { Filter.default with
+      { Filter.always_true with
         forbidden_locations = [ Defname_related { relation = Contains; rhs = ".b" } ]
       };
   [%expect
@@ -204,7 +204,7 @@ let%expect_test "hide b" =
     ()
     ~limit:10
     ~filter:
-      { Filter.default with
+      { Filter.always_true with
         hidden_locations = [ Defname_related { relation = Contains; rhs = ".b" } ]
       };
   [%expect
@@ -233,7 +233,10 @@ let%expect_test "hide b" =
 ;;
 
 let%expect_test "show major heap only" =
-  run_dump_test () ~limit:25 ~filter:{ Filter.default with include_minor_heap = false };
+  run_dump_test
+    ()
+    ~limit:25
+    ~filter:{ Filter.always_true with include_minor_heap = false };
   [%expect
     {|
     ((time 895us)
@@ -303,7 +306,7 @@ let%expect_test "show major heap only" =
 ;;
 
 let%expect_test "all events" =
-  run_dump_test () ~filter:Filter.default;
+  run_dump_test () ~filter:Filter.always_true;
   [%expect
     {|
     ((time 895us)

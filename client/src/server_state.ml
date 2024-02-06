@@ -2,15 +2,16 @@ open! Core
 
 module Status = struct
   type t =
-    | Up
+    | Idle
+    | Busy
     | Down
 
-  let is_up = function
-    | Up -> true
-    | Down -> false
+  let is_idle = function
+    | Idle -> true
+    | Busy | Down -> false
   ;;
 end
 
 type t = { status : Status.t }
 
-let initial = { status = Up }
+let initial = { status = Idle }

@@ -2,10 +2,11 @@ open! Core
 
 module Status : sig
   type t =
-    | Up
+    | Idle
+    | Busy
     | Down
 
-  val is_up : t -> bool
+  val is_idle : t -> bool
 end
 
 type t = { status : Status.t }

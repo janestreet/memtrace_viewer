@@ -29,7 +29,7 @@ type t =
   }
 [@@deriving sexp, bin_io, equal]
 
-let default =
+let always_true =
   { allocated_range = Range.Time_ns_span.all
   ; collected_range = Non_empty Range.Time_ns_span.all
   ; size_range = Range.Byte_units.all
@@ -63,5 +63,3 @@ let is_always_true = function
     && include_minor_heap
     && include_major_heap
 ;;
-
-let is_default t = is_always_true t

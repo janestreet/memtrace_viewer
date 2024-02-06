@@ -29,6 +29,5 @@ type t =
   }
 [@@deriving sexp, bin_io, equal]
 
-val default : t
-val is_default : t -> bool
+val always_true : t
 val is_always_true : t -> bool

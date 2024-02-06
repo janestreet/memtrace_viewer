@@ -1,12 +1,9 @@
 open! Core
 open! Async
 open Memtrace
-open Memtrace_viewer_common
 module Time = Time_float_unix
 
-let initialize_connection initial_state filter _ _ _ _ =
-  User_state.create ~initial_state ~filter
-;;
+let initialize_connection env _ _ _ _ = User_state.create env
 
 let log_request ?(log = Lazy.force Log.Global.log) inet path =
   [%log.debug
@@ -63,21 +60,28 @@ let handler ~body:_ inet req =
   | _ -> respond_string ~content_type:"text/html" ~status:`Not_found not_found_html
 ;;
 
-let main ~filename ~filter ~port =
+let main ~filename ~port =
   Core.Printf.printf "Processing %s...\n%!" filename;
   let trace = Trace.Reader.open_ ~filename in
-  let initial_state = User_state.Initial.of_trace trace in
+  let env = User_state.Env.of_trace trace in
   let hostname = Unix.gethostname () in
+  let heartbeat_config =
+    Rpc.Connection.Heartbeat_config.create
+      ~timeout:(Time_ns.Span.of_int_day 7)
+      ~send_every:(Time_ns.Span.of_int_day 1)
+      ()
+  in
   printf "Serving http://%s:%d/\n%!" hostname port;
   let%bind server =
     let http_handler () = handler in
     Rpc_websocket.Rpc.serve
+      ~heartbeat_config
       ~on_handler_error:`Ignore
       ~mode:`TCP
       ~where_to_listen:(Tcp.Where_to_listen.of_port port)
       ~http_handler
-      ~implementations:(Rpc_implementations.implementations initial_state)
-      ~initial_connection_state:(initialize_connection initial_state filter)
+      ~implementations:(Rpc_implementations.implementations env)
+      ~initial_connection_state:(initialize_connection env)
       ()
   in
   let%map () = Cohttp_async.Server.close_finished server in
@@ -91,7 +95,7 @@ let command =
      and port =
        flag "port" (optional_with_default 8080 int) ~doc:"port on which to serve viewer"
      in
-     fun () -> main ~filename ~filter:Filter.default ~port)
+     fun () -> main ~filename ~port)
     ~behave_nicely_in_pipeline:false
 ;;
 

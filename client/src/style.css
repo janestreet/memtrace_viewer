@@ -1,236 +1,292 @@
 :root {
-    --allocated-color: rgb(32, 133, 239);
-    --live-color: rgb(255, 128, 0); /* currently vestigial */
-    --collected-color: rgb(255, 0, 0);
-    --help-color: aliceblue /* currently vestigial */;
-    --poi-color: peachpuff;
-    --selection-color: #F2D2F6;
-    --focus-color-odd: lightgoldenrodyellow;
-    --focus-color-even: rgb(254, 254, 246);
-    --filter-color: #BDF5BD;
-    --flame-graph-alloc-site-node-color:var(--filter-color);
+  --allocated-color: rgb(32, 133, 239);
+  --live-color: rgb(255, 128, 0);
+  /* currently vestigial */
+  --collected-color: rgb(255, 0, 0);
+  --help-color: aliceblue
+    /* currently vestigial */
+  ;
+  --poi-color: peachpuff;
+  --selection-color: #F2D2F6;
+  --focus-color-odd: lightgoldenrodyellow;
+  --focus-color-even: rgb(254, 254, 246);
+  --filter-color: #BDF5BD;
+  --flame-graph-alloc-site-node-color: var(--filter-color);
 }
+
 body {
-    margin: 0;
+  margin: 0;
 }
-#app-container{
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    margin: 1rem;
-    width: calc(100vw - 2rem);
-    height: calc(100vh - 2rem);
-    overflow: hidden;
+
+#app-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin: 1rem;
+  width: calc(100vw - 2rem);
+  height: calc(100vh - 2rem);
+  overflow: hidden;
 }
-#body-container{
-    display: flex;
-    flex-direction: row;
-    align-items: flex-start;
-    flex: 1 1 0;
-    min-height: 0;
+
+#body-container {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  flex: 1 1 0;
+  min-height: 0;
 }
-#body-container > * {
-    max-height: 100%;
+
+#body-container>* {
+  max-height: 100%;
 }
-p, ul {
-    margin-top: 0;
-    margin-bottom: 0.5rem;
+
+p,
+ul {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
 }
+
 .flat-button {
-    border: none;
-    background-color: rgb(256, 256, 256, 50%);
-    cursor: pointer;
+  border: none;
+  background-color: rgb(256, 256, 256, 50%);
+  cursor: pointer;
 }
+
 .flat-button:hover {
-    background-color: rgb(256, 256, 256, 75%);
+  background-color: rgb(256, 256, 256, 75%);
 }
+
 .panel {
-    /* makes margins work for whatever ungodly reason */
-    border: thin transparent solid;
-    display: flex;
-    flex-direction: column;
+  /* makes margins work for whatever ungodly reason */
+  border: thin transparent solid;
+  display: flex;
+  flex-direction: column;
 }
+
 .panel-content {
-    flex: 1 1 auto;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    margin: 0.5rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0.5rem;
 }
+
 h2.panel-title {
-    flex: 0 0 auto;
-    margin-top: 0;
-    margin-bottom: 0;
-    text-align: center;
-    font-size: 1em;
-    padding: 0.5rem;
-    background-color: rgba(256, 256, 256, 25%)
+  flex: 0 0 auto;
+  margin-top: 0;
+  margin-bottom: 0;
+  text-align: center;
+  font-size: 1em;
+  padding: 0.5rem;
+  background-color: rgba(256, 256, 256, 25%)
 }
+
 .panel-collapsible h2.panel-title {
-    cursor: pointer;
+  cursor: pointer;
 }
+
 button.panel-collapse-indicator {
-    border: none;
-    background: none;
-    cursor: pointer;
-    margin: 0;
-    padding: 0;
-    margin-right: 0.4em;
+  border: none;
+  background: none;
+  cursor: pointer;
+  margin: 0;
+  padding: 0;
+  margin-right: 0.4em;
 }
+
 .panel-body {
-    flex: 1 1 auto;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
-.panel-body > .tab-panel {
-    flex : 1 1 auto;
-    min-height: 0;
+
+.panel-body>.tab-panel {
+  flex: 1 1 auto;
+  min-height: 0;
 }
+
 .panel-collapsed {
-    /* Make a collapsed panel take up exactly the space needed by the button */
-    flex: 0 0 auto !important;
-    min-width: auto !important;
-    min-height: auto !important;
+  /* Make a collapsed panel take up exactly the space needed by the button */
+  flex: 0 0 auto !important;
+  min-width: auto !important;
+  min-height: auto !important;
 }
+
 .panel-collapsed .panel-body {
-    display: none;
+  display: none;
 }
+
 .tab-panel {
-    display: flex;
-    flex-direction: column;
+  display: flex;
+  flex-direction: column;
 }
+
 ul.tab-bar {
-    flex: 0 0 auto;
-    display: inline-block;
-    list-style-type: none;
-    margin: 0;
-    margin-bottom: 0.5em;
-    padding: 0;
-    white-space: nowrap;
-    overflow-x: auto;
-    max-width: 100%;
+  flex: 0 0 auto;
+  display: inline-block;
+  list-style-type: none;
+  margin: 0;
+  margin-bottom: 0.5em;
+  padding: 0;
+  white-space: nowrap;
+  overflow-x: auto;
+  max-width: 100%;
 }
+
 ul.tab-bar li {
-    display: inline;
+  display: inline;
 }
+
 ul.tab-bar button {
-    border: none;
-    background-color: rgba(256, 256, 256, 0.25);
-    cursor: pointer;
-    padding: 0.65em 1.6em;
+  border: none;
+  background-color: rgba(256, 256, 256, 0.25);
+  cursor: pointer;
+  padding: 0.65em 1.6em;
 }
+
 ul.tab-bar li:first-child button {
-    border-top-left-radius: 0.5em;
-    border-bottom-left-radius: 0.5em;
+  border-top-left-radius: 0.5em;
+  border-bottom-left-radius: 0.5em;
 }
+
 ul.tab-bar li:last-child button {
-    border-top-right-radius: 0.5em;
-    border-bottom-right-radius: 0.5em;
+  border-top-right-radius: 0.5em;
+  border-bottom-right-radius: 0.5em;
 }
+
 ul.tab-bar li.selected button {
-    background-color: rgba(256, 256, 256, 0.75);
+  background-color: rgba(256, 256, 256, 0.75);
 }
+
 .tab-panel-content {
-    flex: 1 1 auto;
-    overflow: auto;
+  flex: 1 1 auto;
+  overflow: auto;
 }
+
 .sidebar {
-    display: flex;
-    flex-direction: row;
-    align-items: flex-start;
-    height: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  height: 100%;
 }
+
 .sidebar-content {
-    flex: 1 1 0;
-    min-width: 0;
-    max-height: 100%;
+  flex: 1 1 0;
+  min-width: 0;
+  max-height: 100%;
 }
-.sidebar-content > * {
-    flex: 1 1 auto;
-    min-height: 0;
+
+.sidebar-content>* {
+  flex: 1 1 auto;
+  min-height: 0;
 }
+
 .sidebar-button-strip {
-    flex: 0 0 auto;
-    display: flex;
-    width: 1rem;
-    flex-direction: column;
-    justify-content: center;
-    height: 100%;
+  flex: 0 0 auto;
+  display: flex;
+  width: 1rem;
+  flex-direction: column;
+  justify-content: center;
+  height: 100%;
 }
+
 .sidebar-button {
-    padding: 0;
+  padding: 0;
 }
+
 .sidebar-collapsed .sidebar-content {
-    display: none !important;
+  display: none !important;
 }
+
 #left-bar.sidebar-expanded {
-    flex: 0 1 31em;
-    min-width: 5em;
+  flex: 0 1 31em;
+  min-width: 5em;
 }
-#left-bar > .sidebar-content {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
+
+#left-bar>.sidebar-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
-#info-panel{
-    background-color: #ded2f6;
-    flex: 0 0 auto;
+
+#info-panel {
+  background-color: #ded2f6;
+  flex: 0 0 auto;
 }
+
 #right-bar.sidebar-expanded {
-    flex: 0 1 auto;
-    min-width: 10em;
+  flex: 0 1 auto;
+  min-width: 10em;
 }
-#right-bar > .sidebar-content {
-    display: flex;
-    flex-direction: column;
+
+#right-bar>.sidebar-content {
+  display: flex;
+  flex-direction: column;
 }
-#poi-panel{
-    background-color: var(--poi-color);
+
+#poi-panel {
+  background-color: var(--poi-color);
 }
-#main-panel{
-    background-color:#D2DAF6;
-    flex: 1 1 30em;
-    min-width: 5em;
+
+#main-panel {
+  background-color: #D2DAF6;
+  flex: 1 1 30em;
+  min-width: 5em;
 }
-#filter-panel{
-    background-color:var(--filter-color);
+
+#filter-panel {
+  background-color: var(--filter-color);
 }
-#app-container > #filter-panel {
-    flex: 0 1 auto;
-    min-height: 0;
+
+#app-container>#filter-panel {
+  flex: 0 1 auto;
+  min-height: 0;
 }
-#details-panel{
-    background-color:#F6CBC2;
+
+#details-panel {
+  background-color: #F6CBC2;
 }
+
 table {
   border-collapse: collapse;
 }
-tr, td, th {
+
+tr,
+td,
+th {
   border: none;
 }
-td, th {
+
+td,
+th {
   padding: 7px;
 }
+
 thead {
   background-color: rgba(256, 256, 256, 25%)
 }
+
 tbody tr:nth-child(odd):not(.focused) {
   background-color: rgba(0, 0, 0, 5%)
 }
+
 tbody tr:nth-child(even):not(.focused) {
   background-color: rgba(0, 0, 0, 10%)
 }
+
 #info-panel .summary ul.info-fields {
   list-style: none;
   margin: 0;
   padding: 0;
 }
+
 #info-panel ul.info-fields li {
   display: inline-block;
   margin-right: 1em;
 }
+
 table.location-table {
   min-width: 25em;
   margin-left: auto;
@@ -238,33 +294,42 @@ table.location-table {
   table-layout: fixed;
   width: 100%;
 }
+
 #poi-panel table.location-table {
   width: 25em;
 }
+
 col.set-focus-column {
   width: 1.5em;
 }
-col.locations-column {
-}
+
+col.locations-column {}
+
 col.allocations-column {
-  width:4em;
+  width: 4em;
 }
+
 col.percentage-column {
-  width:4em;
+  width: 4em;
 }
+
 table.location-table tbody tr {
   cursor: pointer;
   user-select: none;
 }
+
 table.location-table tbody tr:hover {
   background-color: rgba(256, 256, 256, 20%);
 }
+
 table.location-table .location-table-fragment-in-focus {
   background-color: var(--selection-color);
 }
+
 #main-panel table.location-table .focused {
   background-color: var(--selection-color);
 }
+
 button.set-focus-button {
   background-color: rgba(256, 256, 256, 25%);
   border: 0.2em solid transparent;
@@ -272,13 +337,16 @@ button.set-focus-button {
   padding: 0;
   border-radius: 0.3em;
 }
+
 table.location-table td:nth-child(2),
 table.location-table td:nth-child(3) {
   text-align: right;
 }
+
 .flame-graph-sizer {
   display: flex;
 }
+
 .flame-graph-container {
   display: inline-block;
   background-color: white;
@@ -286,13 +354,16 @@ table.location-table td:nth-child(3) {
   text-align: center;
   width: calc(100% - 1rem);
 }
+
 .flame-graph-node {
   cursor: pointer;
   user-select: none;
 }
+
 .flame-graph-node text {
   font-size: 12px;
 }
+
 .flame-graph-node rect.flame-graph-node-color-box {
   /* The rect is inside an embedded svg element, so it should take up the whole
      thing */
@@ -300,8 +371,10 @@ table.location-table td:nth-child(3) {
   height: 100%;
   stroke: transparent;
 }
+
 .flame-graph-node-selected rect.flame-graph-node-color-box {
-  fill: var(--selection-color) !important; /* override individual style */
+  fill: var(--selection-color) !important;
+  /* override individual style */
   /* We could do without the !important if we could say something like
        <svg class="flame-graph-node" style="--flame-graph-node-color: #eef">
      but the way VirtualDom sets style properties (directly assigning to
@@ -312,105 +385,133 @@ table.location-table td:nth-child(3) {
   stroke: black;
   stroke-width: 2;
 }
+
 .flame-graph-node-alloc-site rect.flame-graph-node-color-box {
-    fill: var(--flame-graph-alloc-site-node-color) !important;
+  fill: var(--flame-graph-alloc-site-node-color) !important;
 }
+
 .flame-graph-sequence-border {
   stroke: black;
   stroke-width: 3;
 }
+
 .flame-graph-sequence-box {
   /* Exists just so it can be scrolled into view */
   stroke-width: 0;
   fill: transparent;
 }
+
 .flame-graph-sequence-bracket polyline {
   stroke-width: 1;
   stroke: black;
   fill: transparent;
 }
+
 .flame-graph-sequence-bracket text {
   font-size: 12px;
 }
+
 .flame-graph-button-glyph {
   cursor: pointer;
   stroke: black;
   fill: black;
 }
+
 .flame-graph-button-glyph:hover {
   stroke: grey;
   fill: grey;
 }
+
 .flame-graph-button-motion-line {
   stroke: black;
   stroke-width: 1;
   stroke-dasharray: 2;
 }
+
 g.flame-graph-button:hover .flame-graph-button-motion-line {
   stroke: grey;
 }
+
 #filter-panel-body {
   flex: 1 1 auto;
   overflow: auto;
   display: flex;
 }
-#app-container > #filter-panel-body {
+
+#app-container>#filter-panel-body {
   flex-direction: row;
 }
+
 #left-bar #filter-panel-body {
   flex-direction: column;
 }
+
 #filter-graph-and-controls {
   text-align: center;
   min-width: 100px;
 }
-#app-container > #filter-panel #filter-graph-and-controls {
+
+#app-container>#filter-panel #filter-graph-and-controls {
   flex: 0 1 450px;
 }
-#app-container > #filter-panel #filter-form-area {
+
+#app-container>#filter-panel #filter-form-area {
   flex: 1 1 25em;
   min-width: 10em;
 }
+
 #left-bar #filter-graph-and-controls {
   /* Only add this when the filter panel is vertical. There's almost certainly
      a nicer way to do this. */
   margin-bottom: 0.5rem;
 }
+
 #filter-graph-container {
   overflow: auto;
 }
+
 .graph-border {
   stroke: black;
   fill: white;
 }
+
 .graph-line {
   fill: transparent;
 }
+
 .full-graph-line {
   stroke: black;
 }
+
 .filtered-graph-line {
   stroke: var(--allocated-color);
 }
+
 .graph-tick-mark {
   stroke: black;
 }
+
 .graph-label {
   font-size: 15px;
 }
+
 .graph-label-x {
   text-anchor: middle;
 }
+
 .graph-label-y {
   text-anchor: end;
   dominant-baseline: central;
 }
+
 .graph-label.graph-label-long {
   text-anchor: start;
 }
+
 .graph-allocated-range {
   --graph-region-color: var(--allocated-color)
 }
+
 .graph-live-range {
   --graph-region-color: var(--live-color)
 }
@@ -423,44 +524,54 @@ g.flame-graph-button:hover .flame-graph-button-motion-line {
   stroke: var(--graph-region-color);
   width: 2px;
 }
+
 .graph-region-interior {
   stroke: none;
   fill: var(--graph-region-color);
   opacity: 0.25;
 }
+
 .graph-x-axis-label {
   text-align: center;
 }
+
 .swatch {
   width: 1ex;
   height: 1ex;
   vertical-align: middle;
   margin-right: 0.3em;
 }
+
 .swatch rect {
   width: 100%;
   height: 100%;
 }
+
 .swatch-bg {
   stroke: none;
   fill: white;
 }
+
 .swatch-border {
   stroke-width: 2px;
   stroke: var(--swatch-color);
   fill: none;
 }
+
 .swatch-interior {
   opacity: 0.25;
   stroke: none;
   fill: var(--swatch-color);
 }
+
 .allocated-swatch {
   --swatch-color: var(--allocated-color);
 }
+
 .live-swatch {
   --swatch-color: var(--live-color);
 }
+
 .collected-swatch {
   --swatch-color: var(--collected-color);
 }
@@ -468,6 +579,7 @@ g.flame-graph-button:hover .flame-graph-button-motion-line {
 #filter-form p {
   margin-top: 0;
 }
+
 input.bound {
   /* This keeps the "s" after the field from being vertically offset from other
      text */
@@ -504,11 +616,11 @@ input.bound[type="datetime-local"] {
   padding-left: 1.5em;
 }
 
-.clauses > li:first-child .conjunction {
+.clauses>li:first-child .conjunction {
   display: none;
 }
 
-.clauses > li {
+.clauses>li {
   /* Make wrapped text stay to the right of the button (like a bullet
      point) */
   display: flex;
@@ -546,46 +658,58 @@ input.bound[type="datetime-local"] {
   outline: 2px solid black;
   outline-offset: -2px;
 }
+
 .backtrace-empty {
   font-style: italic;
 }
+
 .loc-special {
   font-weight: bold;
 }
+
 .loc-alloc-site-indicator {
   font-size: smaller;
   font-weight: bold;
   font-family: sans-serif;
   margin-right: 0.35em;
 }
+
 .last-loc {
   overflow-x: clip;
   text-overflow: ellipsis;
 }
+
 .first-loc {
   overflow-x: clip;
   text-overflow: ellipsis;
 }
+
 .call-sites {
   font-style: italic;
 }
+
 .total-allocations {
   font-weight: bold;
 }
+
 .info-label {
   font-weight: bold;
 }
+
 .indented {
   margin-inline-start: 40px;
 }
-.backtrace {
-}
+
+.backtrace {}
+
 .backtrace-inline {
   display: inline-block;
 }
+
 .backtrace-ellipsis {
   list-style-type: none;
 }
+
 .expander-closed .expander-content {
   display: none;
 }
@@ -609,4 +733,18 @@ input.bound[type="datetime-local"] {
 
 ::-webkit-scrollbar-corner {
   display: none;
+}
+
+.spinner {
+  animation: 1s infinite linear spinner;
+}
+
+@keyframes spinner {
+  0% {
+    transform: rotate(0deg)
+  }
+
+  100% {
+    transform: rotate(360deg)
+  }
 }

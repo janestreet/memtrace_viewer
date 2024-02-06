@@ -212,7 +212,7 @@ type t = { clauses : Clause.t option list } [@@deriving sexp, equal]
 let to_filter_allow_incomplete { clauses } ~peak_allocations_time =
   let clauses = List.filter_opt clauses in
   let filter =
-    List.fold_left clauses ~init:Filter.default ~f:(fun filter clause ->
+    List.fold_left clauses ~init:Filter.always_true ~f:(fun filter clause ->
       Clause.modify_filter clause filter ~peak_allocations_time
       |> Option.value ~default:filter)
   in
@@ -222,7 +222,7 @@ let to_filter_allow_incomplete { clauses } ~peak_allocations_time =
 let to_filter { clauses } ~peak_allocations_time =
   let open Option.Let_syntax in
   let%bind filter =
-    List.fold_left clauses ~init:(Some Filter.default) ~f:(fun filter clause ->
+    List.fold_left clauses ~init:(Some Filter.always_true) ~f:(fun filter clause ->
       let%bind filter = filter
       and clause = clause in
       Clause.modify_filter clause filter ~peak_allocations_time)

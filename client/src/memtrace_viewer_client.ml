@@ -11,10 +11,12 @@ let initialize ~conn ~data =
 ;;
 
 let handle_outgoing ~conn ~data ~server_state action =
+  Bonsai.Var.set server_state { Server_state.status = Busy };
   match%map Rpc.Rpc.dispatch Protocol.Update.t conn action with
   | Ok serialized ->
     let unserialized = Data.Serialized.unserialize serialized in
-    Bonsai.Var.set data unserialized
+    Bonsai.Var.set data unserialized;
+    Bonsai.Var.set server_state { Server_state.status = Idle }
   | Error error ->
     Js_of_ocaml.Firebug.console##error
       (error |> Error.to_string_hum |> Js_of_ocaml.Js.string);
@@ -26,7 +28,13 @@ let run () =
   Async_js.init ();
   let data = Bonsai.Var.create Data.empty in
   let server_state = Bonsai.Var.create Server_state.initial in
-  let%bind conn = Rpc.Connection.client_exn () in
+  let heartbeat_config =
+    Rpc.Connection.Heartbeat_config.create
+      ~timeout:(Time_ns.Span.of_int_day 7)
+      ~send_every:(Time_ns.Span.of_int_day 1)
+      ()
+  in
+  let%bind conn = Rpc.Connection.client_exn ~heartbeat_config () in
   let inject_outgoing =
     let handle_outgoing_staged =
       Effect.of_deferred_fun (handle_outgoing ~conn ~data ~server_state)

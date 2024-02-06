@@ -1,5 +1,6 @@
-(library (name bonsai_simple_table)
+(library
+ (name bonsai_simple_table)
  (libraries bonsai.web virtual_dom.keyboard virtual_dom.vdom_test_helpers
-  textutils.ascii_table_kernel)
+   textutils.ascii_table_kernel)
  (preprocess
   (pps js_of_ocaml-ppx bonsai.ppx_bonsai ppx_jane ppx_pattern_bind)))

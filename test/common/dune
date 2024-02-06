@@ -1,3 +1,5 @@
-(library (name memtrace_viewer_common_tests)
+(library
+ (name memtrace_viewer_common_tests)
  (libraries base base_quickcheck core memtrace_viewer_common)
- (preprocess (pps ppx_jane)))
+ (preprocess
+  (pps ppx_jane)))

@@ -98,9 +98,11 @@ module Submission_handling = struct
          Vdom.Effect.Many
            [ Vdom.Effect.Prevent_default (* don't do a real HTML submit! *); do_submit ]
        in
-       let server_is_up = Server_state.Status.is_up Server_state.(server_state.status) in
+       let server_is_idle =
+         Server_state.Status.is_idle Server_state.(server_state.status)
+       in
        let filter_is_valid = Option.is_some filter in
-       let enabled = server_is_up && filter_is_valid in
+       let enabled = server_is_idle && filter_is_valid in
        let button =
          Node.input
          (* Don't actually put an onclick handler on the button; just return the handler
@@ -175,10 +177,11 @@ let panel_body
     then Util.placeholder_div
     else Node.p region_legend_text
   in
-  let connection_lost_message =
-    match server_state with
-    | { Server_state.status = Down } -> Node.text " Server connection lost"
-    | _ -> Node.none
+  let node_server_state =
+    match server_state.Server_state.status with
+    | Down -> Codicons.svg Debug_disconnect
+    | Busy -> Codicons.svg ~extra_attrs:[ Attr.class_ "spinner" ] Loading
+    | Idle -> Node.none
   in
   let form =
     Node.create
@@ -196,7 +199,7 @@ let panel_body
         ]
       [ region_legend
       ; And_view.view filter_clauses
-      ; Node.div [ button_node; connection_lost_message ]
+      ; Node.div [ button_node; node_server_state ]
       ]
   in
   Node.div

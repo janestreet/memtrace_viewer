@@ -1,9 +1,14 @@
-(library (name memtrace_viewer_native) (public_name memtrace_viewer.native)
+(library
+ (name memtrace_viewer_native)
+ (public_name memtrace_viewer.native)
  (libraries memtrace_viewer_common memtrace core_kernel.pairing_heap
-  async_rpc_websocket)
- (preprocess (pps ppx_jane)))
+   async_rpc_websocket)
+ (preprocess
+  (pps ppx_jane)))
 
-(rule (targets embedded_files.ml embedded_files.mli)
+(rule
+ (targets embedded_files.ml embedded_files.mli)
  (deps %{bin:ocaml-embed-file} ../../client/bin/main.bc.js
-  ../../client/src/style.css)
- (action (bash "%{deps} -output embedded_files")))
+   ../../client/src/style.css)
+ (action
+  (bash "%{deps} -output embedded_files")))
