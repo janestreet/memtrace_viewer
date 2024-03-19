@@ -242,5 +242,6 @@ let%expect_test "test tree 1" =
             (retraction_id_by_caller 0) (extension_ids_by_caller ())
             (extensions_by_callee ()) (representative_id 10) (length 1)))))
         (representative_id 0) (length 0)))
-      (metadata ()))) |}]
+      (metadata ())))
+    |}]
 ;;

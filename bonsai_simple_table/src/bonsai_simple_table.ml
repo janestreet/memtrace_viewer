@@ -66,7 +66,8 @@ module Make (Row : Row) (Col_id : Id) = struct
     end
 
     module Model = struct
-      type t = { focus_row : Row.Id.t option } [@@deriving fields ~getters, equal, sexp]
+      type t = { focus_row : Row.Id.t option }
+      [@@deriving fields ~getters, equal, sexp_of]
 
       let create () = { focus_row = None }
     end

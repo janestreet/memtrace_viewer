@@ -202,7 +202,8 @@ let%expect_test "shakespeare" =
     (ve (total_count 7))
     (w (total_count 22))
     ("y " (total_count 9))
-    (y, (total_count 4)) |}];
+    (y, (total_count 4))
+    |}];
   print CharHH.contains_heavy heavy_hitters;
   [%expect
     {|
@@ -414,7 +415,8 @@ let%expect_test "shakespeare" =
     (wh (total_count 4))
     (y (total_count 14))
     ("y " (total_count 9))
-    (y, (total_count 4)) |}]
+    (y, (total_count 4))
+    |}]
 ;;
 
 let common_prefixes =
@@ -475,7 +477,8 @@ let%expect_test "repetitive_lines" =
     Dhe in s the native h the pale cast of thought,
     Dhe in s the nativegreat pith and moment
     Dhe in s  regard their currents turn awry
-    Dhe inse the name of action. |}]
+    Dhe inse the name of action.
+    |}]
 ;;
 
 let%expect_test "repetitive shakespeare" =
@@ -581,7 +584,8 @@ let%expect_test "repetitive shakespeare" =
     (ur (total_count 5))
     (ve (total_count 5))
     (w (total_count 16))
-    ("y " (total_count 5)) |}];
+    ("y " (total_count 5))
+    |}];
   print CharHH.contains_heavy heavy_hitters;
   [%expect
     {|
@@ -917,5 +921,6 @@ let%expect_test "repetitive shakespeare" =
     (w (total_count 16))
     ("we " (total_count 4))
     (y (total_count 9))
-    ("y " (total_count 5)) |}]
+    ("y " (total_count 5))
+    |}]
 ;;

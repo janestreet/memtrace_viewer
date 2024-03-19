@@ -101,7 +101,8 @@ let%expect_test "large allocs" =
      (event
       (Alloc 36 Major 7.34375K (<init> main go b a c create array0.ml:40:6-18))))
     ((time 1.847ms) (event (Collect 36)))
-    ((time 1.847ms) (event End)) |}]
+    ((time 1.847ms) (event End))
+    |}]
 ;;
 
 let%expect_test "short lifetimes" =
@@ -158,7 +159,8 @@ let%expect_test "short lifetimes" =
     ((time 1.126ms) (event (Collect 46)))
     ((time 1.126ms) (event (Collect 48)))
     ((time 1.126ms) (event (Collect 51)))
-    ((time 1.847ms) (event End)) |}]
+    ((time 1.847ms) (event End))
+    |}]
 ;;
 
 let%expect_test "only array functions" =
@@ -177,7 +179,8 @@ let%expect_test "only array functions" =
       (Alloc 36 Major 7.34375K (<init> main go b a c create array0.ml:40:6-18))))
     ((time 1.036ms) (event (Promote 0)))
     ((time 1.847ms) (event (Collect 36)))
-    ((time 1.847ms) (event End)) |}]
+    ((time 1.847ms) (event End))
+    |}]
 ;;
 
 let%expect_test "no b" =
@@ -196,7 +199,8 @@ let%expect_test "no b" =
       (Alloc 7 Minor 160B (<init> main go a generate_test_data.ml:20:22-44))))
     ((time 1.036ms) (event (Promote 0)))
     ((time 1.037ms) (event (Promote 7)))
-    ((time 1.847ms) (event End)) |}]
+    ((time 1.847ms) (event End))
+    |}]
 ;;
 
 let%expect_test "hide b" =
@@ -229,7 +233,8 @@ let%expect_test "hide b" =
     ((time 1.02ms) (event (Alloc 8 Minor 160B (<init> main go a c))))
     ((time 1.02ms)
      (event
-      (Alloc 9 Minor 80B (<init> main go a c generate_test_data.ml:20:22-44)))) |}]
+      (Alloc 9 Minor 80B (<init> main go a c generate_test_data.ml:20:22-44))))
+    |}]
 ;;
 
 let%expect_test "show major heap only" =
@@ -302,7 +307,8 @@ let%expect_test "show major heap only" =
     ((time 1.036ms) (event (Promote 1)))
     ((time 1.037ms) (event (Promote 4)))
     ((time 1.037ms) (event (Promote 5)))
-    ((time 1.037ms) (event (Promote 6))) |}]
+    ((time 1.037ms) (event (Promote 6)))
+    |}]
 ;;
 
 let%expect_test "all events" =
@@ -524,5 +530,6 @@ let%expect_test "all events" =
     ((time 1.126ms) (event (Promote 52)))
     ((time 1.126ms) (event (Promote 53)))
     ((time 1.847ms) (event (Collect 36)))
-    ((time 1.847ms) (event End)) |}]
+    ((time 1.847ms) (event End))
+    |}]
 ;;

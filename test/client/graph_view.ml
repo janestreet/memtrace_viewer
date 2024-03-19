@@ -210,7 +210,8 @@ let%expect_test "default graph view" =
           <option value="1" #selected="false"> Wall time </option>
         </select>
       </div>
-    </div> |}]
+    </div>
+    |}]
 ;;
 
 let%expect_test "change view to wall time" =
@@ -444,7 +445,8 @@ let%expect_test "change view to wall time" =
     +|      <option value="1" #selected="true"> Wall time </option>
           </select>
         </div>
-      </div> |}]
+      </div>
+    |}]
 ;;
 
 let%expect_test "resize graph" =
@@ -670,5 +672,6 @@ let%expect_test "resize graph" =
             <option value="1" #selected="false"> Wall time </option>
           </select>
         </div>
-      </div> |}]
+      </div>
+    |}]
 ;;

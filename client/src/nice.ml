@@ -150,8 +150,8 @@ end
 
 module S_time_ns_span : S with type t = Time_ns.Span.t and type Diff.t = Time_ns.Span.t =
 struct
-  module Diff = Diff_time_ns_span
   include Time_ns.Span
+  module Diff = Diff_time_ns_span
 
   let round_to_multiple_of_nice ~relative_to ~dir t d =
     let floor =
