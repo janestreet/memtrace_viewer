@@ -1,6 +1,6 @@
 (executables
  (names main)
- (modes byte)
+ (modes js)
  (libraries memtrace_viewer_client)
  (preprocess
   (pps ppx_jane)))
