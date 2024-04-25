@@ -1,5 +1,6 @@
 (library
  (name bonsai_simple_table)
+ (public_name memtrace_viewer.bonsai_simple_table)
  (libraries bonsai.web virtual_dom.keyboard virtual_dom.vdom_test_helpers
    textutils.ascii_table_kernel)
  (preprocess

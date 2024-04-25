@@ -1,5 +1,6 @@
 (library
  (name memtrace_viewer_client)
+ (public_name memtrace_viewer.client)
  (modes byte)
  (flags :standard -w -31)
  (libraries async_kernel async_js core bonsai.web memtrace_viewer_common
