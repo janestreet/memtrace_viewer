@@ -1,4 +1,5 @@
 opam-version: "2.0"
+version: "v0.17.0"
 maintainer: "opensource-contacts@janestreet.com"
 authors: ["Jane Street Group, LLC <opensource-contacts@janestreet.com>"]
 homepage: "https://github.com/janestreet/memtrace_viewer"
@@ -10,19 +11,19 @@ build: [
   ["dune" "build" "-p" name "-j" jobs]
 ]
 depends: [
-  "ocaml" {>= "4.11.0"}
-  "async_js"
-  "async_kernel"
-  "async_rpc_kernel"
-  "bonsai"
-  "core_kernel"
-  "ppx_jane"
-  "async_rpc_websocket"
-  "virtual_dom"
-  "dune"              {>= "2.0.0"}
+  "ocaml"               {>= "4.11.0"}
+  "async_js"            {>= "v0.17" & < "v0.18"}
+  "async_kernel"        {>= "v0.17" & < "v0.18"}
+  "async_rpc_kernel"    {>= "v0.17" & < "v0.18"}
+  "bonsai"              {>= "v0.17" & < "v0.18"}
+  "core_kernel"         {>= "v0.17" & < "v0.18"}
+  "ppx_jane"            {>= "v0.17" & < "v0.18"}
+  "async_rpc_websocket" {>= "v0.17" & < "v0.18"}
+  "virtual_dom"         {>= "v0.17" & < "v0.18"}
+  "dune"                {>= "2.0.0"}
   "js_of_ocaml-ppx"
   "memtrace"
-  "ocaml-embed-file"
+  "ocaml-embed-file"    {>= "v0.17" & < "v0.18"}
 ]
 synopsis: "Interactive memory profiler based on Memtrace"
 description: "
