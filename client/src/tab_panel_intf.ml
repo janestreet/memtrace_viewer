@@ -1,5 +1,5 @@
 open! Core
-open Bonsai_web
+open Bonsai_web.Proc
 
 module type Tab = sig
   type t [@@deriving enumerate, sexp, compare, equal]

@@ -481,9 +481,9 @@ end = struct
     t.call_sites
     |> Hashtbl.to_alist
     |> List.map ~f:(fun (call_site, state) ->
-         let loc = state.location_state.location in
-         let callees = state.callees in
-         loc, call_site, callees)
+      let loc = state.location_state.location in
+      let callees = state.callees in
+      loc, call_site, callees)
     |> Call_sites.of_list
   ;;
 
@@ -514,7 +514,7 @@ end = struct
     if index >= Array.length t.current_location_codes
     then
       t.current_location_codes
-        <- enlarge t.current_location_codes ~index ~default:Location_code_state.dummy;
+      <- enlarge t.current_location_codes ~index ~default:Location_code_state.dummy;
     t.current_location_codes.(index) <- state
   ;;
 
@@ -522,7 +522,7 @@ end = struct
     if index >= Array.length t.location_code_to_last_call_site
     then
       t.location_code_to_last_call_site
-        <- enlarge t.location_code_to_last_call_site ~index ~default:~-1;
+      <- enlarge t.location_code_to_last_call_site ~index ~default:~-1;
     t.location_code_to_last_call_site.(index) <- state
   ;;
 
@@ -530,7 +530,7 @@ end = struct
     if index >= Array.length t.current_call_sites
     then
       t.current_call_sites
-        <- enlarge t.current_call_sites ~index ~default:Call_site_state.dummy;
+      <- enlarge t.current_call_sites ~index ~default:Call_site_state.dummy;
     t.current_call_sites.(index) <- state
   ;;
 
@@ -644,7 +644,7 @@ end = struct
               let call_sites = last_location_code_state.call_site_states in
               if not (Array.is_empty call_sites)
               then (
-                let allocation_call_site = Array.last call_sites in
+                let allocation_call_site = Array.last_exn call_sites in
                 let allocation_site =
                   Filtered_location_cache.get_allocation_site_of_call_site
                     (loc_cache t)

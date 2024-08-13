@@ -1,7 +1,7 @@
 (library
  (name bonsai_simple_table)
  (public_name memtrace_viewer.bonsai_simple_table)
- (libraries bonsai.web virtual_dom.keyboard virtual_dom.vdom_test_helpers
-   textutils.ascii_table_kernel)
+ (libraries bonsai_web virtual_dom.keyboard virtual_dom.vdom_test_helpers
+   textutils.ascii_table_kernel core incr_map js_of_ocaml)
  (preprocess
   (pps js_of_ocaml-ppx bonsai.ppx_bonsai ppx_jane ppx_pattern_bind)))

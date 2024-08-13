@@ -1,5 +1,5 @@
 open! Core
-open! Bonsai_web
+open! Bonsai_web.Proc
 open Memtrace_viewer_common
 module Attr = Vdom.Attr
 module Node = Vdom.Node
@@ -134,7 +134,7 @@ let component ~series ~regions ~aspect_ratio ~start_time ~time_view ~set_time_vi
         series
         ~init:(Time_ns.Span.zero, Byte_units.zero)
         ~f:(fun (max_x, max_y) (series : Series.t) ->
-        Time_ns.Span.max max_x series.max_x, Byte_units.max max_y series.max_y)
+          Time_ns.Span.max max_x series.max_x, Byte_units.max max_y series.max_y)
     in
     max_x, max_y
   in

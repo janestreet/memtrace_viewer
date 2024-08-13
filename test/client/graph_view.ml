@@ -1,5 +1,5 @@
 open! Core
-open! Bonsai_web
+open! Bonsai_web.Proc
 open Memtrace_viewer_common
 open Memtrace_viewer_client.For_testing
 module Handle = Bonsai_web_test.Handle
@@ -205,7 +205,7 @@ let%expect_test "default graph view" =
         </div>
       </div>
       <div class="graph-x-axis-label">
-        <select class="widget-dropdown" onchange>
+        <select class="widget-dropdown" @on_change>
           <option value="0" #selected="true"> Elapsed time (s) </option>
           <option value="1" #selected="false"> Wall time </option>
         </select>
@@ -438,7 +438,7 @@ let%expect_test "change view to wall time" =
           </div>
         </div>
         <div class="graph-x-axis-label">
-          <select class="widget-dropdown" onchange>
+          <select class="widget-dropdown" @on_change>
     -|      <option value="0" #selected="true"> Elapsed time (s) </option>
     +|      <option value="0" #selected="false"> Elapsed time (s) </option>
     -|      <option value="1" #selected="false"> Wall time </option>
@@ -667,7 +667,7 @@ let%expect_test "resize graph" =
           </div>
         </div>
         <div class="graph-x-axis-label">
-          <select class="widget-dropdown" onchange>
+          <select class="widget-dropdown" @on_change>
             <option value="0" #selected="true"> Elapsed time (s) </option>
             <option value="1" #selected="false"> Wall time </option>
           </select>

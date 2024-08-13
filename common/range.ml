@@ -24,9 +24,9 @@ module type Point = Point
 
 module type S =
   S
-    with type 'a range := 'a t
-    with type 'a or_empty := 'a Or_empty.t
-    with module Bound := Bound
+  with type 'a range := 'a t
+  with type 'a or_empty := 'a Or_empty.t
+  with module Bound := Bound
 
 module Make (Point : Point) = struct
   module Point = Point

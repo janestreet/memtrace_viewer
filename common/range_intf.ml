@@ -88,9 +88,9 @@ module type Range = sig
 
   module type S =
     S
-      with type 'a range := 'a t
-      with type 'a or_empty := 'a Or_empty.t
-      with module Bound := Bound
+    with type 'a range := 'a t
+    with type 'a or_empty := 'a Or_empty.t
+    with module Bound := Bound
 
   module Make (Point : Point) : S with module Point = Point
   module Time_ns_span : S with type Point.t = Time_ns.Span.t

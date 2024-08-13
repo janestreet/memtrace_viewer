@@ -2,6 +2,6 @@
  (modes byte exe)
  (names main)
  (public_names memtrace-viewer)
- (libraries core_unix.command_unix memtrace_viewer_native)
+ (libraries core_unix.command_unix core memtrace_viewer_native)
  (preprocess
   (pps ppx_jane)))

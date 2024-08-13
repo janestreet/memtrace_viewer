@@ -1,5 +1,5 @@
 open! Core
-open Bonsai_web
+open Bonsai_web.Proc
 
 (* An implementation of [Stringable.S] for [float] that is compatible with HTML/JavaScript
    float syntax. The usual [Float.to_string] is prone to outputting things like "1." that

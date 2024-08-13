@@ -1,5 +1,5 @@
 open! Core
-open! Bonsai_web
+open! Bonsai_web.Proc
 open Vdom_keyboard
 open Memtrace_viewer_common
 
@@ -138,7 +138,9 @@ let component
           [ (if filter_on_left then [] else [ info_panel_view; filter_panel_view ])
           ; [ div
                 "body-container"
-                [ (if filter_on_left then left_bar else Node.none)
+                [ (if filter_on_left
+                   then left_bar
+                   else Node.none_deprecated [@alert "-deprecated"])
                 ; main_panel.view
                 ; right_bar
                 ]

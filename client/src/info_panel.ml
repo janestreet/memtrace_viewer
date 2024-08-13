@@ -1,22 +1,22 @@
 open! Core
-open Bonsai_web
+open Bonsai_web.Proc
 open Memtrace_viewer_common
 
 let info_linef ?attr pat =
   pat
   |> Printf.ksprintf (fun str ->
-       Vdom.(Node.li ?attrs:(Option.map attr ~f:(fun attr -> [ attr ])) [ Node.text str ]))
+    Vdom.(Node.li ?attrs:(Option.map attr ~f:(fun attr -> [ attr ])) [ Node.text str ]))
 ;;
 
 let info_fieldf ?attr label pat =
   pat
   |> Printf.ksprintf (fun str ->
-       Vdom.(
-         Node.li
-           ?attrs:(Option.map attr ~f:(fun attr -> [ attr ]))
-           [ Node.span ~attrs:[ Attr.class_ "info-label" ] [ Node.textf "%s: " label ]
-           ; Node.text str
-           ]))
+    Vdom.(
+      Node.li
+        ?attrs:(Option.map attr ~f:(fun attr -> [ attr ]))
+        [ Node.span ~attrs:[ Attr.class_ "info-label" ] [ Node.textf "%s: " label ]
+        ; Node.text str
+        ]))
 ;;
 
 let print_timestamp () t =
@@ -26,12 +26,12 @@ let print_timestamp () t =
 let panel_body ~(info : Data.Info.t option) =
   let open Vdom in
   match info with
-  | None -> Node.none
+  | None -> Node.none_deprecated [@alert "-deprecated"]
   | Some info ->
     let context_line =
       match info.context with
       | Some context -> info_linef "%s" context
-      | None -> Node.none
+      | None -> Node.none_deprecated [@alert "-deprecated"]
     in
     let word_size_in_bits = 8 * (info.word_size |> Byte_units.bytes_int_exn) in
     let sample_size = Byte_units.scale info.word_size (1.0 /. info.sample_rate) in

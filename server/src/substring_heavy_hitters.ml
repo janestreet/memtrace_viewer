@@ -131,7 +131,7 @@ module Make (X : Char) = struct
           ; mutable heavy_descendents_count : int
           ; mutable heavy_descendents : Id.Set.t
           ; mutable representative : t
-              (* Deepest descendent (possibly itself) with the same set of heavy descendents.
+          (* Deepest descendent (possibly itself) with the same set of heavy descendents.
           *)
           }
 
@@ -655,7 +655,7 @@ module Make (X : Char) = struct
                 | No_summary -> [%sexp "???"]
                 | Summary { descendents_count; _ } ->
                   [%sexp (node.count + descendents_count : int)])
-                : Sexp.t)
+               : Sexp.t)
             ~label:(label node : X.t array)]
       ;;
     end
@@ -1301,14 +1301,14 @@ module Make (X : Char) = struct
             ~root:plain_root
             ~init:[]
             ~f:(fun plain_child children ->
-            let edge =
-              Array.sub
-                (Plain_node.edge_array plain_child)
-                ~pos:(Plain_node.edge_start plain_child)
-                ~len:(Plain_node.edge_length plain_child)
-            in
-            let child = mk_node plain_child in
-            (edge, child) :: children)
+              let edge =
+                Array.sub
+                  (Plain_node.edge_array plain_child)
+                  ~pos:(Plain_node.edge_start plain_child)
+                  ~len:(Plain_node.edge_length plain_child)
+              in
+              let child = mk_node plain_child in
+              (edge, child) :: children)
         in
         let parent = dummy (* fix in second pass *) in
         let suffix = dummy (* fix in second pass *) in
@@ -1337,18 +1337,18 @@ module Make (X : Char) = struct
         fix_back_pointers child ~parent:root ~leading_edge);
       let rec do_merge_prefixes (node : Node.t) =
         node.prefixes
-          <- List.map node.prefixes ~f:(fun (leading_edge, child) ->
-               (* Find a chain of prefixes with count 0, only one prefix, and no children *)
-               let rec chain (desc : Node.t) edges =
-                 if Plain_node.count desc.plain <> 0
-                 then edges, desc
-                 else (
-                   match desc.children, desc.prefixes with
-                   | [], [ (edge, child) ] -> chain child (edge :: edges)
-                   | _ -> edges, desc)
-               in
-               let edges, last_child = chain child [ leading_edge ] in
-               Array.concat edges, last_child);
+        <- List.map node.prefixes ~f:(fun (leading_edge, child) ->
+             (* Find a chain of prefixes with count 0, only one prefix, and no children *)
+             let rec chain (desc : Node.t) edges =
+               if Plain_node.count desc.plain <> 0
+               then edges, desc
+               else (
+                 match desc.children, desc.prefixes with
+                 | [], [ (edge, child) ] -> chain child (edge :: edges)
+                 | _ -> edges, desc)
+             in
+             let edges, last_child = chain child [ leading_edge ] in
+             Array.concat edges, last_child);
         List.iter node.children ~f:(fun (_, child) -> do_merge_prefixes child)
       in
       if merge_prefixes then do_merge_prefixes root;

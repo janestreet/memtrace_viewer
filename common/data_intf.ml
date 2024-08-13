@@ -132,9 +132,9 @@ module type Data = sig
   module Fragment : sig
     include
       Fragment_trie.Fragment
-        with module Location := Location
-         and module Entry := Entry
-         and module Backtrace := Backtrace
+      with module Location := Location
+       and module Entry := Entry
+       and module Backtrace := Backtrace
 
     val is_trivial : t -> bool
   end
@@ -145,11 +145,11 @@ module type Data = sig
   module Fragment_trie : sig
     include
       Fragment_trie.Trie
-        with module Location := Location
-         and module Entry := Entry
-         and module Metadata := Metadata
-         and module Backtrace := Backtrace
-         and module Fragment := Fragment
+      with module Location := Location
+       and module Entry := Entry
+       and module Metadata := Metadata
+       and module Backtrace := Backtrace
+       and module Fragment := Fragment
 
     val of_suffix_tree
       :  (module Suffix_tree with type t = 'tree)

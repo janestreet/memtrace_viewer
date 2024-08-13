@@ -1,5 +1,5 @@
 open! Core
-open Bonsai_web
+open Bonsai_web.Proc
 
 module State = struct
   type t =
@@ -46,7 +46,7 @@ let title_bar ~title ~collapsible ~state ~set_state : Vdom.Node.t option Computa
            Node.button
              ~attrs:[ on_click_attr; Attr.class_ "panel-collapse-indicator" ]
              [ Node.text text ]
-         | None -> Node.none
+         | None -> Node.none_deprecated [@alert "-deprecated"]
        in
        Node.h2
          ~attrs:[ on_click_attr; Attr.class_ "panel-title" ]

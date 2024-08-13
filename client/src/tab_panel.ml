@@ -1,5 +1,5 @@
 open! Core
-open Bonsai_web
+open Bonsai_web.Proc
 include Tab_panel_intf
 
 type ('tab, 'output) t =

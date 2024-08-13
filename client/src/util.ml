@@ -1,5 +1,5 @@
 open! Core
-open Bonsai_web
+open Bonsai_web.Proc
 
 module Float_html_syntax : Stringable.S with type t = float = struct
   type t = float

@@ -5,7 +5,7 @@
     the component, using [Bonsai.wrap] to tie the knot. *)
 
 open! Core
-open Bonsai_web
+open Bonsai_web.Proc
 
 module Interpreter : sig
   (** A function specifying the semantics of the action, in terms of the current value of
@@ -20,7 +20,7 @@ module Input : sig
   (** The input arguments (besides the action) for the interpreter. *)
   type ('value, 'context) t =
     { value : 'value
-        (** The value of the wrapped component. Will also be returned to the outside world
+    (** The value of the wrapped component. Will also be returned to the outside world
         (by [component] below). *)
     ; context : 'context (** Extra context only needed internally by the interpreter. *)
     }

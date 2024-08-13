@@ -1,6 +1,6 @@
 open! Core
 open Bonsai_simple_table_intf
-open Bonsai_web
+open Bonsai_web.Proc
 open Incr.Let_syntax
 module Col_group = Col_group
 
@@ -190,10 +190,10 @@ module Make (Row : Row) (Col_id : Id) = struct
     let serialize_row_id row_id =
       Sexp.to_string_mach (Row.Id.sexp_of_t row_id)
       |> String.map ~f:(function
-           (* This mapping probably maps two inputs to the same output, but this
+        (* This mapping probably maps two inputs to the same output, but this
            is unlikely enough that it should be fine. *)
-           | '\"' -> '_'
-           | c -> c)
+        | '\"' -> '_'
+        | c -> c)
     ;;
 
     let scroll_to_row_effect =
@@ -210,7 +210,7 @@ module Make (Row : Row) (Col_id : Id) = struct
           | Some element ->
             let scrollable =
               (Js.Unsafe.coerce element
-                : < scrollIntoViewIfNeeded : bool Js.t -> unit Js.meth > Js.t)
+               : < scrollIntoViewIfNeeded : bool Js.t -> unit Js.meth > Js.t)
             in
             scrollable##scrollIntoViewIfNeeded (Js.bool false)
           | None -> ()))
@@ -410,7 +410,7 @@ module Make (Row : Row) (Col_id : Id) = struct
         | `With_groups groups ->
           groups
           >>| List.concat_map ~f:(fun { group = _; cols_in_group } ->
-                List.map cols_in_group ~f:(fun { id; _ } -> id))
+            List.map cols_in_group ~f:(fun { id; _ } -> id))
       ;;
 
       (* use "\u{00a0}" (aka &nbsp;) to get the rows to render and take up vertical
@@ -477,50 +477,50 @@ module Make (Row : Row) (Col_id : Id) = struct
                   (fun
                     (col_defn_tags, groups_row, col_headers_row)
                     { group; cols_in_group }
-                    ->
-                let num_cols = List.length cols_in_group in
-                let colgroup_tag =
-                  Vdom.Node.create
-                    "colgroup"
-                    ~attrs:[ Vdom.Attr.create "span" (Int.to_string num_cols) ]
-                    (List.map cols_in_group ~f:(fun column ->
-                       Vdom.Node.create
-                         "col"
-                         ~attrs:[ Vdom.Attr.classes column.classes ]
-                         []))
-                in
-                let group_th =
-                  let group_name =
-                    match group with
-                    | None -> Vdom.Node.none
-                    | Some group_name -> Vdom.Node.text (Col_group.to_string group_name)
+                  ->
+                  let num_cols = List.length cols_in_group in
+                  let colgroup_tag =
+                    Vdom.Node.create
+                      "colgroup"
+                      ~attrs:[ Vdom.Attr.create "span" (Int.to_string num_cols) ]
+                      (List.map cols_in_group ~f:(fun column ->
+                         Vdom.Node.create
+                           "col"
+                           ~attrs:[ Vdom.Attr.classes column.classes ]
+                           []))
                   in
-                  Vdom.Node.th
-                    ~attrs:[ Vdom.Attr.create "colspan" (Int.to_string num_cols) ]
-                    [ group_name ]
-                in
-                let col_headers_ths =
-                  let last_idx = num_cols - 1 in
-                  List.mapi cols_in_group ~f:(fun idx c ->
-                    let classes =
-                      [ Option.some_if (idx = 0) "simple-table-first-header-in-group"
-                      ; Option.some_if
-                          (idx = last_idx)
-                          "simple-table-last-header-in-group"
-                      ]
-                      |> List.filter_opt
-                      |> Vdom.Attr.classes
-                    in
-                    let attrs =
-                      Vdom.Attrs.merge_classes_and_styles (classes :: c.header.attrs)
+                  let group_th =
+                    let group_name =
+                      match group with
+                      | None -> Vdom.Node.none_deprecated [@alert "-deprecated"]
+                      | Some group_name -> Vdom.Node.text (Col_group.to_string group_name)
                     in
                     Vdom.Node.th
-                      ~attrs:[ Vdom.Attr.many_without_merge attrs ]
-                      [ c.header.node ])
-                in
-                ( col_defn_tags @ [ colgroup_tag ]
-                , groups_row @ [ group_th ]
-                , col_headers_row @ col_headers_ths ))
+                      ~attrs:[ Vdom.Attr.create "colspan" (Int.to_string num_cols) ]
+                      [ group_name ]
+                  in
+                  let col_headers_ths =
+                    let last_idx = num_cols - 1 in
+                    List.mapi cols_in_group ~f:(fun idx c ->
+                      let classes =
+                        [ Option.some_if (idx = 0) "simple-table-first-header-in-group"
+                        ; Option.some_if
+                            (idx = last_idx)
+                            "simple-table-last-header-in-group"
+                        ]
+                        |> List.filter_opt
+                        |> Vdom.Attr.classes
+                      in
+                      let attrs =
+                        Vdom.Attrs.merge_classes_and_styles (classes :: c.header.attrs)
+                      in
+                      Vdom.Node.th
+                        ~attrs:[ Vdom.Attr.many_without_merge attrs ]
+                        [ c.header.node ])
+                  in
+                  ( col_defn_tags @ [ colgroup_tag ]
+                  , groups_row @ [ group_th ]
+                  , col_headers_row @ col_headers_ths ))
             in
             ( col_defn_tags
             , [ Vdom.Node.tr

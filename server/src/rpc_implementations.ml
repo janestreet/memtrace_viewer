@@ -26,4 +26,5 @@ let implementations global_state =
   Rpc.Implementations.create_exn
     ~implementations:[ init global_state; update global_state ]
     ~on_unknown_rpc:`Continue
+    ~on_exception:Log_on_background_exn
 ;;

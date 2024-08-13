@@ -8,9 +8,9 @@ module Fragment_id = Identifier.Make ()
 
 module Make (Location : Location) (Entry : Entry) (Metadata : Metadata) :
   S
-    with module Location := Location
-     and module Entry := Entry
-     and module Metadata := Metadata = struct
+  with module Location := Location
+   and module Entry := Entry
+   and module Metadata := Metadata = struct
   module type Suffix_tree =
     Suffix_tree with type location := Location.t and type entry := Entry.t
 
@@ -422,23 +422,24 @@ module Make (Location : Location) (Entry : Entry) (Metadata : Metadata) :
         ~init:()
         ~backtrace_rev:Backtrace.Reversed.nil
         ~f:(fun ~backtrace_rev ~fragment () ->
-        if not (Backtrace.Reversed.equal backtrace_rev (Fragment.backtrace_rev fragment))
-        then
-          raise_s
-            [%message
-              "Fragment's reversed backtrace doesn't match accumulator"
-                (backtrace_rev : Backtrace.Reversed.Debug.t)
-                (Fragment.backtrace_rev fragment : Backtrace.Reversed.Debug.t)];
-        let rev_of_backtrace =
-          Fragment.backtrace fragment |> List.rev |> Backtrace.Reversed.of_reversed_list
-        in
-        if not (Backtrace.Reversed.equal backtrace_rev rev_of_backtrace)
-        then
-          raise_s
-            [%message
-              "Fragment's forward and backward backtraces don't match"
-                (backtrace_rev : Backtrace.Reversed.Debug.t)
-                (rev_of_backtrace : Backtrace.Reversed.Debug.t)])
+          if not
+               (Backtrace.Reversed.equal backtrace_rev (Fragment.backtrace_rev fragment))
+          then
+            raise_s
+              [%message
+                "Fragment's reversed backtrace doesn't match accumulator"
+                  (backtrace_rev : Backtrace.Reversed.Debug.t)
+                  (Fragment.backtrace_rev fragment : Backtrace.Reversed.Debug.t)];
+          let rev_of_backtrace =
+            Fragment.backtrace fragment |> List.rev |> Backtrace.Reversed.of_reversed_list
+          in
+          if not (Backtrace.Reversed.equal backtrace_rev rev_of_backtrace)
+          then
+            raise_s
+              [%message
+                "Fragment's forward and backward backtraces don't match"
+                  (backtrace_rev : Backtrace.Reversed.Debug.t)
+                  (rev_of_backtrace : Backtrace.Reversed.Debug.t)])
     ;;
 
     let create ~(root : Fragment.t) ~metadata =
@@ -512,9 +513,9 @@ module Make (Location : Location) (Entry : Entry) (Metadata : Metadata) :
         new_node.first_caller <- first_edge;
         new_node.length <- length;
         new_node.extensions_by_callee
-          <- List.map
-               ~f:(translate ~length:(length + 1) ~first_edge ~new_parent:new_node)
-               (Tree.Node.children old_node);
+        <- List.map
+             ~f:(translate ~length:(length + 1) ~first_edge ~new_parent:new_node)
+             (Tree.Node.children old_node);
         new_node.retraction_by_callee <- new_parent;
         (* This is the node in which this node appears among the [extensions_by_caller]. *)
         let parent_by_caller =
@@ -531,7 +532,7 @@ module Make (Location : Location) (Entry : Entry) (Metadata : Metadata) :
         in
         new_node.retraction_by_caller <- parent_by_caller;
         parent_by_caller.extensions_by_caller
-          <- (first_edge, new_node) :: parent_by_caller.extensions_by_caller;
+        <- (first_edge, new_node) :: parent_by_caller.extensions_by_caller;
         new_node.representative <- node_of (Tree.Node.representative old_node);
         last_edge, new_node
       in
@@ -701,9 +702,9 @@ module Make (Location : Location) (Entry : Entry) (Metadata : Metadata) :
             }
           in
           fragment.extensions_by_callee
-            <- List.Assoc.map
-                 ~f:(unserialize_without_callers ~retraction_by_callee:fragment)
-                 (extensions_by_callee |> Array.to_list);
+          <- List.Assoc.map
+               ~f:(unserialize_without_callers ~retraction_by_callee:fragment)
+               (extensions_by_callee |> Array.to_list);
           Hashtbl.add_exn fragment_cache ~key:id ~data:fragment;
           fragment
         in
@@ -712,7 +713,7 @@ module Make (Location : Location) (Entry : Entry) (Metadata : Metadata) :
           (old_fragment : Fragment.t)
           =
           new_fragment.retraction_by_caller
-            <- find_in_cache "retraction_by_caller" old_fragment.retraction_id_by_caller;
+          <- find_in_cache "retraction_by_caller" old_fragment.retraction_id_by_caller;
           let extensions_by_caller =
             List.Assoc.map
               ~f:(find_in_cache "extensions_by_caller")
@@ -720,7 +721,7 @@ module Make (Location : Location) (Entry : Entry) (Metadata : Metadata) :
           in
           new_fragment.extensions_by_caller <- extensions_by_caller;
           new_fragment.representative
-            <- find_in_cache "representative" old_fragment.representative_id;
+          <- find_in_cache "representative" old_fragment.representative_id;
           List.iter2_exn
             new_fragment.extensions_by_callee
             (old_fragment.extensions_by_callee |> Array.to_list)
@@ -741,9 +742,9 @@ module Make (Location : Location) (Entry : Entry) (Metadata : Metadata) :
         in
         Hashtbl.add_exn fragment_cache ~key:root.id ~data:root;
         root.extensions_by_callee
-          <- List.Assoc.map
-               ~f:(unserialize_without_callers ~retraction_by_callee:root)
-               (t.root.extensions_by_callee |> Array.to_list);
+        <- List.Assoc.map
+             ~f:(unserialize_without_callers ~retraction_by_callee:root)
+             (t.root.extensions_by_callee |> Array.to_list);
         fill_in_callers root t.root;
         let metadata = t.metadata in
         create ~root ~metadata

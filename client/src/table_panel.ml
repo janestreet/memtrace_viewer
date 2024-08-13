@@ -1,6 +1,6 @@
 open! Core
 open! Async_kernel
-open! Bonsai_web
+open! Bonsai_web.Proc
 open Vdom_keyboard
 open Memtrace_viewer_common
 

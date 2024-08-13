@@ -1,5 +1,5 @@
 open! Core
-open! Bonsai_web
+open! Bonsai_web.Proc
 module Attr = Vdom.Attr
 module Node = Vdom.Node
 module Node_svg = Virtual_dom_svg.Node
@@ -108,7 +108,7 @@ module Submission_handling = struct
          (* Don't actually put an onclick handler on the button; just return the handler
               to be used as the form's onsubmit instead, thus getting Enter key behavior
               for free
-           *)
+         *)
            ~attrs:
              [ Attr.type_ "submit"
              ; Attr.class_ "flat-button"
@@ -181,7 +181,7 @@ let panel_body
     match server_state.Server_state.status with
     | Down -> Codicons.svg Debug_disconnect
     | Busy -> Codicons.svg ~extra_attrs:[ Attr.class_ "spinner" ] Loading
-    | Idle -> Node.none
+    | Idle -> Node.none_deprecated [@alert "-deprecated"]
   in
   let form =
     Node.create

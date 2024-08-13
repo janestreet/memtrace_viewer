@@ -1,5 +1,5 @@
 open! Core
-open Bonsai_web
+open Bonsai_web.Proc
 open Memtrace_viewer_common
 
 module Selection : sig
@@ -31,6 +31,6 @@ val component
        (Data.Fragment.t
         -> default_selection:App_state.Default_selection.t
         -> unit Vdom.Effect.t)
-       Bonsai.Value.t
+         Bonsai.Value.t
   -> activate:(Selection.t -> unit Vdom.Effect.t) Bonsai.Value.t
   -> t Bonsai.Computation.t

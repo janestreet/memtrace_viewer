@@ -1,5 +1,5 @@
 open! Core
-open Bonsai_web
+open Bonsai_web.Proc
 
 module String_option = struct
   type t = string option [@@deriving sexp, equal]

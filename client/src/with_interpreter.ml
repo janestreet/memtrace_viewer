@@ -1,5 +1,5 @@
 open! Core
-open Bonsai_web
+open Bonsai_web.Proc
 
 module Interpreter = struct
   type ('value, 'action, 'context) t =

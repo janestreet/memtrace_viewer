@@ -1,5 +1,5 @@
 open! Core
-open! Bonsai_web
+open! Bonsai_web.Proc
 open Memtrace_viewer_common
 
 module Row = struct
@@ -97,7 +97,7 @@ let allocations_col ~standard_attrs =
 ;;
 
 let percentage_col ~total_allocations ~standard_attrs =
-  let header = cell Vdom.Node.none in
+  let header = cell (Vdom.Node.none_deprecated [@alert "-deprecated"]) in
   let render _id ({ fragment; allocations; _ } : Table.Row.t) =
     let percentage = Byte_units.(allocations // total_allocations) *. 100. in
     let node = Vdom.Node.textf "%.1f%%" percentage in

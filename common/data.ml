@@ -187,9 +187,9 @@ module Call_sites = struct
   let create list =
     list
     |> List.filter_map ~f:(fun (func, call_sites) ->
-         if List.is_empty call_sites
-         then None
-         else Some (func, call_sites |> List.sort ~compare:Call_site.compare))
+      if List.is_empty call_sites
+      then None
+      else Some (func, call_sites |> List.sort ~compare:Call_site.compare))
     |> Function.Table.of_alist_exn
   ;;
 
@@ -464,12 +464,12 @@ module Serialized = struct
     let hot_paths =
       hot_path_backtraces
       |> List.map ~f:(fun backtrace ->
-           Fragment_trie.find trie backtrace |> Option.value_exn)
+        Fragment_trie.find trie backtrace |> Option.value_exn)
     in
     let hot_locations =
       hot_locations
       |> List.map ~f:(fun location ->
-           Fragment_trie.find_singleton trie location |> Option.value_exn)
+        Fragment_trie.find_singleton trie location |> Option.value_exn)
     in
     { hot_paths
     ; hot_locations

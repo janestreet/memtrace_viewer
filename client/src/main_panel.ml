@@ -1,5 +1,5 @@
 open! Core
-open Bonsai_web
+open Bonsai_web.Proc
 open Memtrace_viewer_common
 module Default_selection = App_state.Default_selection
 
@@ -60,7 +60,7 @@ module Tab = struct
       ; focus : Data.Fragment.t Bonsai.Value.t
       ; set_focus :
           (Data.Fragment.t -> default_selection:Default_selection.t -> unit Ui_effect.t)
-          Bonsai.Value.t
+            Bonsai.Value.t
       }
   end
 

@@ -1,5 +1,5 @@
 open! Core
-open Bonsai_web
+open Bonsai_web.Proc
 module Node_svg = Virtual_dom_svg.Node
 module Attr_svg = Virtual_dom_svg.Attr
 include Flame_graph_view_intf
@@ -239,7 +239,7 @@ module Make (Graph : Graph) = struct
     in
     let alloc_site_indicator =
       match Graph.Node.type_ ~graph node with
-      | Function -> Vdom.Node.none
+      | Function -> Vdom.Node.none_deprecated [@alert "-deprecated"]
       | Allocation_site ->
         Node_svg.tspan
           ~attrs:[ Vdom.Attr.class_ "loc-alloc-site-indicator" ]

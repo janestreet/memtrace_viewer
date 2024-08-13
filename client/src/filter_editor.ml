@@ -1,5 +1,5 @@
 open! Core
-open Bonsai_web
+open Bonsai_web.Proc
 
 type t = Filter_spec.Clause.t option list And_view.t
 
@@ -84,7 +84,11 @@ let phrase_editor
       ~match_:type_
       ~with_:(fun type_ ->
         match type_ with
-        | None -> Bonsai.const { And_view.view = Vdom.Node.none; value = None }
+        | None ->
+          Bonsai.const
+            { And_view.view = Vdom.Node.none_deprecated [@alert "-deprecated"]
+            ; value = None
+            }
         | Some type_ -> body_editor type_ ~time_parameters)
   in
   return
@@ -180,7 +184,10 @@ let allocated_clause_editor : Filter_spec.Clause.t Editor.t =
 
 let const_editor (value : 'a) : 'a Editor.t =
   fun ~time_parameters:_ ->
-  Bonsai.const { And_view.value = Some value; view = Vdom.Node.none }
+  Bonsai.const
+    { And_view.value = Some value
+    ; view = Vdom.Node.none_deprecated [@alert "-deprecated"]
+    }
 ;;
 
 module Live_clause_head = struct
@@ -277,14 +284,14 @@ let function_clause_editor ~clause_ctor ~text_before : Filter_spec.Clause.t Edit
     ~body_editor:(fun relation ->
       string_editor
       |> Editor.map ~f:(fun rhs : Filter_spec.Clause.t option ->
-           let pred : Filter_spec.String_predicate.t =
-             match relation with
-             | Equals -> Equals rhs
-             | Contains -> Contains rhs
-           in
-           Some (clause_ctor (Some pred))))
+        let pred : Filter_spec.String_predicate.t =
+          match relation with
+          | Equals -> Equals rhs
+          | Contains -> Contains rhs
+        in
+        Some (clause_ctor (Some pred))))
   |> Editor.map_view ~f:(fun node ->
-       Vdom.Node.span [ Vdom.Node.textf "%s " text_before; node ])
+    Vdom.Node.span [ Vdom.Node.textf "%s " text_before; node ])
 ;;
 
 let inside_clause_editor : Filter_spec.Clause.t Editor.t =
