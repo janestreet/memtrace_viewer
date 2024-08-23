@@ -1,7 +1,7 @@
 open! Core
 open Memtrace_viewer_common
 
-type t [@@immediate]
+type t : immediate
 
 val allocator : t
 val toplevel : t

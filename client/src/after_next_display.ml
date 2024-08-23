@@ -42,10 +42,10 @@ let component effect =
       effect
   in
   let run_if_active =
-    let%map run_action = run_action in
+    let%map run_action in
     run_action Run_if_active
   in
   let%sub () = Bonsai.Edge.after_display run_if_active in
-  let%arr run_action = run_action in
+  let%arr run_action in
   run_action Activate
 ;;

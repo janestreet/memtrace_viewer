@@ -32,7 +32,7 @@ module Component (Tab : Tab) = struct
       in
       return
         (let%map state, set_state = state
-         and tab_is_enabled = tab_is_enabled in
+         and tab_is_enabled in
          let selected_tab = state.selected_tab in
          let select_tab tab = set_state { selected_tab = tab } in
          let view =

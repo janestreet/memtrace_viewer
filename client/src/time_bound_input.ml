@@ -25,9 +25,9 @@ let component ~which ~max ~start_time ~time_view =
   let%sub state = Bonsai.state None ~equal:[%equal: Time_ns_span_option.t] in
   return
     (let%map value, set_value = state
-     and max = max
-     and start_time = start_time
-     and time_view = time_view in
+     and max
+     and start_time
+     and time_view in
      let open Vdom in
      match time_view with
      | Graph_view.Time_view.Elapsed_seconds ->

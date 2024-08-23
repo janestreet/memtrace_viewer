@@ -61,7 +61,7 @@ let panel_body ~(info : Data.Info.t option) =
 let component ~info =
   let open Bonsai.Let_syntax in
   let panel_body =
-    let%map info = info in
+    let%map info in
     panel_body ~info
   in
   let title =

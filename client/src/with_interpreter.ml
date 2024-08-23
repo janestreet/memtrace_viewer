@@ -31,11 +31,10 @@ let component ~interpret ~input =
           (interpret ~value ~context action))
       ~f:(fun _ inject ->
         let%sub input = input ~run_action:inject in
-        let%arr input = input
+        let%arr input
         and run_action = inject in
         input, run_action)
   in
-  let%arr value = value
-  and run_action = run_action in
+  let%arr value and run_action in
   { value; run_action }
 ;;

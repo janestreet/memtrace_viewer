@@ -112,8 +112,7 @@ let render_graph_line ~viewport (series : Series.t) =
 let graph_lines ~viewport series =
   let open Bonsai.Let_syntax in
   return
-    (let%map viewport = viewport
-     and series = series in
+    (let%map viewport and series in
      List.map ~f:(render_graph_line ~viewport) series)
 ;;
 
@@ -123,12 +122,11 @@ let component ~series ~regions ~aspect_ratio ~start_time ~time_view ~set_time_vi
   let open Bonsai.Let_syntax in
   let%sub width, set_width = Bonsai.state 450. ~equal:[%equal: Float.t] in
   let height =
-    let%map width = width
-    and aspect_ratio = aspect_ratio in
+    let%map width and aspect_ratio in
     width /. aspect_ratio
   in
   let%sub max_xy =
-    let%arr series = series in
+    let%arr series in
     let max_x, max_y =
       List.fold_left
         series
@@ -140,9 +138,9 @@ let component ~series ~regions ~aspect_ratio ~start_time ~time_view ~set_time_vi
   in
   let viewport =
     let%map max_x, max_y = max_xy
-    and width = width
-    and height = height
-    and time_view = time_view in
+    and width
+    and height
+    and time_view in
     let data_pos_x = 50. in
     let data_pos_y = 5. in
     let right_margin = 10. in
@@ -162,16 +160,16 @@ let component ~series ~regions ~aspect_ratio ~start_time ~time_view ~set_time_vi
   in
   let%sub graph_lines = graph_lines ~viewport series in
   return
-    (let%map regions = regions
-     and width = width
-     and height = height
-     and set_width = set_width
-     and start_time = start_time
-     and time_view = time_view
-     and set_time_view = set_time_view
+    (let%map regions
+     and width
+     and height
+     and set_width
+     and start_time
+     and time_view
+     and set_time_view
      and max_x, max_y = max_xy
-     and viewport = viewport
-     and graph_lines = graph_lines in
+     and viewport
+     and graph_lines in
      let tick_length = Viewport.height viewport /. 20. in
      let x_ticks =
        match time_view with

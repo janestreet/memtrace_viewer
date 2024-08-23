@@ -39,18 +39,16 @@ let component ~trie =
   let open Bonsai.Let_syntax in
   let%sub state, set_state = Bonsai.state State.default ~equal:[%equal: State.t] in
   let focus =
-    let%map state = state
-    and trie = trie in
+    let%map state and trie in
     State.focus ~trie state
   in
   let set_focus =
-    let%map set_state = set_state in
+    let%map set_state in
     fun new_focus ~default_selection ~reset_selection ->
       let focus_backtrace = Data.Fragment.backtrace new_focus in
       Effect.Many
         [ set_state { focus_backtrace }; reset_selection new_focus ~default_selection ]
   in
-  let%arr focus = focus
-  and set_focus = set_focus in
+  let%arr focus and set_focus in
   { focus; set_focus }
 ;;

@@ -17,8 +17,7 @@ let graph_view
   =
   let open Bonsai.Let_syntax in
   let%sub series =
-    let%arr graph = graph
-    and filtered_graph = filtered_graph in
+    let%arr graph and filtered_graph in
     let max_x =
       match filtered_graph with
       | None -> Data.Graph.max_x graph
@@ -56,8 +55,7 @@ let graph_view
     List.filter_opt [ filtered_series; Some full_series ]
   in
   let%sub regions =
-    let%arr allocated_range = allocated_range
-    and collected_range = collected_range in
+    let%arr allocated_range and collected_range in
     let region_of_range css_class range : Graph_view.Region.t =
       Graph_view.Region.create ~css_class range
     in
@@ -86,9 +84,7 @@ module Submission_handling = struct
   let component ~server_state ~inject_outgoing ~filter =
     let open Bonsai.Let_syntax in
     return
-      (let%map server_state = server_state
-       and inject_outgoing = inject_outgoing
-       and filter = filter in
+      (let%map server_state and inject_outgoing and filter in
        let do_submit =
          match filter with
          | Some filter -> inject_outgoing (Action.Set_filter filter)
@@ -228,16 +224,16 @@ let component
   : Vdom.Node.t Bonsai.Computation.t
   =
   let open Bonsai.Let_syntax in
-  let%sub time_view_holder = time_view_holder in
+  let%sub time_view_holder in
   let time_view = Bonsai.Value.map ~f:fst time_view_holder in
   let set_time_view = Bonsai.Value.map ~f:snd time_view_holder in
   let max_time =
-    let%map graph = graph in
+    let%map graph in
     Data.Graph.max_x graph
   in
   let%sub filter_clauses = Filter_editor.component ~max_time ~start_time ~time_view in
   let filter_spec : Filter_spec.t Bonsai.Value.t =
-    let%map filter_clauses = filter_clauses in
+    let%map filter_clauses in
     Filter_spec.{ clauses = filter_clauses.value }
   in
   (* If the filter is incomplete (that is, there are blank entries), we don't want to
@@ -260,21 +256,19 @@ let component
      support an on_changed event, which is a much more painful workaround than just
      having this [to_filter_allow_incomplete] function.) *)
   let%sub filter_to_display =
-    let%arr filter_spec = filter_spec
-    and peak_allocations_time = peak_allocations_time in
+    let%arr filter_spec and peak_allocations_time in
     Filter_spec.to_filter_allow_incomplete filter_spec ~peak_allocations_time
   in
   let%sub complete_filter =
-    let%arr filter_spec = filter_spec
-    and peak_allocations_time = peak_allocations_time in
+    let%arr filter_spec and peak_allocations_time in
     Filter_spec.to_filter filter_spec ~peak_allocations_time
   in
   let allocated_range =
-    let%map filter_to_display = filter_to_display in
+    let%map filter_to_display in
     filter_to_display.allocated_range
   in
   let collected_range =
-    let%map filter_to_display = filter_to_display in
+    let%map filter_to_display in
     filter_to_display.collected_range
   in
   let%sub graph_view =
@@ -292,13 +286,13 @@ let component
   in
   let panel_body =
     let%map filter = filter_to_display
-    and filter_clauses = filter_clauses
+    and filter_clauses
     and graph_node = graph_view
     and { button = button_node; on_submit } = submission_handling
-    and server_state = server_state
-    and total_allocations = total_allocations
-    and filtered_allocations = filtered_allocations
-    and peak_allocations = peak_allocations in
+    and server_state
+    and total_allocations
+    and filtered_allocations
+    and peak_allocations in
     panel_body
       ~server_state
       ~total_allocations

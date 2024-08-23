@@ -117,16 +117,16 @@ let reroll_action ~orient inject_action selection state =
 
 let component ~(data : Data.t Bonsai.Value.t) ~orient ~focus ~set_focus =
   let open Bonsai.Let_syntax in
-  let%sub state_machine = state_machine in
+  let%sub state_machine in
   let%sub table_input =
-    let%arr orient = orient
-    and focus = focus
+    let%arr orient
+    and focus
     and state, _ = state_machine in
     transform_input ~focus ~state ~orient
   in
   let%sub table =
     let total_allocations =
-      let%map data = data in
+      let%map data in
       Data.Fragment_trie.total_allocations data.trie
     in
     let%sub Data.{ call_sites; _ } = Bonsai.read data in
@@ -144,8 +144,8 @@ let component ~(data : Data.t Bonsai.Value.t) ~orient ~focus ~set_focus =
   in
   return
     (let%map state, inject = state_machine
-     and table = table
-     and orient = orient in
+     and table
+     and orient in
      let selection = Option.map ~f:snd table.selection in
      let key_handler =
        Keyboard_event_handler.merge

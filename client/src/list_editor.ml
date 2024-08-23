@@ -26,11 +26,11 @@ let component
       (module Int)
       index_set
       ~f:(fun index _ ->
-        let%sub item = item in
+        let%sub item in
         return
-          (let%map item = item
+          (let%map item
            and index_set, set_index_set = index_set_state
-           and index = index in
+           and index in
            let remove = set_index_set (Map.remove (index_set : _ Int.Map.t) index) in
            let glyph = Node.text "−" (* U+2212 MINUS SIGN (bigger than hyphen) *) in
            item
@@ -52,7 +52,7 @@ let component
                ])))
   in
   return
-    (let%map rows = rows
+    (let%map rows
      and index_set, set_index_set = index_set_state
      and next_index, set_next_index = next_index_state in
      let add_item () =

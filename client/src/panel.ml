@@ -22,9 +22,7 @@ end
 let title_bar ~title ~collapsible ~state ~set_state : Vdom.Node.t option Computation.t =
   let open Bonsai.Let_syntax in
   return
-    (let%map title = title
-     and state = state
-     and set_state = set_state in
+    (let%map title and state and set_state in
      Option.map title ~f:(fun title ->
        let open Vdom in
        let on_click_attr =
@@ -67,14 +65,12 @@ let panel ?title body ~id ~(collapsible : Collapsible.t) =
     match title with
     | None -> Value.return None
     | Some title ->
-      let%map title = title in
+      let%map title in
       Some title
   in
   let%sub title_bar = title_bar ~title ~collapsible ~state ~set_state in
   return
-    (let%map title_bar = title_bar
-     and body = body
-     and state = state in
+    (let%map title_bar and body and state in
      let open Vdom in
      let collapsible_class =
        match collapsible with

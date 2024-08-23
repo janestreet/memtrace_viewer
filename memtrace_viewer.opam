@@ -16,6 +16,7 @@ depends: [
   "async_rpc_kernel"
   "bonsai"
   "bonsai_web_components"
+  "codicons"
   "core_kernel"
   "ppx_jane"
   "async_rpc_websocket"
