@@ -85,7 +85,7 @@ module Tab = struct
     =
     let open Bonsai.Let_syntax in
     let set_focus =
-      let%map set_focus = set_focus in
+      let%map set_focus in
       fun fragment -> set_focus fragment ~default_selection:Default_selection.No_selection
     in
     let%sub table_panel =
@@ -93,8 +93,8 @@ module Tab = struct
     in
     return
       (let%map { Table_panel.selection; key_handler; view; reset_selection } = table_panel
-       and focus = focus
-       and set_focus = set_focus in
+       and focus
+       and set_focus in
        let selection =
          match selection with
          | None -> None
@@ -155,7 +155,7 @@ module Tab = struct
     let open Bonsai.Let_syntax in
     let%sub Data.{ trie; call_sites; _ } = Bonsai.read data in
     let activate =
-      let%map set_focus = set_focus in
+      let%map set_focus in
       function
       | Flame_graph_panel.Selection.Flame { fragment } ->
         let new_focus = fragment in
@@ -179,8 +179,8 @@ module Tab = struct
                }
          =
          flame_graph_panel
-       and focus = focus
-       and set_focus = set_focus in
+       and focus
+       and set_focus in
        let selection = flame_graph_selection ~focus ~set_focus selection in
        let selection = Selection.Flame_graph { selection } in
        view, { Output.key_handler; selection; reset_selection; scroll_focus_into_view })
@@ -248,14 +248,13 @@ let component ~(data : Data.t Bonsai.Value.t) ~(app_state : App_state.t Bonsai.V
   let%sub With_interpreter.{ value = tab_panel; run_action } =
     With_interpreter.component ~interpret ~input:(fun ~run_action ->
       let set_focus =
-        let%map run_action = run_action in
+        let%map run_action in
         fun new_focus ~default_selection ->
           run_action (Set_focus { new_focus; default_selection })
       in
       let input : Tab.Input.t = { data; focus; set_focus } in
       let%sub tab_panel = Tab_panel.component ~input (module Tab) in
-      let%arr set_focus_in_app_state = set_focus_in_app_state
-      and tab_panel = tab_panel in
+      let%arr set_focus_in_app_state and tab_panel in
       With_interpreter.Input.{ value = tab_panel; context = set_focus_in_app_state })
   in
   let%sub { Tab_panel.view = panel_body; output = { scroll_focus_into_view; _ }; _ } =
@@ -271,8 +270,7 @@ let component ~(data : Data.t Bonsai.Value.t) ~(app_state : App_state.t Bonsai.V
        with every re-evaluation, the ensuing cascade touched every row of the table
        whenever, say, the selection changed.
     *)
-    let%arr run_action = run_action
-    and scroll_focus_into_view = scroll_focus_into_view in
+    let%arr run_action and scroll_focus_into_view in
     fun new_focus ->
       Effect.Many
         [ run_action (Set_focus { new_focus; default_selection = No_selection })
@@ -280,8 +278,8 @@ let component ~(data : Data.t Bonsai.Value.t) ~(app_state : App_state.t Bonsai.V
         ]
   in
   return
-    (let%map panel = panel
-     and set_focus = set_focus
+    (let%map panel
+     and set_focus
      and { Tab_panel.output; _ } = tab_panel in
      let { Tab.Output.key_handler; selection; _ } = output in
      let view = panel in

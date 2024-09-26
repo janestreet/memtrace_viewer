@@ -8,7 +8,7 @@ let wide_threshold_pixels = 1000
 let app_state ~(data : Data.t Bonsai.Value.t) : App_state.t Bonsai.Computation.t =
   let open Bonsai.Let_syntax in
   let trie =
-    let%map data = data in
+    let%map data in
     data.trie
   in
   App_state.component ~trie
@@ -17,7 +17,7 @@ let app_state ~(data : Data.t Bonsai.Value.t) : App_state.t Bonsai.Computation.t
 let info_panel ~(data : Data.t Bonsai.Value.t) : Vdom.Node.t Bonsai.Computation.t =
   let open Bonsai.Let_syntax in
   let info =
-    let%map data = data in
+    let%map data in
     data.info
   in
   Info_panel.component ~info
@@ -56,17 +56,16 @@ let filter_panel
     Bonsai.read data
   in
   let total_allocations =
-    let%map data = data in
+    let%map data in
     data.total_allocations_unfiltered
   in
   let filtered_allocations =
-    let%map trie = trie
-    and filtered_graph = filtered_graph in
+    let%map trie and filtered_graph in
     let allocations_in_trie = Data.Fragment_trie.total_allocations trie in
     if Option.is_some filtered_graph then Some allocations_in_trie else None
   in
   let start_time =
-    let%map info = info in
+    let%map info in
     Option.map info ~f:(fun (info : Data.Info.t) -> info.start_time)
     (* data.info should only be None when there's no data anyway *)
     |> Option.value ~default:Time_ns.epoch
@@ -102,8 +101,7 @@ let component
   in
   let%sub left_bar =
     let nodes =
-      let%map info_panel_view = info_panel_view
-      and filter_panel_view = filter_panel_view in
+      let%map info_panel_view and filter_panel_view in
       [ info_panel_view; filter_panel_view ]
     in
     Sidebar.component
@@ -113,7 +111,7 @@ let component
   in
   let%sub right_bar =
     let nodes =
-      let%map poi_panel = poi_panel in
+      let%map poi_panel in
       [ poi_panel.view ]
     in
     Sidebar.component
@@ -122,12 +120,12 @@ let component
       ~attr:(Value.return (Vdom.Attr.id "right-bar"))
   in
   return
-    (let%mapn left_bar = left_bar
-     and right_bar = right_bar
-     and filter_on_left = filter_on_left
-     and info_panel_view = info_panel_view
-     and filter_panel_view = filter_panel_view
-     and main_panel = main_panel in
+    (let%mapn left_bar
+     and right_bar
+     and filter_on_left
+     and info_panel_view
+     and filter_panel_view
+     and main_panel in
      let key_handler = main_panel.key_handler in
      let open Vdom in
      let div ?(attr = Attr.empty) id body = Node.div ~attrs:[ Attr.id id; attr ] body in

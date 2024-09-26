@@ -29,9 +29,7 @@ module Table_tab = struct
     let open Bonsai.Let_syntax in
     let%sub rows =
       let and_endpoints fragments =
-        let%map fragments = fragments
-        and toplevel_fragment = toplevel_fragment
-        and allocator_fragment = allocator_fragment in
+        let%map fragments and toplevel_fragment and allocator_fragment in
         (* We want to put the special fragments first, so filter them out and then
            put them in manually *)
         let fragments =
@@ -62,8 +60,7 @@ module Table_tab = struct
         ~set_focus
         ~on_click_row:set_focus
     in
-    let%arr view = view
-    and key_handler = key_handler in
+    let%arr view and key_handler in
     (* Only send keyboard events to this table if it's focused (in the browser sense)
     *)
     let { Keyboard_scope.view; key_help = _ } = Keyboard_scope.wrap ~view ~key_handler in
@@ -163,6 +160,6 @@ let component ~trie ~call_sites ~hot_paths ~hot_locations ~focus ~set_focus =
       ~title:(Value.return "Points of Interest")
       ~collapsible:No
   in
-  let%arr view = view in
+  let%arr view in
   { view }
 ;;

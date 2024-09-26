@@ -18,7 +18,7 @@ end
 
 let map_component ~f c =
   let open Bonsai.Let_syntax in
-  let%sub c = c in
+  let%sub c in
   return (Bonsai.Value.map ~f c)
 ;;
 
@@ -92,8 +92,7 @@ let phrase_editor
         | Some type_ -> body_editor type_ ~time_parameters)
   in
   return
-    (let%map type_dropdown = type_dropdown
-     and rest_of_sentence = rest_of_sentence in
+    (let%map type_dropdown and rest_of_sentence in
      { And_view.value = rest_of_sentence.value
      ; view = Vdom.Node.span [ type_dropdown.view; space; rest_of_sentence.view ]
      })
@@ -150,8 +149,7 @@ let range_body_editor
       let%sub lower_bound = bound_editor ~which_bound:Lower ~time_parameters in
       let%sub upper_bound = bound_editor ~which_bound:Upper ~time_parameters in
       return
-        (let%map lower_bound = lower_bound
-         and upper_bound = upper_bound in
+        (let%map lower_bound and upper_bound in
          let view =
            Vdom.Node.span [ lower_bound.view; Vdom.Node.text " and "; upper_bound.view ]
          in
@@ -368,9 +366,7 @@ let component ~max_time ~start_time ~time_view =
   let open Bonsai.Let_syntax in
   let open Vdom in
   let time_parameters =
-    let%map max_time = max_time
-    and start_time = start_time
-    and time_view = time_view in
+    let%map max_time and start_time and time_view in
     { Time_parameters.max_time; start_time; time_view }
   in
   let add_button_attr = Attr.class_ "flat-button" in

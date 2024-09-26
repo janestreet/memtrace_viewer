@@ -158,7 +158,7 @@ module Clause = struct
       let%bind allocated_range = time_span_range_of_range_predicate pred in
       intersect_ranges ~allocated_range filter
     | Live (Some (At time)) ->
-      let%bind time = time in
+      let%bind time in
       live_at_time time filter
     | Live (Some At_peak_allocations) -> live_at_time peak_allocations_time filter
     | Live (Some At_end_of_trace) ->
@@ -223,8 +223,7 @@ let to_filter { clauses } ~peak_allocations_time =
   let open Option.Let_syntax in
   let%bind filter =
     List.fold_left clauses ~init:(Some Filter.always_true) ~f:(fun filter clause ->
-      let%bind filter = filter
-      and clause = clause in
+      let%bind filter and clause in
       Clause.modify_filter clause filter ~peak_allocations_time)
   in
   Option.some_if (filter.include_minor_heap || filter.include_major_heap) filter

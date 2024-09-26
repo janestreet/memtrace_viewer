@@ -825,14 +825,14 @@ module Make (Graph : Graph) = struct
     let open Bonsai.Let_syntax in
     let%sub width, set_width = Bonsai.state 500. ~equal:[%equal: Float.t] in
     return
-      (let%map graph = graph
-       and width = width
-       and set_width = set_width
-       and selection = selection
-       and select = select
-       and navigate_to = navigate_to
-       and activate = activate
-       and commands = commands in
+      (let%map graph
+       and width
+       and set_width
+       and selection
+       and select
+       and navigate_to
+       and activate
+       and commands in
        let view = render ~width ~set_width ~selection ~select ~activate ~commands graph in
        let key_handler =
          Keyboard_navigation.key_handler ~graph ~selection ~navigate_to ~activate

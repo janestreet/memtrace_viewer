@@ -316,8 +316,7 @@ let component ~trie ~call_sites ~focus ~set_focus ~activate =
   let%sub state, set_state = Bonsai.state_opt () ~equal:[%equal: State.t] in
   let%sub selection =
     return
-      (let%map state = state
-       and trie = trie in
+      (let%map state and trie in
        Option.bind ~f:(State.to_selector ~trie) state)
   in
   (* We need an effect that scrolls the selected node into view _after_ the next
@@ -330,12 +329,11 @@ let component ~trie ~call_sites ~focus ~set_focus ~activate =
   in
   let%sub flame_graph =
     let set_selection =
-      let%map set_state = set_state in
+      let%map set_state in
       fun selector -> set_state (Some (State.of_selector selector))
     in
     let activate =
-      let%map activate = activate
-      and set_state = set_state in
+      let%map activate and set_state in
       fun selector ->
         Ui_effect.Many
           [ set_state (Some (State.of_selector selector))
@@ -343,15 +341,13 @@ let component ~trie ~call_sites ~focus ~set_focus ~activate =
           ]
     in
     let%sub graph : Graph.t Bonsai.Computation.t =
-      let%arr focus = focus
-      and trie = trie
-      and call_sites = call_sites in
+      let%arr focus and trie and call_sites in
       Graph.create ~focus ~trie ~call_sites
     in
     let commands =
-      let%map selection = selection
-      and focus = focus
-      and set_focus = set_focus
+      let%map selection
+      and focus
+      and set_focus
       and keep_selection_in_view = scroll_selection_into_view_after_display in
       let selection = selection |> Option.map ~f:Selection.of_selector in
       commands ~selection ~focus ~set_focus ~keep_selection_in_view
@@ -365,14 +361,14 @@ let component ~trie ~call_sites ~focus ~set_focus ~activate =
       ~commands
   in
   let selection =
-    let%map selection = selection in
+    let%map selection in
     Option.map ~f:Selection.of_selector selection
   in
   return
-    (let%map flame_graph = flame_graph
-     and state = state
-     and set_state = set_state
-     and selection = selection
+    (let%map flame_graph
+     and state
+     and set_state
+     and selection
      and scroll_focus_into_view = scroll_focus_into_view_after_display in
      let view = flame_graph.view in
      let key_handler = flame_graph.key_handler in

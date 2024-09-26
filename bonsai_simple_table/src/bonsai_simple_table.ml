@@ -145,7 +145,7 @@ module Make (Row : Row) (Col_id : Id) = struct
       ;;
 
       let create_these_rows ids =
-        let%map ids = ids in
+        let%map ids in
         let moves =
           let rec loop (t, before) = function
             | [] -> t
@@ -267,7 +267,7 @@ module Make (Row : Row) (Col_id : Id) = struct
       let create input model =
         let cols = input >>| Input.cols in
         let cols_in_order =
-          let%map cols = cols
+          let%map cols
           and col_ids_in_order = input >>| Input.col_ids_in_order in
           List.filter_map col_ids_in_order ~f:(fun id ->
             let%map.Option c = Map.find cols id in
@@ -296,7 +296,7 @@ module Make (Row : Row) (Col_id : Id) = struct
             { cells; focused = false })
         in
         let%pattern_bind row_ids_in_order, unrendered_rows_length =
-          let%map row_ids_in_order = row_ids_in_order
+          let%map row_ids_in_order
           and percentage_rendered = input >>| Input.percentage_rendered in
           if Percent.(percentage_rendered = one_hundred_percent)
           then row_ids_in_order, 0
@@ -312,8 +312,7 @@ module Make (Row : Row) (Col_id : Id) = struct
         let rendered_rows =
           (* after everything else, just come in and tweak the one element that
              has focus. *)
-          let%map rows = rows
-          and focused_row = focused_row in
+          let%map rows and focused_row in
           match focused_row with
           | None -> rows
           | Some focus ->
@@ -323,7 +322,7 @@ module Make (Row : Row) (Col_id : Id) = struct
               ~f:(Option.map ~f:(fun { cells; _ } -> { cells; focused = true }))
         in
         let cols =
-          let%map cols_in_order = cols_in_order in
+          let%map cols_in_order in
           let should_include_groups =
             List.exists cols_in_order ~f:(fun (_col_id, c) ->
               Option.is_some c.Column.group)
@@ -421,7 +420,7 @@ module Make (Row : Row) (Col_id : Id) = struct
         let col_ids_in_order = col_ids_in_order t in
         Incr.set_cutoff col_ids_in_order (Incr.Cutoff.of_equal [%equal: Col_id.t list]);
         let%map rows =
-          let%bind col_ids_in_order = col_ids_in_order in
+          let%bind col_ids_in_order in
           let%map rendered_rows_by_key =
             Incr.Map.mapi t.rendered_rows ~f:(fun ~key:row_id ~data:row ->
               let { cells; focused } = row in
@@ -608,7 +607,7 @@ module Make (Row : Row) (Col_id : Id) = struct
       (Tuple3.create <$> input <*> model <*> inject)
       ~f:(fun params ->
         let%pattern_bind.Incr input, model, inject = params in
-        let%bind.Incr inject = inject in
+        let%bind.Incr inject in
         T.compute input model ~inject)
   ;;
 end

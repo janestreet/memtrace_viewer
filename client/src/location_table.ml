@@ -181,13 +181,13 @@ let component
   =
   let open Bonsai.Let_syntax in
   let%sub input : Table.Input.t Bonsai.Computation.t =
-    let%arr focus = focus
-    and set_focus = set_focus
-    and on_click_row = on_click_row
-    and total_allocations = total_allocations
-    and call_sites = call_sites
+    let%arr focus
+    and set_focus
+    and on_click_row
+    and total_allocations
+    and call_sites
     and row_specs = rows
-    and presorted = presorted in
+    and presorted in
     let row_specs = List.map ~f:(fun row -> Row.id row, row) row_specs in
     let row_specs =
       if presorted then row_specs else List.sort ~compare:Row.compare row_specs
@@ -209,7 +209,7 @@ let component
              }
        =
        table
-     and set_focus = set_focus in
+     and set_focus in
      let selection =
        Option.map focus_row ~f:(fun (backtrace, { fragment; _ }) -> backtrace, fragment)
      in
