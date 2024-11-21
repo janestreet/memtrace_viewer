@@ -457,7 +457,9 @@ let%expect_test "resize graph" =
     ~selector:"#filter-graph-sizer"
     ~name:"size_tracker"
     Bonsai_web_ui_element_size_hooks.Size_tracker.For_testing.type_id
-    { width = 900.; height = 450. }
+    { border_box = { width = 900.; height = 450. }
+    ; content_box = { width = 900.; height = 450. }
+    }
     ~get_vdom;
   Handle.show_diff handle;
   [%expect

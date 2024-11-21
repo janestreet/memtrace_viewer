@@ -342,8 +342,8 @@ let component ~series ~regions ~aspect_ratio ~start_time ~time_view ~set_time_vi
          ~on_change:set_time_view
      in
      let on_size_change =
-       Bonsai_web_ui_element_size_hooks.Size_tracker.on_change (fun ~width ~height:_ ->
-         set_width width)
+       Bonsai_web_ui_element_size_hooks.Size_tracker.on_change
+         (fun { border_box = { width; height = _ }; content_box = _ } -> set_width width)
      in
      Node.div
        ~attrs:[ Attr.id "filter-graph-and-controls" ]
