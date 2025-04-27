@@ -1,6 +1,6 @@
 open! Core
 open Bonsai_simple_table_intf
-open Bonsai_web.Proc
+open Bonsai_web_proc
 open Incr.Let_syntax
 module Col_group = Col_group
 
@@ -596,7 +596,7 @@ module Make (Row : Row) (Col_id : Id) = struct
   let bonsai input =
     let%sub focus = Bonsai.Incr.compute input ~f:Focus.create in
     let%sub model, inject =
-      Bonsai.state_machine1
+      Bonsai.state_machine_with_input
         ~equal:[%equal: Model.t]
         ~sexp_of_action:[%sexp_of: Action.t]
         ~default_model:(Model.create ())

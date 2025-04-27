@@ -1,5 +1,5 @@
 open! Core
-open Bonsai_web.Proc
+open Bonsai_web_proc
 
 type t = Filter_spec.Clause.t option list And_view.t
 
@@ -37,7 +37,19 @@ module Editor = struct
   let map_view ~f (t : 'a t) : 'b t =
     fun ~time_parameters -> map_component_view ~f (t ~time_parameters)
   ;;
+
+  let alter_parameters ~f (t : 'a t) : 'a t =
+    fun ~time_parameters ->
+    let time_parameters = Bonsai.Value.map ~f time_parameters in
+    t ~time_parameters
+  ;;
 end
+
+(** An "editor" that puts nothing on the page and simply returns a constant value *)
+let const_editor (value : 'a) : 'a Editor.t =
+  fun ~time_parameters:_ ->
+  Bonsai.const { And_view.value = Some value; view = Vdom.Node.none }
+;;
 
 (** A module that can be passed either to [Bonsai.enum] or to
     [Vdom_input_widgets.Dropdown.of_enum] *)
@@ -60,7 +72,6 @@ let dropdown_of_enum_opt (type enum) (module Enum : Enum with type t = enum)
     (let%map value, set_value = state in
      let view =
        Vdom_input_widgets.Dropdown.of_enum_opt
-         ~merge_behavior:Legacy_dont_merge
          (module Enum)
          ~selected:value
          ~on_change:set_value
@@ -96,6 +107,10 @@ let phrase_editor
      { And_view.value = rest_of_sentence.value
      ; view = Vdom.Node.span [ type_dropdown.view; space; rest_of_sentence.view ]
      })
+;;
+
+let enum_editor (type enum) (module Enum : Enum with type t = enum) : enum Editor.t =
+  phrase_editor (module Enum) ~body_editor:(fun enum -> const_editor enum)
 ;;
 
 module Range_predicate_head = struct
@@ -173,19 +188,18 @@ let time_editor ~which_bound : Time_ns.Span.t Editor.t =
 
 let time_range_body_editor head = range_body_editor head ~bound_editor:time_editor
 
+let duration_range_body_editor head =
+  (* Same as editing a time range, only we pretend the view is always elapsed seconds *)
+  time_range_body_editor head
+  |> Editor.alter_parameters ~f:(fun time_parameters ->
+    { time_parameters with time_view = Elapsed_seconds })
+;;
+
 let allocated_clause_editor : Filter_spec.Clause.t Editor.t =
   phrase_editor
     (module Range_predicate_head.With_time_phrasing)
     ~body_editor:time_range_body_editor
   |> Editor.map ~f:(fun range : Filter_spec.Clause.t option -> Some (Allocated range))
-;;
-
-let const_editor (value : 'a) : 'a Editor.t =
-  fun ~time_parameters:_ ->
-  Bonsai.const
-    { And_view.value = Some value
-    ; view = Vdom.Node.none_deprecated [@alert "-deprecated"]
-    }
 ;;
 
 module Live_clause_head = struct
@@ -258,7 +272,7 @@ let size_clause_editor : Filter_spec.Clause.t Editor.t =
 let lifetime_clause_editor : Filter_spec.Clause.t Editor.t =
   phrase_editor
     (module Range_predicate_head.With_number_phrasing)
-    ~body_editor:time_range_body_editor
+    ~body_editor:duration_range_body_editor
   |> Editor.map ~f:(fun range : Filter_spec.Clause.t option -> Some (Lifetime range))
 ;;
 
@@ -302,8 +316,35 @@ let not_inside_clause_editor : Filter_spec.Clause.t Editor.t =
     Forbid_function pred)
 ;;
 
-let on_major_heap_editor = const_editor (Filter_spec.Clause.Heap (Some Major))
-let on_minor_heap_editor = const_editor (Filter_spec.Clause.Heap (Some Minor))
+module Area = struct
+  type t = Filter_spec.Area.t =
+    | Major
+    | Minor
+    | External
+  [@@deriving sexp, enumerate, compare, equal]
+
+  let to_string = function
+    | Major -> "major"
+    | Minor -> "minor"
+    | External -> "external"
+  ;;
+end
+
+let area_clause_editor ~(predicate : Area.t -> Filter_spec.Area_predicate.t)
+  : Filter_spec.Clause.t Editor.t
+  =
+  enum_editor (module Area)
+  |> Editor.map ~f:(fun area : Filter_spec.Clause.t option ->
+    Option.map area ~f:(fun area : Filter_spec.Clause.t -> Area (Some (predicate area))))
+;;
+
+let on_heap_clause_editor : Filter_spec.Clause.t Editor.t =
+  area_clause_editor ~predicate:(fun area -> Is area)
+;;
+
+let not_on_heap_clause_editor : Filter_spec.Clause.t Editor.t =
+  area_clause_editor ~predicate:(fun area -> Is_not area)
+;;
 
 module Toplevel_clause_head = struct
   type t =
@@ -314,8 +355,8 @@ module Toplevel_clause_head = struct
     | Lifetime
     | Some_function_name
     | No_function_name
-    | Major_heap
-    | Minor_heap
+    | On_heap
+    | Not_on_heap
   [@@deriving enumerate, equal, compare, sexp]
 
   let to_string = function
@@ -326,8 +367,8 @@ module Toplevel_clause_head = struct
     | Lifetime -> "whose lifetime is"
     | Some_function_name -> "inside a call to"
     | No_function_name -> "not inside a call to"
-    | Major_heap -> "on the major heap"
-    | Minor_heap -> "on the minor heap"
+    | On_heap -> "on the _ heap"
+    | Not_on_heap -> "not on the _ heap"
   ;;
 end
 
@@ -350,8 +391,8 @@ let toplevel_clause_editor =
       | Lifetime -> lifetime_clause_editor
       | Some_function_name -> inside_clause_editor
       | No_function_name -> not_inside_clause_editor
-      | Major_heap -> on_major_heap_editor
-      | Minor_heap -> on_minor_heap_editor)
+      | On_heap -> on_heap_clause_editor
+      | Not_on_heap -> not_on_heap_clause_editor)
   |> Editor.map_view ~f:(with_conjunction "and")
 ;;
 

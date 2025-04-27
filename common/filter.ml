@@ -26,6 +26,7 @@ type t =
   ; hidden_locations : Location_predicate.t list
   ; include_minor_heap : bool
   ; include_major_heap : bool
+  ; include_external : bool
   }
 [@@deriving sexp, bin_io, equal]
 
@@ -39,6 +40,7 @@ let always_true =
   ; hidden_locations = []
   ; include_minor_heap = true
   ; include_major_heap = true
+  ; include_external = true
   }
 ;;
 
@@ -52,6 +54,7 @@ let is_always_true = function
     ; hidden_locations
     ; include_minor_heap
     ; include_major_heap
+    ; include_external
     } ->
     Range.Time_ns_span.is_all allocated_range
     && Range.Time_ns_span.Or_empty.is_all collected_range
@@ -62,4 +65,5 @@ let is_always_true = function
     && List.is_empty hidden_locations
     && include_minor_heap
     && include_major_heap
+    && include_external
 ;;

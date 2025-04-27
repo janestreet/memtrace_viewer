@@ -124,6 +124,7 @@ end = struct
         ; lifetime_range = _
         ; include_major_heap = _
         ; include_minor_heap = _
+        ; include_external = _
         } -> true
       | _ -> false
     in
@@ -176,7 +177,8 @@ let should_keep_objects_that_are_never_collected
 ;;
 
 let obj_ids_matching_filter ~trace ~loc_cache (filter : Filter.t) =
-  assert (filter.include_minor_heap || filter.include_major_heap);
+  assert (
+    filter.include_minor_heap || filter.include_major_heap || filter.include_external);
   (* Objects that are live in an interesting heap *)
   let live = Obj_id.Table.create () in
   (* Objects that will become live if promoted *)
@@ -185,6 +187,11 @@ let obj_ids_matching_filter ~trace ~loc_cache (filter : Filter.t) =
   let location_filterer = Location_filterer.create ~filter ~loc_cache () in
   let filtering_by_backtrace = not (Location_filterer.always_passes location_filterer) in
   let parse_backtraces = filtering_by_backtrace in
+  (* If true, we should accept minor allocations but defer them rather than counting them
+     as allocated right away *)
+  let defer_minor_allocations =
+    filter.include_major_heap && not filter.include_minor_heap
+  in
   Raw_trace.iter ~parse_backtraces trace (fun time event ->
     let defer obj_id = Hash_set.strict_add_exn prelive obj_id in
     let is_deferred obj_id = Hash_set.mem prelive obj_id in
@@ -212,19 +219,12 @@ let obj_ids_matching_filter ~trace ~loc_cache (filter : Filter.t) =
     | Alloc
         { obj_id; single_allocation_size; source; backtrace_length; backtrace_buffer; _ }
       ->
-      let deferring =
+      let correct_heap, action_on_pass =
         match source with
-        | Minor -> not filter.include_minor_heap
-        | Major | External -> false
-      in
-      let definitely_wrong_heap =
-        match source with
-        | Minor ->
-          (* Could become interesting later (when promoted), so it's only possibly wrong
-          *)
-          false
-        | Major -> not filter.include_major_heap
-        | External -> not filter.include_major_heap
+        | Minor when defer_minor_allocations -> true, `Defer
+        | Minor -> filter.include_minor_heap, `Allocate
+        | Major -> filter.include_major_heap, `Allocate
+        | External -> filter.include_external, `Allocate
       in
       let correct_size = should_record_allocation_of_size single_allocation_size filter in
       let interesting_backtrace () =
@@ -234,10 +234,13 @@ let obj_ids_matching_filter ~trace ~loc_cache (filter : Filter.t) =
              backtrace_buffer
              backtrace_length
       in
-      let eligible =
-        (not definitely_wrong_heap) && correct_size && interesting_backtrace ()
-      in
-      if not eligible then () else if deferring then defer obj_id else allocate obj_id
+      let pass = correct_heap && correct_size && interesting_backtrace () in
+      (match pass with
+       | false -> ()
+       | true ->
+         (match action_on_pass with
+          | `Defer -> defer obj_id
+          | `Allocate -> allocate obj_id))
     | Promote obj_id ->
       if is_deferred obj_id
       then allocate obj_id
@@ -277,7 +280,9 @@ let create ~trace ~loc_cache ~filter =
       fun obj_id -> Hash_set.mem interesting obj_id)
   in
   let filtered_loc_cache = Filtered_location_cache.create ~filter ~loc_cache () in
-  let defer_minor_allocations = not filter.include_minor_heap in
+  let defer_minor_allocations =
+    filter.include_major_heap && not filter.include_minor_heap
+  in
   let collect_on_promotion = not filter.include_major_heap in
   { trace
   ; loc_cache = filtered_loc_cache

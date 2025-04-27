@@ -1,5 +1,5 @@
 open! Core
-open! Bonsai_web.Proc
+open! Bonsai_web_proc
 open Memtrace_viewer_common
 open Memtrace_viewer_client.For_testing
 module Handle = Bonsai_web_test.Handle

@@ -1,5 +1,5 @@
 open! Core
-open Bonsai_web.Proc
+open Bonsai_web_proc
 open Memtrace_viewer_common
 
 let info_linef ?attr pat =

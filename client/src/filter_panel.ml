@@ -1,5 +1,5 @@
 open! Core
-open! Bonsai_web.Proc
+open! Bonsai_web_proc
 module Attr = Vdom.Attr
 module Node = Vdom.Node
 module Node_svg = Virtual_dom_svg.Node

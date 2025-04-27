@@ -1,6 +1,6 @@
 open! Core
 open! Async_kernel
-open! Bonsai_web.Proc
+open! Bonsai_web_proc
 open Vdom_keyboard
 open Memtrace_viewer_common
 
@@ -40,7 +40,7 @@ let state_machine =
     | Reset -> State.empty
   in
   let default_model = State.empty in
-  Bonsai.state_machine0
+  Bonsai.state_machine
     ()
     ~equal:[%equal: State.t]
     ~sexp_of_action:[%sexp_of: Action.t]

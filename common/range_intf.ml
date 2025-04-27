@@ -33,8 +33,7 @@ module type S = sig
   val compare_point : Point.t -> t -> int
 
   (** Return whether the range's lower bound is either [No_bound] or less than [lower] and
-      its
-      upper bound is either [No_bound] or greater than [upper]. *)
+      its upper bound is either [No_bound] or greater than [upper]. *)
   val covers_points : t -> lower:Point.t -> upper:Point.t -> bool
 
   val disjoint : t -> t -> bool

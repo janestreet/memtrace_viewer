@@ -1,5 +1,5 @@
 open! Core
-open Bonsai_web.Proc
+open Bonsai_web_proc
 
 module Action = struct
   type t =
@@ -15,7 +15,7 @@ end
 let component effect =
   let open Bonsai.Let_syntax in
   let%sub _, run_action =
-    Bonsai.state_machine1
+    Bonsai.state_machine_with_input
       ~equal:[%equal: Model.t]
       ~sexp_of_action:[%sexp_of: Action.t]
       ~default_model:{ activated = false }

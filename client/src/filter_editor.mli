@@ -1,5 +1,5 @@
 open! Core
-open Bonsai_web.Proc
+open Bonsai_web_proc
 
 type t = Filter_spec.Clause.t option list And_view.t
 

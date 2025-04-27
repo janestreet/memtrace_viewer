@@ -16,6 +16,7 @@ depends: [
   "async_kernel"
   "async_rpc_kernel"
   "async_rpc_websocket"
+  "async_unix"
   "bonsai"
   "bonsai_web"
   "bonsai_web_components"
@@ -33,9 +34,9 @@ depends: [
   "virtual_dom"
   "cohttp"                {>= "2.5.6"}
   "cohttp-async"          {>= "2.5.7" & < "3.0.0" | >= "5.1.1" & < "6.0.0"}
-  "dune"                  {>= "3.11.0"}
-  "js_of_ocaml"           {>= "5.1.1" & < "5.7.0"}
-  "js_of_ocaml-ppx"       {>= "5.1.1" & < "5.7.0"}
+  "dune"                  {>= "3.17.0"}
+  "js_of_ocaml"           {= "6.0.1+jst"}
+  "js_of_ocaml-ppx"       {= "6.0.1+jst"}
   "memtrace"              {>= "0.2.1.2"}
   "uri"                   {>= "3.0.0"}
 ]

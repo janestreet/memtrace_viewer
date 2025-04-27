@@ -3,14 +3,12 @@
   --live-color: rgb(255, 128, 0);
   /* currently vestigial */
   --collected-color: rgb(255, 0, 0);
-  --help-color: aliceblue
-    /* currently vestigial */
-  ;
+  --help-color: aliceblue /* currently vestigial */;
   --poi-color: peachpuff;
-  --selection-color: #F2D2F6;
+  --selection-color: #f2d2f6;
   --focus-color-odd: lightgoldenrodyellow;
   --focus-color-even: rgb(254, 254, 246);
-  --filter-color: #BDF5BD;
+  --filter-color: #bdf5bd;
   --flame-graph-alloc-site-node-color: var(--filter-color);
 }
 
@@ -36,7 +34,7 @@ body {
   min-height: 0;
 }
 
-#body-container>* {
+#body-container > * {
   max-height: 100%;
 }
 
@@ -79,7 +77,7 @@ h2.panel-title {
   text-align: center;
   font-size: 1em;
   padding: 0.5rem;
-  background-color: rgba(256, 256, 256, 25%)
+  background-color: rgba(256, 256, 256, 25%);
 }
 
 .panel-collapsible h2.panel-title {
@@ -102,7 +100,7 @@ button.panel-collapse-indicator {
   flex-direction: column;
 }
 
-.panel-body>.tab-panel {
+.panel-body > .tab-panel {
   flex: 1 1 auto;
   min-height: 0;
 }
@@ -178,7 +176,7 @@ ul.tab-bar li.selected button {
   max-height: 100%;
 }
 
-.sidebar-content>* {
+.sidebar-content > * {
   flex: 1 1 auto;
   min-height: 0;
 }
@@ -205,7 +203,7 @@ ul.tab-bar li.selected button {
   min-width: 5em;
 }
 
-#left-bar>.sidebar-content {
+#left-bar > .sidebar-content {
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -221,7 +219,7 @@ ul.tab-bar li.selected button {
   min-width: 10em;
 }
 
-#right-bar>.sidebar-content {
+#right-bar > .sidebar-content {
   display: flex;
   flex-direction: column;
 }
@@ -231,7 +229,7 @@ ul.tab-bar li.selected button {
 }
 
 #main-panel {
-  background-color: #D2DAF6;
+  background-color: #d2daf6;
   flex: 1 1 30em;
   min-width: 5em;
 }
@@ -240,13 +238,13 @@ ul.tab-bar li.selected button {
   background-color: var(--filter-color);
 }
 
-#app-container>#filter-panel {
+#app-container > #filter-panel {
   flex: 0 1 auto;
   min-height: 0;
 }
 
 #details-panel {
-  background-color: #F6CBC2;
+  background-color: #f6cbc2;
 }
 
 table {
@@ -265,15 +263,15 @@ th {
 }
 
 thead {
-  background-color: rgba(256, 256, 256, 25%)
+  background-color: rgba(256, 256, 256, 25%);
 }
 
 tbody tr:nth-child(odd):not(.focused) {
-  background-color: rgba(0, 0, 0, 5%)
+  background-color: rgba(0, 0, 0, 5%);
 }
 
 tbody tr:nth-child(even):not(.focused) {
-  background-color: rgba(0, 0, 0, 10%)
+  background-color: rgba(0, 0, 0, 10%);
 }
 
 #info-panel .summary ul.info-fields {
@@ -303,7 +301,8 @@ col.set-focus-column {
   width: 1.5em;
 }
 
-col.locations-column {}
+col.locations-column {
+}
 
 col.allocations-column {
   width: 4em;
@@ -438,7 +437,7 @@ g.flame-graph-button:hover .flame-graph-button-motion-line {
   display: flex;
 }
 
-#app-container>#filter-panel-body {
+#app-container > #filter-panel-body {
   flex-direction: row;
 }
 
@@ -451,11 +450,11 @@ g.flame-graph-button:hover .flame-graph-button-motion-line {
   min-width: 100px;
 }
 
-#app-container>#filter-panel #filter-graph-and-controls {
+#app-container > #filter-panel #filter-graph-and-controls {
   flex: 0 1 450px;
 }
 
-#app-container>#filter-panel #filter-form-area {
+#app-container > #filter-panel #filter-form-area {
   flex: 1 1 25em;
   min-width: 10em;
 }
@@ -509,15 +508,15 @@ g.flame-graph-button:hover .flame-graph-button-motion-line {
 }
 
 .graph-allocated-range {
-  --graph-region-color: var(--allocated-color)
+  --graph-region-color: var(--allocated-color);
 }
 
 .graph-live-range {
-  --graph-region-color: var(--live-color)
+  --graph-region-color: var(--live-color);
 }
 
 .graph-collected-range {
-  --graph-region-color: var(--collected-color)
+  --graph-region-color: var(--collected-color);
 }
 
 .graph-region-bound {
@@ -616,11 +615,11 @@ input.bound[type="datetime-local"] {
   padding-left: 1.5em;
 }
 
-.clauses>li:first-child .conjunction {
+.clauses > li:first-child .conjunction {
   display: none;
 }
 
-.clauses>li {
+.clauses > li {
   /* Make wrapped text stay to the right of the button (like a bullet
      point) */
   display: flex;
@@ -700,7 +699,8 @@ input.bound[type="datetime-local"] {
   margin-inline-start: 40px;
 }
 
-.backtrace {}
+.backtrace {
+}
 
 .backtrace-inline {
   display: inline-block;
@@ -741,10 +741,10 @@ input.bound[type="datetime-local"] {
 
 @keyframes spinner {
   0% {
-    transform: rotate(0deg)
+    transform: rotate(0deg);
   }
 
   100% {
-    transform: rotate(360deg)
+    transform: rotate(360deg);
   }
 }

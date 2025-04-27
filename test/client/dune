@@ -1,6 +1,6 @@
 (library
  (name memtrace_viewer_client_tests)
- (libraries memtrace_viewer_client bonsai_web bonsai_web_test
+ (libraries memtrace_viewer_client bonsai_web bonsai_web.proc bonsai_web_test
    bonsai_web_components.web_ui_element_size_hooks core
    memtrace_viewer_common)
  (preprocess

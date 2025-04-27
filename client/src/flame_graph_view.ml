@@ -1,5 +1,5 @@
 open! Core
-open Bonsai_web.Proc
+open Bonsai_web_proc
 module Node_svg = Virtual_dom_svg.Node
 module Attr_svg = Virtual_dom_svg.Attr
 include Flame_graph_view_intf
@@ -192,9 +192,8 @@ module Make (Graph : Graph) = struct
           in
           let arrow_base_y =
             match (glyph : Controls.Glyph.t) with
-            | Down_to_here ->
-              cxt.Context.focus_border_above |> Option.value_exn ~here:[%here]
-            | Up_to_here -> cxt.focus_border_below |> Option.value_exn ~here:[%here]
+            | Down_to_here -> cxt.Context.focus_border_above |> Option.value_exn
+            | Up_to_here -> cxt.focus_border_below |> Option.value_exn
           in
           Some (Controls.render_button ~glyph ~x ~y ~arrow_base_y ~on_click)
         | Disabled -> None

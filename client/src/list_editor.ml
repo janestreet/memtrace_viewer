@@ -1,5 +1,5 @@
 open! Core
-open Bonsai_web.Proc
+open Bonsai_web_proc
 
 module Index_set = struct
   (* Use a map for easy use with [Bonsai.assoc] *)

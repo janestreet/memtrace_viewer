@@ -69,10 +69,18 @@ module String_predicate = struct
   ;;
 end
 
-module Which_heap = struct
+module Area = struct
   type t =
-    | Minor
     | Major
+    | Minor
+    | External
+  [@@deriving sexp, equal]
+end
+
+module Area_predicate = struct
+  type t =
+    | Is of Area.t
+    | Is_not of Area.t
   [@@deriving sexp, equal]
 end
 
@@ -105,7 +113,7 @@ module Clause = struct
     | Require_function of String_predicate.t option
     | Forbid_function of String_predicate.t option
     | Hide_function of String_predicate.t option
-    | Heap of Which_heap.t option
+    | Area of Area_predicate.t option
   [@@deriving sexp, equal]
 
   let inter_opt ~inter range1_opt range2 =
@@ -151,6 +159,19 @@ module Clause = struct
     | other -> other
   ;;
 
+  let add_area_predicate (pred : Area_predicate.t) (filter : Filter.t) =
+    let no_major filter = { filter with Filter.include_major_heap = false } in
+    let no_minor filter = { filter with Filter.include_minor_heap = false } in
+    let no_external filter = { filter with Filter.include_external = false } in
+    match pred with
+    | Is_not Major -> no_major filter
+    | Is_not Minor -> no_minor filter
+    | Is_not External -> no_external filter
+    | Is Major -> no_minor (no_external filter)
+    | Is Minor -> no_major (no_external filter)
+    | Is External -> no_minor (no_major filter)
+  ;;
+
   let modify_filter t (filter : Filter.t) ~peak_allocations_time =
     let open Option.Let_syntax in
     match t with
@@ -191,10 +212,7 @@ module Clause = struct
     | Hide_function (Some pred) ->
       let%map pred = pred |> String_predicate.to_location_predicate in
       { filter with hidden_locations = pred :: filter.hidden_locations }
-    | Heap (Some heap) ->
-      (match heap with
-       | Minor -> Some { filter with include_major_heap = false }
-       | Major -> Some { filter with include_minor_heap = false })
+    | Area (Some pred) -> Some (add_area_predicate pred filter)
     | Allocated None
     | Live None
     | Collected None
@@ -203,7 +221,7 @@ module Clause = struct
     | Require_function None
     | Forbid_function None
     | Hide_function None
-    | Heap None -> None
+    | Area None -> None
   ;;
 end
 
@@ -219,6 +237,10 @@ let to_filter_allow_incomplete { clauses } ~peak_allocations_time =
   filter
 ;;
 
+let valid_filter (filter : Filter.t) =
+  filter.include_minor_heap || filter.include_major_heap || filter.include_external
+;;
+
 let to_filter { clauses } ~peak_allocations_time =
   let open Option.Let_syntax in
   let%bind filter =
@@ -226,5 +248,5 @@ let to_filter { clauses } ~peak_allocations_time =
       let%bind filter and clause in
       Clause.modify_filter clause filter ~peak_allocations_time)
   in
-  Option.some_if (filter.include_minor_heap || filter.include_major_heap) filter
+  Option.some_if (valid_filter filter) filter
 ;;

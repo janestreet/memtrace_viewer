@@ -2,6 +2,7 @@ open! Core
 open! Async
 open Memtrace
 module Time = Time_float_unix
+module Socket = Async_unix.Unix.Socket
 
 let initialize_connection env _ _ _ _ = User_state.create env
 
@@ -60,7 +61,25 @@ let handler ~body:_ inet req =
   | _ -> respond_string ~content_type:"text/html" ~status:`Not_found not_found_html
 ;;
 
+let rec search_for_port_exn ~port ~end_port =
+  assert (port <= end_port);
+  let socket = Socket.create Socket.Type.tcp in
+  Socket.setopt socket Socket.Opt.reuseaddr true;
+  match Socket.bind_inet_keep_opts socket (Socket.Address.Inet.create_bind_any ~port) with
+  | exception Unix.Unix_error (EADDRINUSE, _, _) when port < end_port ->
+    search_for_port_exn ~port:(port + 1) ~end_port
+  | sock ->
+    let%bind () = Fd.close (Socket.fd sock) in
+    return port
+;;
+
 let main ~filename ~port =
+  let port, end_port =
+    match port with
+    | Some port -> port, port
+    | None -> 8080, 9000
+  in
+  let%bind port = search_for_port_exn ~port ~end_port in
   Core.Printf.printf "Processing %s...\n%!" filename;
   let trace = Trace.Reader.open_ ~filename in
   let env = User_state.Env.of_trace trace in
@@ -92,9 +111,7 @@ let command =
   Command.async
     ~summary:"Start server for memtrace viewer"
     (let%map_open.Command filename = anon ("filename" %: string)
-     and port =
-       flag "port" (optional_with_default 8080 int) ~doc:"port on which to serve viewer"
-     in
+     and port = flag "port" (optional int) ~doc:"port on which to serve viewer" in
      fun () -> main ~filename ~port)
     ~behave_nicely_in_pipeline:false
 ;;
