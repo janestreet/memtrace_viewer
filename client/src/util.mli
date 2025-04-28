@@ -1,5 +1,5 @@
 open! Core
-open Bonsai_web.Proc
+open Bonsai_web_proc
 
 (* An implementation of [Stringable.S] for [float] that is compatible with HTML/JavaScript
    float syntax. The usual [Float.to_string] is prone to outputting things like "1." that
@@ -18,4 +18,8 @@ val placeholder_div : Vdom.Node.t
 val placeholder_svg : Vdom.Node.t
 
 (* Wrap a type suitable for use as a Bonsai model in the option type. *)
-module Option_model (T : Bonsai.Model) : Bonsai.Model with type t = T.t option
+module Option_model (T : sig
+    type t [@@deriving sexp_of]
+  end) : sig
+  type t = T.t option [@@deriving sexp_of]
+end

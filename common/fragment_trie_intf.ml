@@ -134,8 +134,8 @@ module type Fragment = sig
   module Oriented : sig
     type fragment := t
 
-    (** A fragment and an orientation. Can be thought of as a tree node --
-        with its extensions as children and it's retraction as parent. *)
+    (** A fragment and an orientation. Can be thought of as a tree node -- with its
+        extensions as children and it's retraction as parent. *)
     type t
 
     val fragment : t -> fragment
@@ -157,8 +157,8 @@ module type Fragment = sig
   module Iterator : sig
     type fragment := t
 
-    (** An iterator that iterates through the prefixes of a fragment
-        from callers to callees. *)
+    (** An iterator that iterates through the prefixes of a fragment from callers to
+        callees. *)
     type t
 
     val next : t -> t option

@@ -1,5 +1,5 @@
 open! Core
-open Bonsai_web.Proc
+open Bonsai_web_proc
 
 module Interpreter = struct
   type ('value, 'action, 'context) t =
@@ -25,10 +25,20 @@ let component ~interpret ~input =
       ()
       ~equal:[%equal: Unit.t]
       ~default_model:()
-      ~apply_action:(fun apply_action_context (Input.{ value; context }, _) () action ->
-        Bonsai.Apply_action_context.schedule_event
-          apply_action_context
-          (interpret ~value ~context action))
+      ~apply_action:(fun apply_action_context result () action ->
+        match result with
+        | Inactive ->
+          eprint_s
+            [%message
+              "An action sent to a [wrap] has been dropped because its input was not \
+               present. This happens when the [wrap] is inactive when it receives a \
+               message."
+                [%here]];
+          ()
+        | Active (Input.{ value; context }, _) ->
+          Bonsai.Apply_action_context.schedule_event
+            apply_action_context
+            (interpret ~value ~context action))
       ~f:(fun _ inject ->
         let%sub input = input ~run_action:inject in
         let%arr input

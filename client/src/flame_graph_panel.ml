@@ -1,5 +1,5 @@
 open! Core
-open Bonsai_web.Proc
+open Bonsai_web_proc
 open Vdom_keyboard
 open Memtrace_viewer_common
 

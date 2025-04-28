@@ -26,6 +26,7 @@ type t =
   ; hidden_locations : Location_predicate.t list
   ; include_minor_heap : bool
   ; include_major_heap : bool
+  ; include_external : bool
   }
 [@@deriving sexp, bin_io, equal]
 

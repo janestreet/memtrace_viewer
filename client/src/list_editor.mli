@@ -1,5 +1,5 @@
 open! Core
-open Bonsai_web.Proc
+open Bonsai_web_proc
 
 val component
   :  ?attr:Vdom.Attr.t

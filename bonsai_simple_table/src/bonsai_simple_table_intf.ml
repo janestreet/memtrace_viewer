@@ -1,5 +1,5 @@
 open! Core
-open Bonsai_web.Proc
+open Bonsai_web_proc
 
 (* [Bonsai_simple_table] provides a simplistic table widget. It can lay things out in a
    <table> tag and has basic keyboard support for focusing a row.
@@ -56,8 +56,7 @@ module type S = sig
          | header1 | header2 | ...
          +---------+---------+
          | ...     | ...     | ...
-        v}
-    *)
+        v} *)
     val create
       :  ?header_for_testing:string
       -> ?classes:string list

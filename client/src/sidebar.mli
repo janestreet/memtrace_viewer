@@ -1,5 +1,5 @@
 open! Core
-open! Bonsai_web.Proc
+open! Bonsai_web_proc
 
 module Button_position : sig
   type t =

@@ -38,10 +38,18 @@ module String_predicate : sig
   [@@deriving sexp, equal]
 end
 
-module Which_heap : sig
+module Area : sig
   type t =
-    | Minor
     | Major
+    | Minor
+    | External
+  [@@deriving sexp, equal]
+end
+
+module Area_predicate : sig
+  type t =
+    | Is of Area.t
+    | Is_not of Area.t
   [@@deriving sexp, equal]
 end
 
@@ -55,7 +63,7 @@ module Clause : sig
     | Require_function of String_predicate.t option
     | Forbid_function of String_predicate.t option
     | Hide_function of String_predicate.t option
-    | Heap of Which_heap.t option
+    | Area of Area_predicate.t option
   [@@deriving sexp, equal]
 end
 

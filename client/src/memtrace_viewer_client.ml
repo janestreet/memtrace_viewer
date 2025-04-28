@@ -1,6 +1,6 @@
 open! Core
 open! Async_kernel
-open Bonsai_web.Proc
+open Bonsai_web_proc
 open Async_js
 open Memtrace_viewer_common
 
@@ -18,7 +18,7 @@ let handle_outgoing ~conn ~data ~server_state action =
     Bonsai.Var.set data unserialized;
     Bonsai.Var.set server_state { Server_state.status = Idle }
   | Error error ->
-    Js_of_ocaml.Firebug.console##error
+    Js_of_ocaml.Console.console##error
       (error |> Error.to_string_hum |> Js_of_ocaml.Js.string);
     Bonsai.Var.set server_state { Server_state.status = Down }
 ;;

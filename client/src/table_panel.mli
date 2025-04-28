@@ -1,6 +1,6 @@
 open! Core
 open! Async_kernel
-open Bonsai_web.Proc
+open Bonsai_web_proc
 open Memtrace_viewer_common
 
 type t =
