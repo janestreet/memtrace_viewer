@@ -64,10 +64,8 @@ module Component (Tab : Tab) = struct
     =
     let open Bonsai.Let_syntax in
     let%sub { Tab_bar.select_tab; selected_tab; _ } = Bonsai.read tab_bar in
-    Bonsai.enum
-      (module Tab)
-      ~match_:selected_tab
-      ~with_:(fun tab -> Tab.component tab ~input ~select_tab)
+    Bonsai.enum (module Tab) ~match_:selected_tab ~with_:(fun tab ->
+      Tab.component tab ~input ~select_tab)
   ;;
 
   let view tab_bar_view current_tab_view =
