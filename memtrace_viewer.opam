@@ -35,8 +35,8 @@ depends: [
   "cohttp"                {>= "2.5.6"}
   "cohttp-async"          {>= "2.5.7" & < "3.0.0" | >= "5.1.1" & < "6.0.0"}
   "dune"                  {>= "3.17.0"}
-  "js_of_ocaml"           {= "6.0.1+jst"}
-  "js_of_ocaml-ppx"       {= "6.0.1+jst"}
+  "js_of_ocaml"           {= "6.0.1+ox"}
+  "js_of_ocaml-ppx"       {= "6.0.1+ox"}
   "memtrace"              {>= "0.2.1.2"}
   "uri"                   {>= "3.0.0"}
 ]
