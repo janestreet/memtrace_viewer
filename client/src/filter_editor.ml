@@ -90,17 +90,14 @@ let phrase_editor
   let%sub type_dropdown = dropdown_of_enum_opt (module Head) in
   let%sub rest_of_sentence =
     let type_ = Bonsai.Value.map ~f:And_view.value type_dropdown in
-    Bonsai.enum
-      (module Option_of_enum (Head))
-      ~match_:type_
-      ~with_:(fun type_ ->
-        match type_ with
-        | None ->
-          Bonsai.const
-            { And_view.view = Vdom.Node.none_deprecated [@alert "-deprecated"]
-            ; value = None
-            }
-        | Some type_ -> body_editor type_ ~time_parameters)
+    Bonsai.enum (module Option_of_enum (Head)) ~match_:type_ ~with_:(fun type_ ->
+      match type_ with
+      | None ->
+        Bonsai.const
+          { And_view.view = Vdom.Node.none_deprecated [@alert "-deprecated"]
+          ; value = None
+          }
+      | Some type_ -> body_editor type_ ~time_parameters)
   in
   return
     (let%map type_dropdown and rest_of_sentence in
@@ -219,20 +216,18 @@ module Live_clause_head = struct
 end
 
 let live_clause_editor : Filter_spec.Clause.t Editor.t =
-  phrase_editor
-    (module Live_clause_head)
-    ~body_editor:(function
-      | In_range head ->
-        time_range_body_editor head
-        |> Editor.map
-             ~f:
-               (Option.map ~f:(fun range ->
-                  Filter_spec.Clause.Live (Some (Anywhere_in_range range))))
-      | At ->
-        time_editor ~which_bound:Lower
-        |> Editor.map ~f:(fun time -> Some (Filter_spec.Clause.Live (Some (At time))))
-      | At_end -> const_editor (Filter_spec.Clause.Live (Some At_end_of_trace))
-      | At_peak -> const_editor (Filter_spec.Clause.Live (Some At_peak_allocations)))
+  phrase_editor (module Live_clause_head) ~body_editor:(function
+    | In_range head ->
+      time_range_body_editor head
+      |> Editor.map
+           ~f:
+             (Option.map ~f:(fun range ->
+                Filter_spec.Clause.Live (Some (Anywhere_in_range range))))
+    | At ->
+      time_editor ~which_bound:Lower
+      |> Editor.map ~f:(fun time -> Some (Filter_spec.Clause.Live (Some (At time))))
+    | At_end -> const_editor (Filter_spec.Clause.Live (Some At_end_of_trace))
+    | At_peak -> const_editor (Filter_spec.Clause.Live (Some At_peak_allocations)))
 ;;
 
 module Collected_clause_head = struct
@@ -248,16 +243,14 @@ module Collected_clause_head = struct
 end
 
 let collected_clause_editor =
-  phrase_editor
-    (module Collected_clause_head)
-    ~body_editor:(function
-      | In_range head ->
-        time_range_body_editor head
-        |> Editor.map
-             ~f:
-               (Option.map ~f:(fun range ->
-                  Filter_spec.Clause.Collected (Some (Non_empty range))))
-      | Never -> const_editor (Filter_spec.Clause.Collected (Some Empty)))
+  phrase_editor (module Collected_clause_head) ~body_editor:(function
+    | In_range head ->
+      time_range_body_editor head
+      |> Editor.map
+           ~f:
+             (Option.map ~f:(fun range ->
+                Filter_spec.Clause.Collected (Some (Non_empty range))))
+    | Never -> const_editor (Filter_spec.Clause.Collected (Some Empty)))
 ;;
 
 let size_clause_editor : Filter_spec.Clause.t Editor.t =
@@ -291,17 +284,15 @@ module String_clause_head = struct
 end
 
 let function_clause_editor ~clause_ctor ~text_before : Filter_spec.Clause.t Editor.t =
-  phrase_editor
-    (module String_clause_head)
-    ~body_editor:(fun relation ->
-      string_editor
-      |> Editor.map ~f:(fun rhs : Filter_spec.Clause.t option ->
-        let pred : Filter_spec.String_predicate.t =
-          match relation with
-          | Equals -> Equals rhs
-          | Contains -> Contains rhs
-        in
-        Some (clause_ctor (Some pred))))
+  phrase_editor (module String_clause_head) ~body_editor:(fun relation ->
+    string_editor
+    |> Editor.map ~f:(fun rhs : Filter_spec.Clause.t option ->
+      let pred : Filter_spec.String_predicate.t =
+        match relation with
+        | Equals -> Equals rhs
+        | Contains -> Contains rhs
+      in
+      Some (clause_ctor (Some pred))))
   |> Editor.map_view ~f:(fun node ->
     Vdom.Node.span [ Vdom.Node.textf "%s " text_before; node ])
 ;;
@@ -381,18 +372,16 @@ let with_conjunction conjunction view =
 ;;
 
 let toplevel_clause_editor =
-  phrase_editor
-    (module Toplevel_clause_head)
-    ~body_editor:(function
-      | Allocated -> allocated_clause_editor
-      | Live -> live_clause_editor
-      | Collected -> collected_clause_editor
-      | Size -> size_clause_editor
-      | Lifetime -> lifetime_clause_editor
-      | Some_function_name -> inside_clause_editor
-      | No_function_name -> not_inside_clause_editor
-      | On_heap -> on_heap_clause_editor
-      | Not_on_heap -> not_on_heap_clause_editor)
+  phrase_editor (module Toplevel_clause_head) ~body_editor:(function
+    | Allocated -> allocated_clause_editor
+    | Live -> live_clause_editor
+    | Collected -> collected_clause_editor
+    | Size -> size_clause_editor
+    | Lifetime -> lifetime_clause_editor
+    | Some_function_name -> inside_clause_editor
+    | No_function_name -> not_inside_clause_editor
+    | On_heap -> on_heap_clause_editor
+    | Not_on_heap -> not_on_heap_clause_editor)
   |> Editor.map_view ~f:(with_conjunction "and")
 ;;
 

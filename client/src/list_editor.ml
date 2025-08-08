@@ -22,34 +22,31 @@ let component
       let%map index_set, _ = index_set_state in
       index_set
     in
-    Bonsai.assoc
-      (module Int)
-      index_set
-      ~f:(fun index _ ->
-        let%sub item in
-        return
-          (let%map item
-           and index_set, set_index_set = index_set_state
-           and index in
-           let remove = set_index_set (Map.remove (index_set : _ Int.Map.t) index) in
-           let glyph = Node.text "−" (* U+2212 MINUS SIGN (bigger than hyphen) *) in
-           item
-           |> And_view.map_view ~f:(fun view ->
-             Node.li
-               ~key:(index |> Int.to_string)
-               [ Node.button
-                   ~attrs:
-                     [ (* Important to set type="button" here: the default is type="submit",
+    Bonsai.assoc (module Int) index_set ~f:(fun index _ ->
+      let%sub item in
+      return
+        (let%map item
+         and index_set, set_index_set = index_set_state
+         and index in
+         let remove = set_index_set (Map.remove (index_set : _ Int.Map.t) index) in
+         let glyph = Node.text "−" (* U+2212 MINUS SIGN (bigger than hyphen) *) in
+         item
+         |> And_view.map_view ~f:(fun view ->
+           Node.li
+             ~key:(index |> Int.to_string)
+             [ Node.button
+                 ~attrs:
+                   [ (* Important to set type="button" here: the default is type="submit",
                           which makes Enter delete the first item! *)
-                       Attr.type_ "button"
-                     ; Attr.class_ "list-editor-remove-button"
-                     ; Attr.on_click (fun _ -> remove)
-                     ; remove_button_attr
-                     ]
-                   [ glyph ]
-               ; Node.text " "
-               ; view
-               ])))
+                     Attr.type_ "button"
+                   ; Attr.class_ "list-editor-remove-button"
+                   ; Attr.on_click (fun _ -> remove)
+                   ; remove_button_attr
+                   ]
+                 [ glyph ]
+             ; Node.text " "
+             ; view
+             ])))
   in
   return
     (let%map rows
