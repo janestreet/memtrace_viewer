@@ -7,7 +7,7 @@ module Socket = Async_unix.Unix.Socket
 let initialize_connection env _ _ _ _ = User_state.create env
 
 let log_request ?(log = Lazy.force Log.Global.log) inet path =
-  [%log.debug
+  [%log.t.debug
     log "Serving http request" (inet : Socket.Address.Inet.t) (Time.now () : Time.t) path]
 ;;
 
