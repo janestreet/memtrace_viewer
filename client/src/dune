@@ -3,10 +3,10 @@
  (public_name memtrace_viewer.client)
  (modes byte)
  (flags :standard -w -31)
- (libraries async_kernel async_js core bonsai_web memtrace_viewer_common
-   bonsai_simple_table bonsai_web_components.web_ui_element_size_hooks
-   virtual_dom.keyboard bonsai_web.proc codicons virtual_dom.css_gen incr_dom
-   js_of_ocaml virtual_dom.ui_effect virtual_dom.input_widgets
+ (libraries async_js async_kernel bonsai_simple_table bonsai_web
+   bonsai_web.proc bonsai_web_components.web_ui_element_size_hooks codicons
+   core virtual_dom.css_gen incr_dom js_of_ocaml memtrace_viewer_common
+   virtual_dom.ui_effect virtual_dom.input_widgets virtual_dom.keyboard
    virtual_dom.svg)
  (preprocess
   (pps js_of_ocaml-ppx bonsai.ppx_bonsai ppx_jane ppx_css)))
