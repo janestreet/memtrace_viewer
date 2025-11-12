@@ -1,8 +1,8 @@
 (library
  (name memtrace_viewer_native)
  (public_name memtrace_viewer.native)
- (libraries memtrace_viewer_common async async_unix cohttp cohttp-async core
-   memtrace core_kernel.pairing_heap async_rpc_websocket
+ (libraries async async_unix cohttp cohttp-async core memtrace
+   memtrace_viewer_common core_kernel.pairing_heap async_rpc_websocket
    core_unix.time_float_unix uri)
  (preprocess
   (pps ppx_jane)))
