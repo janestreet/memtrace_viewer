@@ -23,17 +23,19 @@ let find_heavy_hitters ~trace ~tolerance ~significance_frequency
              ; backtrace_length
              ; common_prefix
              } ->
-           (* Important: Memtrace order of stack frames is *toplevel first*, i.e. the opposite
-              order to how stack traces are usually displayed. Reversing this here is not
-              feasible as SHH's performance relies heavily on passing [common_prefix] through.
+           (* Important: Memtrace order of stack frames is *toplevel first*, i.e. the
+              opposite order to how stack traces are usually displayed. Reversing this
+              here is not feasible as SHH's performance relies heavily on passing
+              [common_prefix] through.
 
               XXX For now, I'm deciding to keep a consistent order for all in-memory
-              representations of backtraces and flip it around only on display to the user.
-              Another defensible choice would be to have the server side flip it around before
-              sending to the client side (say, by having [Loc_hitters_as_suffix_trie] perform
-              the reversal somehow), possibly relying on a wrapper type like
-              [Data.Backtrace.Reversed.t] to keep them straight. (Could even have
-              [Data.Backtrace.Toplevel_first.t] and [Data.Backtrace.Alloc_first.t].)
+              representations of backtraces and flip it around only on display to the
+              user. Another defensible choice would be to have the server side flip it
+              around before sending to the client side (say, by having
+              [Loc_hitters_as_suffix_trie] perform the reversal somehow), possibly relying
+              on a wrapper type like [Data.Backtrace.Reversed.t] to keep them straight.
+              (Could even have [Data.Backtrace.Toplevel_first.t] and
+              [Data.Backtrace.Alloc_first.t].)
 
               Make enough space for the toplevel location, the backtrace minus the common
               prefix, and the allocator location.
@@ -227,9 +229,10 @@ end = struct
       then None
       else (
         (* The semantics of the suffix link is defined according to the entire edge. In
-           other words, [suffix] with its *entire* edge represents the suffix of [node] with
-           its *entire* edge. In general, we start somewhere up [node]'s edge, so we begin
-           by overapproximating: go to the end of [suffix] and then move up to compensate.
+           other words, [suffix] with its *entire* edge represents the suffix of [node]
+           with its *entire* edge. In general, we start somewhere up [node]'s edge, so we
+           begin by overapproximating: go to the end of [suffix] and then move up to
+           compensate.
         *)
         assert (Loc_hitters.Node.has_suffix node);
         let suffix = Loc_hitters.Node.suffix node in

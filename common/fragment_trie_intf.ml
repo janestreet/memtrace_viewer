@@ -58,7 +58,7 @@ end
 module type Backtrace = sig
   module Location : Location
 
-  (** A backtrace, represented from toplevel to allocation site **)
+  (** A backtrace, represented from toplevel to allocation site *)
   type t = Location.t list [@@deriving sexp, bin_io, compare, hash]
 
   include Comparable.S with type t := t

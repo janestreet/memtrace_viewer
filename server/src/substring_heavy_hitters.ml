@@ -1,8 +1,7 @@
 open! Core
 open Memtrace_viewer_common
 
-(* A generalized suffix tree based on Ukkonen's algorithm
-   combined with lossy counting. *)
+(* A generalized suffix tree based on Ukkonen's algorithm combined with lossy counting. *)
 
 module type Char = sig
   include Hashable.S_plain
@@ -101,16 +100,16 @@ module Make (X : Char) = struct
       ; mutable next_sibling : t
       ; mutable first_child : t
       ; mutable refcount : int
-          (* [2 * incoming suffix links + 2 * has count + chidren]
-         A node should be deleted when this is <= 1 *)
+          (* [2 * incoming suffix links + 2 * has count + chidren] A node should be
+             deleted when this is <= 1 *)
       ; mutable summary : summary
       ; mutable queue_item : queue_item
       ; mutable count : int
-          (* Upper bound on how much has been squashed along the edge to the parent. A node
-         may be created and squashed again any number of times; this is a bound on how
-         much count we've thrown away in doing so for this node. (Edge merging muddies the
-         picture, since it may not have been precisely _this_ node, but you get the
-         picture.) *)
+          (* Upper bound on how much has been squashed along the edge to the parent. A
+             node may be created and squashed again any number of times; this is a bound
+             on how much count we've thrown away in doing so for this node. (Edge merging
+             muddies the picture, since it may not have been precisely _this_ node, but
+             you get the picture.) *)
       ; mutable max_edge_squashed : int
           (* Upper bound on how much has been squashed along any one edge to a child *)
       ; mutable max_child_squashed : int
@@ -1104,8 +1103,7 @@ module Make (X : Char) = struct
         retract t ~distance)
     ;;
 
-    (* Move cursor 1 character towards child. Child assumed
-       not equal to parent. *)
+    (* Move cursor 1 character towards child. Child assumed not equal to parent. *)
     let extend t =
       let len = t.len + 1 in
       if Node.edge_length t.child <= len
@@ -1115,9 +1113,9 @@ module Make (X : Char) = struct
       else t.len <- len
     ;;
 
-    (* Try to move cursor n character towards child. Child assumed
-       not equal to parent. Returns number of characters actually moved.
-       Guaranteed to move at least 1 character. *)
+    (* Try to move cursor n character towards child. Child assumed not equal to parent.
+       Returns number of characters actually moved. Guaranteed to move at least 1
+       character. *)
     let extend_n t n =
       let len = t.len in
       let target = len + n in
@@ -1408,8 +1406,8 @@ module Make (X : Char) = struct
     in
     loop 0 (Node.Root.node root);
     (* We can improve the deltas once we know the total counts (see
-       [Node.update_delta_from_parent]), but deltas figure in what's a heavy hitter,
-       so we end up with three passes:
+       [Node.update_delta_from_parent]), but deltas figure in what's a heavy hitter, so we
+       end up with three passes:
 
        1. Accumulate totals (bottom-up)
        2. Use totals to improve deltas (top-down)

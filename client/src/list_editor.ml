@@ -37,7 +37,7 @@ let component
              [ Node.button
                  ~attrs:
                    [ (* Important to set type="button" here: the default is type="submit",
-                          which makes Enter delete the first item! *)
+                        which makes Enter delete the first item! *)
                      Attr.type_ "button"
                    ; Attr.class_ "list-editor-remove-button"
                    ; Attr.on_click (fun _ -> remove)

@@ -85,8 +85,8 @@ module Function = struct
           (* possible if all call sites are actually allocation sites *)
           "no outgoing calls"
         | first_call_site :: remaining_call_sites ->
-          (* Since the filenames are all the same, include the filename for the
-             first call site only. *)
+          (* Since the filenames are all the same, include the filename for the first call
+             site only. *)
           let first_loc_str =
             sprintf
               "%s:%s"

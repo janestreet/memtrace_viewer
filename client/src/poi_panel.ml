@@ -30,8 +30,8 @@ module Table_tab = struct
     let%sub rows =
       let and_endpoints fragments =
         let%map fragments and toplevel_fragment and allocator_fragment in
-        (* We want to put the special fragments first, so filter them out and then
-           put them in manually *)
+        (* We want to put the special fragments first, so filter them out and then put
+           them in manually *)
         let fragments =
           List.filter fragments ~f:(fun fragment ->
             not (Data.Fragment.is_trivial fragment))
