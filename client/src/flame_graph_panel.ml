@@ -95,8 +95,8 @@ module Graph = struct
     let node t = Node.Focus t
 
     let label ~graph t =
-      (* This assumes that we're labeling the entire sequence, which is to say,
-         this is the initial node in the sequence. *)
+      (* This assumes that we're labeling the entire sequence, which is to say, this is
+         the initial node in the sequence. *)
       let fragment = Data.Fragment.Iterator.suffix t in
       let allocs = Data.Entry.allocations (Data.Fragment.entry fragment) in
       let total_allocs = Data.Fragment_trie.total_allocations graph.trie in
@@ -319,8 +319,8 @@ let component ~trie ~call_sites ~focus ~set_focus ~activate =
       (let%map state and trie in
        Option.bind ~f:(State.to_selector ~trie) state)
   in
-  (* We need an effect that scrolls the selected node into view _after_ the next
-     display, since it's not until then that it will be off screen. *)
+  (* We need an effect that scrolls the selected node into view _after_ the next display,
+     since it's not until then that it will be off screen. *)
   let%sub scroll_selection_into_view_after_display =
     After_next_display.component (Value.return Flame_graph.scroll_selection_into_view)
   in

@@ -266,9 +266,9 @@ let component ~(data : Data.t Bonsai.Value.t) ~(app_state : App_state.t Bonsai.V
        individual values [run_action] and [scroll_focus_into_view], which should rarely
        change. A previous version accessed the whole of [tab_panel] instead and then
        projected out [scroll_focus_into_view], making this [Value.t] sensitive to any
-       change at all in the tab panel. Since here we're producing a fresh closure
-       with every re-evaluation, the ensuing cascade touched every row of the table
-       whenever, say, the selection changed.
+       change at all in the tab panel. Since here we're producing a fresh closure with
+       every re-evaluation, the ensuing cascade touched every row of the table whenever,
+       say, the selection changed.
     *)
     let%arr run_action and scroll_focus_into_view in
     fun new_focus ->

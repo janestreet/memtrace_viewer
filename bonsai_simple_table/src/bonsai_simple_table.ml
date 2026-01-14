@@ -190,8 +190,8 @@ module Make (Row : Row) (Col_id : Id) = struct
     let serialize_row_id row_id =
       Sexp.to_string_mach (Row.Id.sexp_of_t row_id)
       |> String.map ~f:(function
-        (* This mapping probably maps two inputs to the same output, but this
-           is unlikely enough that it should be fine. *)
+        (* This mapping probably maps two inputs to the same output, but this is unlikely
+           enough that it should be fine. *)
         | '\"' -> '_'
         | c -> c)
     ;;
@@ -283,9 +283,9 @@ module Make (Row : Row) (Col_id : Id) = struct
           let%bind column_renderers =
             Incr_map.map
               cols
-              (* This funky looking data_equal function is used to basically
-                 provide a cutoff for the data that we're looking to extract.
-                 In this case, the renderer function. *)
+              (* This funky looking data_equal function is used to basically provide a
+                 cutoff for the data that we're looking to extract. In this case, the
+                 renderer function. *)
               ~data_equal:(fun a b -> Column.Renderer.equal a.Column.render b.render)
               ~f:(fun a -> a.render)
           in
@@ -310,8 +310,7 @@ module Make (Row : Row) (Col_id : Id) = struct
             List.take row_ids_in_order take, List.length row_ids_in_order - take)
         in
         let rendered_rows =
-          (* after everything else, just come in and tweak the one element that
-             has focus. *)
+          (* after everything else, just come in and tweak the one element that has focus. *)
           let%map rows and focused_row in
           match focused_row with
           | None -> rows
@@ -412,8 +411,10 @@ module Make (Row : Row) (Col_id : Id) = struct
             List.map cols_in_group ~f:(fun { id; _ } -> id))
       ;;
 
-      (* use "\u{00a0}" (aka &nbsp;) to get the rows to render and take up vertical
-         space on the page even when empty. *)
+      (* use "\u
+         {0 a0}
+         " (aka &nbsp;) to get the rows to render and take up vertical space on the page
+         even when empty. *)
       let empty_row = Vdom.Node.tr [ Vdom.Node.td [ Vdom.Node.text "\u{00a0}" ] ]
 
       let view t ~inject =
@@ -442,10 +443,10 @@ module Make (Row : Row) (Col_id : Id) = struct
                        [ Vdom.Attr.(
                            on_click_attr
                            @ focus_attr
-                           (* We use "data-row-id" instead of "id" because it can
-                              handle a wider range of strings, which is necessary for
-                              handling sexps. In addition, we also want to avoid
-                              collisions with existing "id"s *)
+                           (* We use "data-row-id" instead of "id" because it can handle a
+                              wider range of strings, which is necessary for handling
+                              sexps. In addition, we also want to avoid collisions with
+                              existing "id"s *)
                            @ create "data-row-id" (serialize_row_id row_id))
                        ]
                      (List.map col_ids_in_order ~f:(fun col_id ->

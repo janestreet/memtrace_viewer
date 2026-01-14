@@ -102,8 +102,8 @@ module Submission_handling = struct
        let button =
          Node.input
          (* Don't actually put an onclick handler on the button; just return the handler
-              to be used as the form's onsubmit instead, thus getting Enter key behavior
-              for free
+            to be used as the form's onsubmit instead, thus getting Enter key behavior for
+            free
          *)
            ~attrs:
              [ Attr.type_ "submit"
@@ -246,15 +246,15 @@ let component
 
      [is_valid:('a -> bool) -> 'a Bonsai.Value.t -> 'a Bonsai.Computation.t]
 
-     but that won't work because Bonsai computations are pure---it can't store the
-     last known valid input as a side effect. It could instead be in the style of a
-     state machine:
+     but that won't work because Bonsai computations are pure---it can't store the last
+     known valid input as a side effect. It could instead be in the style of a state
+     machine:
 
      [is_valid:('a -> bool) -> ('a * ('a -> unit Vdom.Effect.t)) Bonsai.Computation.t]
 
      but now, to fire that event, all the components in the filter editor would have to
-     support an on_changed event, which is a much more painful workaround than just
-     having this [to_filter_allow_incomplete] function.) *)
+     support an on_changed event, which is a much more painful workaround than just having
+     this [to_filter_allow_incomplete] function.) *)
   let%sub filter_to_display =
     let%arr filter_spec and peak_allocations_time in
     Filter_spec.to_filter_allow_incomplete filter_spec ~peak_allocations_time

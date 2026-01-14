@@ -298,14 +298,13 @@ end
 
 module Call_sites = struct
   module Callees_from_call_site = struct
-    (* The set of locations that a particular call site invokes. (There can be
-       multiple locations only if it's an indirect call.) *)
+    (* The set of locations that a particular call site invokes. (There can be multiple
+       locations only if it's an indirect call.) *)
     type t = Location.Hash_set.t
   end
 
   module Calls_from_location = struct
-    (* The [Callees_from_call_site.t] for each call site within a particular
-       location. *)
+    (* The [Callees_from_call_site.t] for each call site within a particular location. *)
     type t = Callees_from_call_site.t Call_site.Table.t
   end
 
@@ -375,8 +374,7 @@ end = struct
          | 0 ->
            (* It's tempting to use [raise_notrace] to exit early here, but in the
               _overwhelming_ majority of cases, the list has at most one element, so
-              there's nothing to be gained (in particular, we don't avoid any
-              allocation) *)
+              there's nothing to be gained (in particular, we don't avoid any allocation) *)
            list
          | 1 -> b :: insert rest a
          | _ -> assert false)
@@ -386,9 +384,9 @@ end = struct
       let new_callees =
         (* Be sure to inline [insert] so it specializes [compare] to a cheap [Int.compare]
 
-           This actually seems to be significantly better than just writing
-           [insert] as a recursive function with [compare] hard-coded to [Location.compare].
-           I'm not sure why.
+           This actually seems to be significantly better than just writing [insert] as a
+           recursive function with [compare] hard-coded to [Location.compare]. I'm not
+           sure why.
         *)
         insert t.callees callee
       in
@@ -432,6 +430,7 @@ end = struct
     ; mutable prev_in_length : int
     ; mutable prev_out_length : int
     ; mutable max_next_common_prefix : int
+    ; mutable prev_domain_id : int
     }
 
   let create ~filtered_trace ~callback ~mode ~record_call_sites () =
@@ -452,6 +451,7 @@ end = struct
     ; prev_in_length = 0
     ; prev_out_length = 0
     ; max_next_common_prefix = Int.max_value
+    ; prev_domain_id = -1
     }
   ;;
 
@@ -562,14 +562,20 @@ end = struct
         ; backtrace_buffer = in_backtrace_buffer
         ; backtrace_length = in_backtrace_length
         ; common_prefix = in_common_prefix
+        ; domain
         } ->
+      let domain_id = (domain :> int) in
+      let in_common_prefix =
+        (* Discount common prefix if the domain has changed *)
+        if domain_id = t.prev_domain_id then in_common_prefix else 0
+      in
       let backtrace_known_to_be_truncated = in_common_prefix > in_backtrace_length in
       let in_common_prefix =
         (* The backtrace may in fact be truncated to the first [in_backtrace_length]
-           frames. [in_common_prefix] will nonetheless be the number of frames in
-           common between the two _true_ backtraces. We don't treat the truncated
-           backtrace any differently, so for our purposes the common prefix is just the
-           entire backtrace in this case. *)
+           frames. [in_common_prefix] will nonetheless be the number of frames in common
+           between the two _true_ backtraces. We don't treat the truncated backtrace any
+           differently, so for our purposes the common prefix is just the entire backtrace
+           in this case. *)
         min in_common_prefix in_backtrace_length
       in
       let backtrace_length, common_prefix =
@@ -676,6 +682,7 @@ end = struct
         ; backtrace_buffer
         ; backtrace_length
         ; common_prefix
+        ; domain
         }
     | (Promote _ | Collect _ | End) as ev -> ev
   ;;
@@ -693,11 +700,12 @@ end = struct
           | Preserve_times -> ()
           | Preserve_backtraces ->
             (match event, out_event with
-             | ( Alloc { backtrace_length = in_length; _ }
+             | ( Alloc { backtrace_length = in_length; domain; _ }
                , Alloc { backtrace_length = out_length; _ } ) ->
                t.prev_in_length <- in_length;
                t.prev_out_length <- out_length;
-               t.max_next_common_prefix <- Int.max_value
+               t.max_next_common_prefix <- Int.max_value;
+               t.prev_domain_id <- (domain :> int)
              | Alloc _, _ | _, Alloc _ -> assert false
              | (Promote _ | Collect _ | End), (Promote _ | Collect _ | End) -> ())
         in
@@ -705,18 +713,19 @@ end = struct
       in
       let skip () =
         (* If we don't pass the event through, we need to make sure the next common prefix
-           is no larger than this one so that the next event will know to go back far enough
-           to copy the backtrace from this event.
+           is no larger than this one so that the next event will know to go back far
+           enough to copy the backtrace from this event.
         *)
         let () =
           match t.mode with
           | Preserve_times -> ()
           | Preserve_backtraces ->
             (match event with
-             | Alloc { common_prefix; _ } ->
-               t.max_next_common_prefix <- min common_prefix t.max_next_common_prefix
-             (* *Don't* update prev_in_length, since its purpose is to know how to move the
-                out cursor *from the last event we interpreted* *)
+             | Alloc { common_prefix; domain; _ } ->
+               if (domain :> int) = t.prev_domain_id
+               then t.max_next_common_prefix <- min common_prefix t.max_next_common_prefix
+             (* *Don't* update prev_in_length, since its purpose is to know how to move
+                the out cursor *from the last event we interpreted* *)
              | Promote _ | Collect _ | End -> ())
         in
         ()

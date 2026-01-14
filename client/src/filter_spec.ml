@@ -186,8 +186,8 @@ module Clause = struct
       (* This means it's never collected *)
       Some { filter with collected_range = Empty }
     | Live (Some (Anywhere_in_range pred)) ->
-      (* Live in range [t, t'] means allocated in range [0, t'] and collected in range
-         (t, infty) *)
+      (* Live in range [t, t'] means allocated in range [0, t'] and collected in range (t,
+         infty) *)
       let%bind range = time_span_range_of_range_predicate pred in
       let allocated_range = Range.Time_ns_span.range No_bound range.upper_bound in
       let collected_range =

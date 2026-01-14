@@ -18,6 +18,7 @@ type 'loc t =
       ; backtrace_buffer : 'loc array
       ; backtrace_length : int
       ; common_prefix : int
+      ; domain : Memtrace.Trace.Domain_id.t
       }
   | Promote of Obj_id.t
   | Collect of Obj_id.t
@@ -33,6 +34,7 @@ module As_sexp = struct
         ; size : Byte_units.t
         ; backtrace : 'loc array
         ; common_prefix : int
+        ; domain : int
         }
     | Promote of { obj_id : Obj_id.t }
     | Collect of { obj_id : Obj_id.t }
@@ -50,10 +52,20 @@ let as_sexp : 'loc t -> 'loc As_sexp.t = function
       ; backtrace_buffer
       ; backtrace_length
       ; common_prefix
+      ; domain
       } ->
     let backtrace = Array.sub backtrace_buffer ~pos:0 ~len:backtrace_length in
+    let domain = (domain :> int) in
     Alloc
-      { obj_id; source; single_allocation_size; nsamples; size; backtrace; common_prefix }
+      { obj_id
+      ; source
+      ; single_allocation_size
+      ; nsamples
+      ; size
+      ; backtrace
+      ; common_prefix
+      ; domain
+      }
   | Promote obj_id -> Promote { obj_id }
   | Collect obj_id -> Collect { obj_id }
   | End -> End

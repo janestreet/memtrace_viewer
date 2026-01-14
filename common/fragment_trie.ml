@@ -251,15 +251,15 @@ module Make (Location : Location) (Entry : Entry) (Metadata : Metadata) :
     let oriented fragment ~orient = { Oriented.fragment; orient }
 
     module Iterator = struct
-      (* We represent a position within a fragment the prefix ending at that
-         position and the suffix ending at that position:
+      (* We represent a position within a fragment the prefix ending at that position and
+         the suffix ending at that position:
 
          {v
          |ABCDEFGHIJKLMNOPQRSTUVWXYZ| fragment
           ________I_________________  position
          |ABCDEFGHI|________________  prefix
          ________|IJKLMNOPQRSTUVWXYZ| suffix
-       v} *)
+         v} *)
       type nonrec t =
         { prefix : t
         ; suffix : t
@@ -660,12 +660,12 @@ module Make (Location : Location) (Entry : Entry) (Metadata : Metadata) :
       let unserialize t : trie =
         (* Two passes:
 
-           1. Create the trie by a simple traversal, leaving the caller children and
-           back pointers empty.
+           1. Create the trie by a simple traversal, leaving the caller children and back
+              pointers empty.
            2. Fill in the caller children, now that we have a node for each id. *)
 
-        (* Each unserialized node, along with the edges and ids of its prefix children;
-           we use this to perform pass 2 *)
+        (* Each unserialized node, along with the edges and ids of its prefix children; we
+           use this to perform pass 2 *)
         let fragment_cache : Unserialized_fragment.t Unserialized_fragment.Id.Table.t =
           Unserialized_fragment.Id.Table.create ()
         in

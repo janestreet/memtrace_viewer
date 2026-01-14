@@ -74,8 +74,8 @@ end = struct
   let create ~width ~height ~pos:(pos_x, pos_y) ~max_x ~max_y =
     let right = pos_x +. width in
     let top = pos_y in
-    (* We need to flip the y-direction. To do so, we set the origin at the
-       lower-*left* corner and make [scale_y] negative. *)
+    (* We need to flip the y-direction. To do so, we set the origin at the lower-*left*
+       corner and make [scale_y] negative. *)
     let origin_x = pos_x in
     let origin_y = pos_y +. height in
     let scale_x =
@@ -174,9 +174,9 @@ let component ~series ~regions ~aspect_ratio ~start_time ~time_view ~set_time_vi
      let x_ticks =
        match time_view with
        | Elapsed_seconds ->
-         (* Don't use Nice.Time_ns.Span yet because the ticks are (for now) just labeled as a
-            number of seconds, and a nice number of minutes makes for a weird number of
-            seconds *)
+         (* Don't use Nice.Time_ns.Span yet because the ticks are (for now) just labeled
+            as a number of seconds, and a nice number of minutes makes for a weird number
+            of seconds *)
          Nice.loose_labels ~max_count:11 0. (max_x |> Time_ns.Span.to_sec)
          |> List.map ~f:(fun t -> t |> Time_ns.Span.of_sec)
        | Wall_time ->

@@ -55,6 +55,9 @@ let main () =
   don't_wait_for (run ())
 ;;
 
+module App = App
+module Server_state = Server_state
+
 module For_testing = struct
   module Graph_view = Graph_view
 end

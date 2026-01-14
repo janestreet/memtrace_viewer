@@ -10,6 +10,7 @@ type 'loc t =
       ; backtrace_buffer : 'loc array
       ; backtrace_length : int
       ; common_prefix : int
+      ; domain : Memtrace.Trace.Domain_id.t
       }
   | Promote of Obj_id.t
   | Collect of Obj_id.t

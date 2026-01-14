@@ -142,8 +142,8 @@ module Make (Graph : Graph) = struct
   end
 
   module Context = struct
-    (* Parameters that are unchanged throughout the rendering of one section
-       (the sections being flame, icicle, and focus). *)
+    (* Parameters that are unchanged throughout the rendering of one section (the sections
+       being flame, icicle, and focus). *)
     type t =
       { graph : Graph.t
       ; selection : Selector.t option
@@ -382,8 +382,8 @@ module Make (Graph : Graph) = struct
             [ line; tick; text ]
         ]
     in
-    (* An invisible box that's there so we can scroll the whole sequence into view
-       (see [scroll_focus_into_view] below) *)
+    (* An invisible box that's there so we can scroll the whole sequence into view (see
+       [scroll_focus_into_view] below) *)
     let box =
       match seq with
       | None -> []
@@ -438,8 +438,8 @@ module Make (Graph : Graph) = struct
         x := !x +. width;
         render_tree ~cxt ~x:this_x ~y ~scale ~even ~make_selector tree)
     in
-    (* If there's a single child, flatten the DOM out a little; if nothing else, it
-       makes it easier to poke around using the Chrome inspector *)
+    (* If there's a single child, flatten the DOM out a little; if nothing else, it makes
+       it easier to poke around using the Chrome inspector *)
     match trees with
     | [] | [ _ ] -> tree_views
     | _ -> [ Node_svg.g tree_views ]

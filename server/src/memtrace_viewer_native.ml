@@ -116,6 +116,8 @@ let command =
     ~behave_nicely_in_pipeline:false
 ;;
 
+module User_state = User_state
+
 module For_testing = struct
   module Filtered_trace = Filtered_trace
   module Location = Location
