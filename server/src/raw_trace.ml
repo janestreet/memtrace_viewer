@@ -19,6 +19,7 @@ let info_of_trace_info
   ; host_name
   ; ocaml_runtime_params
   ; pid
+  ; initial_domain = _
   ; start_time
   ; context
   }
@@ -61,6 +62,7 @@ module Event = struct
         ; backtrace_buffer
         ; backtrace_length
         ; common_prefix
+        ; domain
         } ->
       let single_allocation_size = length |> bytes_of_int_words trace in
       let size = nsamples |> bytes_of_nsamples trace in
@@ -73,9 +75,10 @@ module Event = struct
         ; backtrace_buffer
         ; backtrace_length
         ; common_prefix
+        ; domain
         }
-    | Promote obj_id -> Promote obj_id
-    | Collect obj_id -> Collect obj_id
+    | Promote (obj_id, _) -> Promote obj_id
+    | Collect (obj_id, _) -> Collect obj_id
   ;;
 end
 

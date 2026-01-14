@@ -430,6 +430,7 @@ end = struct
     ; mutable prev_in_length : int
     ; mutable prev_out_length : int
     ; mutable max_next_common_prefix : int
+    ; mutable prev_domain_id : int
     }
 
   let create ~filtered_trace ~callback ~mode ~record_call_sites () =
@@ -450,6 +451,7 @@ end = struct
     ; prev_in_length = 0
     ; prev_out_length = 0
     ; max_next_common_prefix = Int.max_value
+    ; prev_domain_id = -1
     }
   ;;
 
@@ -560,7 +562,13 @@ end = struct
         ; backtrace_buffer = in_backtrace_buffer
         ; backtrace_length = in_backtrace_length
         ; common_prefix = in_common_prefix
+        ; domain
         } ->
+      let domain_id = (domain :> int) in
+      let in_common_prefix =
+        (* Discount common prefix if the domain has changed *)
+        if domain_id = t.prev_domain_id then in_common_prefix else 0
+      in
       let backtrace_known_to_be_truncated = in_common_prefix > in_backtrace_length in
       let in_common_prefix =
         (* The backtrace may in fact be truncated to the first [in_backtrace_length]
@@ -674,6 +682,7 @@ end = struct
         ; backtrace_buffer
         ; backtrace_length
         ; common_prefix
+        ; domain
         }
     | (Promote _ | Collect _ | End) as ev -> ev
   ;;
@@ -691,11 +700,12 @@ end = struct
           | Preserve_times -> ()
           | Preserve_backtraces ->
             (match event, out_event with
-             | ( Alloc { backtrace_length = in_length; _ }
+             | ( Alloc { backtrace_length = in_length; domain; _ }
                , Alloc { backtrace_length = out_length; _ } ) ->
                t.prev_in_length <- in_length;
                t.prev_out_length <- out_length;
-               t.max_next_common_prefix <- Int.max_value
+               t.max_next_common_prefix <- Int.max_value;
+               t.prev_domain_id <- (domain :> int)
              | Alloc _, _ | _, Alloc _ -> assert false
              | (Promote _ | Collect _ | End), (Promote _ | Collect _ | End) -> ())
         in
@@ -711,8 +721,9 @@ end = struct
           | Preserve_times -> ()
           | Preserve_backtraces ->
             (match event with
-             | Alloc { common_prefix; _ } ->
-               t.max_next_common_prefix <- min common_prefix t.max_next_common_prefix
+             | Alloc { common_prefix; domain; _ } ->
+               if (domain :> int) = t.prev_domain_id
+               then t.max_next_common_prefix <- min common_prefix t.max_next_common_prefix
              (* *Don't* update prev_in_length, since its purpose is to know how to move
                 the out cursor *from the last event we interpreted* *)
              | Promote _ | Collect _ | End -> ())

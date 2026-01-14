@@ -79,8 +79,8 @@ let component ~which ~max ~start_time ~time_view =
      | Wall_time ->
        (* Note that this will work badly for small steps since we can't get more precise
           than seconds in a "datetime-local" input. (Actually the browser can go to
-          milliseconds, but Vdom_input_widgets doesn't support it.) Wall time doesn't
-          seem useful for such short-running traces, however. *)
+          milliseconds, but Vdom_input_widgets doesn't support it.) Wall time doesn't seem
+          useful for such short-running traces, however. *)
        let step = Nice.Time_ns.Span.round (Time_ns.Span.scale max 0.01) in
        let start_day = Nice.Time_ns.start_of_day_utc start_time in
        let min_input =

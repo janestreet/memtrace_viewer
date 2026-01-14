@@ -26,6 +26,7 @@ depends: [
   "core_unix"
   "incr_dom"
   "incr_map"
+  "memtrace"
   "ocaml-embed-file"
   "ppx_css"
   "ppx_jane"
@@ -37,7 +38,6 @@ depends: [
   "dune"                  {>= "3.17.0"}
   "js_of_ocaml"           {= "6.0.1+ox"}
   "js_of_ocaml-ppx"       {= "6.0.1+ox"}
-  "memtrace"              {>= "0.2.1.2"}
   "uri"                   {>= "3.0.0"}
 ]
 available: arch != "arm32" & arch != "x86_32"

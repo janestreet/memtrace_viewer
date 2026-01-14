@@ -2,6 +2,8 @@ open! Core
 
 val command : Command.t
 
+module User_state = User_state
+
 module For_testing : sig
   module Substring_heavy_hitters : module type of struct
     include Substring_heavy_hitters

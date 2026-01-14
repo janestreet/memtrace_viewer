@@ -22,6 +22,7 @@ let find_heavy_hitters ~trace ~tolerance ~significance_frequency
              ; backtrace_buffer
              ; backtrace_length
              ; common_prefix
+             ; domain = _
              } ->
            (* Important: Memtrace order of stack frames is *toplevel first*, i.e. the
               opposite order to how stack traces are usually displayed. Reversing this

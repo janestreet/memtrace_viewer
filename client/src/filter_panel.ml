@@ -102,8 +102,8 @@ module Submission_handling = struct
        let button =
          Node.input
          (* Don't actually put an onclick handler on the button; just return the handler
-              to be used as the form's onsubmit instead, thus getting Enter key behavior
-              for free
+            to be used as the form's onsubmit instead, thus getting Enter key behavior for
+            free
          *)
            ~attrs:
              [ Attr.type_ "submit"

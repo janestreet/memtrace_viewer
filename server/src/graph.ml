@@ -5,23 +5,34 @@ type obj_info = { size : Byte_units.t }
 
 let full_graph_and_max_time ~trace : (Time_ns.Span.t * Byte_units.t) list * Time_ns.Span.t
   =
-  let objects : obj_info Obj_id.Table.t = Obj_id.Table.create () in
-  let total_size = ref Byte_units.zero in
-  let points : (Time_ns.Span.t * Byte_units.t) list ref = ref [] in
-  let max_time = ref Time_ns.Span.zero in
+  let all_events = ref [] in
   Filtered_trace.iter trace ~mode:Preserve_times (fun time event ->
-    (match event with
-     | Alloc { obj_id; size; _ } ->
-       Hashtbl.add_exn objects ~key:obj_id ~data:{ size };
-       total_size := Byte_units.(!total_size + size)
-     | Promote _ -> ()
-     | Collect obj_id ->
-       let obj_info = Hashtbl.find_exn objects obj_id in
-       Hashtbl.remove objects obj_id;
-       total_size := Byte_units.(!total_size - obj_info.size)
-     | End -> max_time := time);
-    points := (time, !total_size) :: !points);
-  List.rev !points, !max_time
+    all_events := (time, event) :: !all_events);
+  let all_events_ordered =
+    List.sort
+      ~compare:(fun (t1, _) (t2, _) -> Time_ns.Span.compare t1 t2)
+      (List.rev !all_events)
+  in
+  let total_size = ref Byte_units.zero in
+  let objects : obj_info Obj_id.Table.t = Obj_id.Table.create () in
+  let max_time = ref Time_ns.Span.zero in
+  let points =
+    List.map
+      ~f:(fun (time, event) ->
+        (match event with
+         | Alloc { obj_id; size; _ } ->
+           Hashtbl.add_exn objects ~key:obj_id ~data:{ size };
+           total_size := Byte_units.(!total_size + size)
+         | Promote _ -> ()
+         | Collect obj_id ->
+           let obj_info = Hashtbl.find_exn objects obj_id in
+           Hashtbl.remove objects obj_id;
+           total_size := Byte_units.(!total_size - obj_info.size)
+         | End -> max_time := time);
+        time, !total_size)
+      all_events_ordered
+  in
+  points, !max_time
 ;;
 
 let take_samples ~full_graph ~max_time ~count : (Time_ns.Span.t * Byte_units.t) list =
