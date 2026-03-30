@@ -81,7 +81,9 @@ let transform_input ~orient ~focus ~state =
   add_nodes [] roots
 ;;
 
-let and_prevent_default event = Vdom.Effect.Many [ Vdom.Effect.Prevent_default; event ]
+let and_prevent_default event =
+  Vdom.Effect.Many [ Vdom.(Effect.Prevent_default [@alert "-deprecated"]); event ]
+;;
 
 let unroll_action ~orient inject_action selection =
   let keystroke = Vdom_keyboard.Keystroke.create' ArrowRight in

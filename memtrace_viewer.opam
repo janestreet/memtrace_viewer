@@ -6,6 +6,7 @@ bug-reports: "https://github.com/janestreet/memtrace_viewer/issues"
 dev-repo: "git+https://github.com/janestreet/memtrace_viewer.git"
 doc: "https://ocaml.janestreet.com/ocaml-core/latest/doc/memtrace_viewer/index.html"
 license: "MIT"
+x-maintenance-intent: ["(latest)"]
 build: [
   ["dune" "build" "-p" name "-j" jobs]
 ]
@@ -20,7 +21,6 @@ depends: [
   "bonsai"
   "bonsai_web"
   "bonsai_web_components"
-  "codicons"
   "core"
   "core_kernel"
   "core_unix"

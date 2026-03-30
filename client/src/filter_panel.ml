@@ -92,7 +92,10 @@ module Submission_handling = struct
        in
        let on_submit =
          Vdom.Effect.Many
-           [ Vdom.Effect.Prevent_default (* don't do a real HTML submit! *); do_submit ]
+           [ Vdom.(Effect.Prevent_default [@alert "-deprecated"])
+             (* don't do a real HTML submit! *)
+           ; do_submit
+           ]
        in
        let server_is_idle =
          Server_state.Status.is_idle Server_state.(server_state.status)

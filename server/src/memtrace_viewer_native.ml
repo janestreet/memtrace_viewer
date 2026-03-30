@@ -73,7 +73,7 @@ let rec search_for_port_exn ~port ~end_port =
     return port
 ;;
 
-let main ~filename ~port =
+let main ~filename ~port ~http =
   let port, end_port =
     match port with
     | Some port -> port, port
@@ -90,13 +90,14 @@ let main ~filename ~port =
       ~send_every:(Time_ns.Span.of_int_day 1)
       ()
   in
-  printf "Serving http://%s:%d/\n%!" hostname port;
+  let mode, scheme = `TCP, "http" in
+  printf "Serving %s://%s:%d/\n%!" scheme hostname port;
   let%bind server =
     let http_handler () = handler in
     Rpc_websocket.Rpc.serve
       ~heartbeat_config
       ~on_handler_error:`Ignore
-      ~mode:`TCP
+      ~mode
       ~where_to_listen:(Tcp.Where_to_listen.of_port port)
       ~http_handler
       ~implementations:(Rpc_implementations.implementations env)
@@ -111,8 +112,9 @@ let command =
   Command.async
     ~summary:"Start server for memtrace viewer"
     (let%map_open.Command filename = anon ("filename" %: string)
-     and port = flag "port" (optional int) ~doc:"port on which to serve viewer" in
-     fun () -> main ~filename ~port)
+     and port = flag "port" (optional int) ~doc:"port on which to serve viewer"
+     and http = return true in
+     fun () -> main ~filename ~port ~http)
     ~behave_nicely_in_pipeline:false
 ;;
 

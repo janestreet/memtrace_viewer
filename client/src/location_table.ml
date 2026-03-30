@@ -146,7 +146,7 @@ let key_handler ~set_focus ~table_key_handler ~selected_fragment =
         Effect.Many
           [ set_focus selected_fragment
           ; (* Don't scroll the table on Space *)
-            Effect.Prevent_default
+            (Effect.Prevent_default [@alert "-deprecated"])
           ]
       in
       { keys; description; group; handler }
