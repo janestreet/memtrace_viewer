@@ -735,7 +735,10 @@ module Make (Graph : Graph) = struct
       let new_selection = move ~graph ~dir selection in
       match new_selection with
       | Some new_selection ->
-        Vdom.Effect.Many [ Vdom.Effect.Prevent_default; navigate_to new_selection ]
+        Vdom.Effect.Many
+          [ Vdom.(Effect.Prevent_default [@alert "-deprecated"])
+          ; navigate_to new_selection
+          ]
       | None -> Vdom.Effect.Ignore
     ;;
 
