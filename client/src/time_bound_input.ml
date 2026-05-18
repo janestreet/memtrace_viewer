@@ -131,7 +131,7 @@ let component ~which ~max ~start_time ~time_view =
                   ; Attr.create_float "step" (step |> Time_ns.Span.to_sec)
                   ]
                 ~call_on_input_when:Text_changed
-                ~utc_offset:Time_ns.Span.zero
+                ~zone:Timezone.utc
                 ~value:abs_value
                 ~on_input
                 ()

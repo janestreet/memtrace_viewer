@@ -14,6 +14,7 @@ open Bonsai_web_proc
 
 module Col_group : String_id.S =
   (val String_id.make
+         ~caller_identity:String_id.legacy_identity
          ~module_name:"Bonsai_simple_table.Col_group"
          ~include_default_validation:true
          ())
