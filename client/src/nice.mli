@@ -41,7 +41,7 @@ module Time_ns : sig
     -> Time_ns.t
     -> Time_ns.t list
 
-  val start_of_day_utc : Time_ns.t -> Time_ns.t
+  val start_of_day : zone:Time_float.Zone.t -> Time_ns.t -> Time_ns.t
 
   module Span : sig
     val round : Time_ns.Span.t -> Time_ns.Span.t

@@ -261,8 +261,7 @@ let loose_labels = loose_labels ~relative_to:0.
 module Time_ns = struct
   include Make (S_time_ns)
 
-  let start_of_day_utc t =
-    let zone = Time_float.Zone.utc in
+  let start_of_day ~zone t =
     let date = t |> Time_ns.to_date ~zone in
     Time_ns.of_date_ofday ~zone date Time_ns.Ofday.start_of_day
   ;;

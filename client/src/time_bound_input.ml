@@ -76,13 +76,18 @@ let component ~which ~max ~start_time ~time_view =
              ; Node.text " s"
              ]
        }
-     | Wall_time ->
+     | Wall_time utc_or_local ->
        (* Note that this will work badly for small steps since we can't get more precise
           than seconds in a "datetime-local" input. (Actually the browser can go to
           milliseconds, but Vdom_input_widgets doesn't support it.) Wall time doesn't seem
           useful for such short-running traces, however. *)
        let step = Nice.Time_ns.Span.round (Time_ns.Span.scale max 0.01) in
-       let start_day = Nice.Time_ns.start_of_day_utc start_time in
+       let zone =
+         match utc_or_local with
+         | UTC -> Time_float.Zone.utc
+         | Local -> Util.local_zone ()
+       in
+       let start_day = Nice.Time_ns.start_of_day ~zone start_time in
        let min_input =
          Nice.Time_ns.round_down_to_multiple_of_nice
            ~relative_to:start_day
@@ -106,7 +111,6 @@ let component ~which ~max ~start_time ~time_view =
          | Some value -> Some (Time_ns.add start_time value)
          | None -> Some default_value
        in
-       let zone = Time_float.Zone.utc in
        let same_day =
          Date.equal
            (min_input |> Time_ns.to_date ~zone)
@@ -119,7 +123,7 @@ let component ~which ~max ~start_time ~time_view =
             let s = Time_ns.to_string_iso8601_basic ~zone time in
             String.lsplit2_exn ~on:'.' s |> Tuple2.get1
           in
-          { value = value, Large
+          { And_view.value = value, Size.Large
           ; view =
               Vdom_input_widgets.Entry.datetime_local
                 ~allow_updates_when_focused:`Never
@@ -131,7 +135,7 @@ let component ~which ~max ~start_time ~time_view =
                   ; Attr.create_float "step" (step |> Time_ns.Span.to_sec)
                   ]
                 ~call_on_input_when:Text_changed
-                ~zone:Timezone.utc
+                ~zone
                 ~value:abs_value
                 ~on_input
                 ()
@@ -146,7 +150,7 @@ let component ~which ~max ~start_time ~time_view =
                |> Option.map ~f:(fun ofday -> Time_ns.of_date_ofday ~zone date ofday))
           in
           let abs_value = abs_value |> Option.map ~f:(Time_ns.to_ofday ~zone) in
-          { value = value, Size.Small
+          { And_view.value = value, Size.Small
           ; view =
               Vdom_input_widgets.Entry.time
                 ~allow_updates_when_focused:`Never

@@ -9,7 +9,7 @@ module Node_svg = Virtual_dom_svg.Node
 module Series = struct
   type t =
     { css_class : string option
-    ; points : (Time_ns.Span.t * Byte_units.t) list
+    ; points : (Time_ns.Span.t * Byte_units.t) Queue.t
     ; max_x : Time_ns.Span.t
     ; max_y : Byte_units.t
     }
@@ -26,15 +26,30 @@ module Region = struct
   let create ?css_class range = { css_class; range }
 end
 
+module UTC_or_local = struct
+  type t =
+    | UTC
+    | Local
+  [@@deriving equal, sexp]
+
+  let zone = function
+    | UTC -> Time_float.Zone.utc
+    | Local -> Util.local_zone ()
+  ;;
+end
+
 module Time_view = struct
   type t =
     | Elapsed_seconds
-    | Wall_time
+    | Wall_time of UTC_or_local.t
   [@@deriving equal, sexp]
 
-  let to_string = function
+  let to_string ~start_time = function
     | Elapsed_seconds -> "Elapsed time (s)"
-    | Wall_time -> "Wall time"
+    | Wall_time UTC -> "Wall time (UTC)"
+    | Wall_time Local ->
+      let local_zone_abbreviation = Util.local_zone_abbreviation start_time in
+      [%string "Wall time (%{local_zone_abbreviation})"]
   ;;
 end
 
@@ -103,9 +118,16 @@ end
 let _ = Viewport.y_coord_of (* seems silly to leave it out *)
 
 let render_graph_line ~viewport (series : Series.t) =
-  let points = List.map ~f:(Viewport.coords_of viewport) series.points in
+  (* Tragically, the buck stops here. Short of rewriting Bonsai we are forced to use a
+     linked list. At the very least we can reduce the amount of allocation we incur by
+     building the list directly. *)
+  let points = ref [] in
+  for i = Queue.length series.points - 1 downto 0 do
+    let point = Queue.get series.points i |> Viewport.coords_of viewport in
+    points := point :: !points
+  done;
   let classes = List.filter_opt [ Some "graph-line"; series.css_class ] in
-  Node_svg.polyline ~attrs:[ Attr.classes classes; Attr_svg.points points ] []
+  Node_svg.polyline ~attrs:[ Attr.classes classes; Attr_svg.points !points ] []
 ;;
 
 (* Important that this have as few inputs as possible, since this is the expensive part *)
@@ -148,7 +170,7 @@ let component ~series ~regions ~aspect_ratio ~start_time ~time_view ~set_time_vi
     let labels_height =
       match time_view with
       | Time_view.Elapsed_seconds -> 25.
-      | Wall_time -> 50.
+      | Wall_time _ -> 50.
     in
     let data_height = height -. data_pos_y -. labels_height in
     Viewport.create
@@ -179,9 +201,10 @@ let component ~series ~regions ~aspect_ratio ~start_time ~time_view ~set_time_vi
             of seconds *)
          Nice.loose_labels ~max_count:11 0. (max_x |> Time_ns.Span.to_sec)
          |> List.map ~f:(fun t -> t |> Time_ns.Span.of_sec)
-       | Wall_time ->
+       | Wall_time utc_or_local ->
          let end_time = Time_ns.add start_time max_x in
-         let start_day = Nice.Time_ns.start_of_day_utc start_time in
+         let zone = UTC_or_local.zone utc_or_local in
+         let start_day = Nice.Time_ns.start_of_day ~zone start_time in
          Nice.Time_ns.loose_labels
            ~max_count:11
            ~relative_to:start_day
@@ -224,28 +247,27 @@ let component ~series ~regions ~aspect_ratio ~start_time ~time_view ~set_time_vi
            let label_x =
              match time_view with
              | Elapsed_seconds -> Viewport.x_coord_of viewport x
-             | Wall_time -> Viewport.x_coord_of viewport x -. 5.
+             | Wall_time _ -> Viewport.x_coord_of viewport x -. 5.
            in
            let label_y = Viewport.bottom viewport +. 15. in
            let label =
              match time_view with
              | Elapsed_seconds -> sprintf "%g" (x |> Time_ns.Span.to_sec)
-             | Wall_time ->
+             | Wall_time utc_or_local ->
                let wall_time = Time_ns.add start_time x in
-               let _, time_of_day =
-                 Time_ns.to_date_ofday ~zone:Time_float.Zone.utc wall_time
-               in
+               let zone = UTC_or_local.zone utc_or_local in
+               let _, time_of_day = Time_ns.to_date_ofday ~zone wall_time in
                Time_ns.Ofday.to_string_trimmed time_of_day
            in
            let classes =
              match time_view with
              | Elapsed_seconds -> [ "graph-label"; "graph-label-x" ]
-             | Wall_time -> [ "graph-label"; "graph-label-long"; "graph-label-x" ]
+             | Wall_time _ -> [ "graph-label"; "graph-label-long"; "graph-label-x" ]
            in
            let transform_attrs =
              match time_view with
              | Elapsed_seconds -> Attr.empty
-             | Wall_time ->
+             | Wall_time _ ->
                Attr_svg.transform [ Rotate { a = `Deg 20.; x = label_x; y = label_y } ]
            in
            Node_svg.text
@@ -334,10 +356,16 @@ let component ~series ~regions ~aspect_ratio ~start_time ~time_view ~set_time_vi
      in
      let region_boxes = List.map ~f:region_box regions in
      let time_view_control =
+       let module Time_view_with_label = struct
+         include Time_view
+
+         let to_string time_view = to_string ~start_time time_view
+       end
+       in
        Vdom_input_widgets.Dropdown.of_values
          ~merge_behavior:Legacy_dont_merge
-         (module Time_view)
-         [ Time_view.Elapsed_seconds; Wall_time ]
+         (module Time_view_with_label)
+         [ Time_view.Elapsed_seconds; Wall_time UTC; Wall_time Local ]
          ~selected:time_view
          ~on_change:set_time_view
      in

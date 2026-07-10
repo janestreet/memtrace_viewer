@@ -237,7 +237,9 @@ module Collected_clause_head = struct
   [@@deriving sexp, enumerate, compare, equal]
 
   let to_string = function
-    | In_range range -> Range_predicate_head.With_time_phrasing.to_string range
+    | In_range LE -> "at or before"
+    | In_range GE -> "at or after or never"
+    | In_range Between -> "between"
     | Never -> "never"
   ;;
 end

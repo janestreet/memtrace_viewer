@@ -5,26 +5,35 @@ open Memtrace_viewer_client.For_testing
 module Handle = Bonsai_web_test.Handle
 
 let mk_series ~start_y ~count ~step_x ~step_y ~css_class =
-  let rec loop ~x ~y ~max_y ~count ~rev_acc =
+  let rec loop ~x ~y ~max_y ~count ~points =
     match count with
     | 0 ->
       let max_x = Time_ns.Span.(x - step_x) in
-      assert (List.for_all rev_acc ~f:(fun (_, y) -> Byte_units.(y <= max_y)));
-      let points = List.rev rev_acc in
+      assert (Queue.for_all points ~f:(fun (_, y) -> Byte_units.(y <= max_y)));
       Graph_view.Series.create ~css_class ~max_x ~max_y points
     | _ ->
       let max_y = Byte_units.max y max_y in
-      let rev_acc = (x, y) :: rev_acc in
+      Queue.enqueue points (x, y);
       let x = Time_ns.Span.(x + step_x) in
       let y = Byte_units.(y + step_y) in
       let count = count - 1 in
-      loop ~x ~y ~max_y ~count ~rev_acc
+      loop ~x ~y ~max_y ~count ~points
   in
   match count with
   | 0 ->
-    Graph_view.Series.create ~css_class ~max_x:Time_ns.Span.zero ~max_y:Byte_units.zero []
+    Graph_view.Series.create
+      ~css_class
+      ~max_x:Time_ns.Span.zero
+      ~max_y:Byte_units.zero
+      (Queue.create ~capacity:0 ())
   | _ when count < 0 -> assert false
-  | _ -> loop ~x:Time_ns.Span.zero ~y:start_y ~max_y:Byte_units.zero ~count ~rev_acc:[]
+  | _ ->
+    loop
+      ~x:Time_ns.Span.zero
+      ~y:start_y
+      ~max_y:Byte_units.zero
+      ~count
+      ~points:(Queue.create ~capacity:count ())
 ;;
 
 let get_vdom graph_view = graph_view
@@ -67,6 +76,7 @@ let mk_handle () =
     |> Effect.of_sync_fun
     |> Bonsai.Value.return
   in
+  Util.override_local_zone (Time_float.Zone.of_utc_offset ~hours:1);
   let graph_view =
     Graph_view.component
       ~series
@@ -207,14 +217,15 @@ let%expect_test "default graph view" =
       <div class="graph-x-axis-label">
         <select class="widget-dropdown" @on_change>
           <option value="0" #selected="true"> Elapsed time (s) </option>
-          <option value="1" #selected="false"> Wall time </option>
+          <option value="1" #selected="false"> Wall time (UTC) </option>
+          <option value="2" #selected="false"> Wall time (UTC+1) </option>
         </select>
       </div>
     </div>
     |}]
 ;;
 
-let%expect_test "change view to wall time" =
+let%expect_test "change view to wall time utc" =
   let handle = mk_handle () in
   Handle.store_view handle;
   Handle.change handle ~selector:".graph-x-axis-label select" ~value:"1" ~get_vdom;
@@ -441,8 +452,245 @@ let%expect_test "change view to wall time" =
           <select class="widget-dropdown" @on_change>
     -|      <option value="0" #selected="true"> Elapsed time (s) </option>
     +|      <option value="0" #selected="false"> Elapsed time (s) </option>
-    -|      <option value="1" #selected="false"> Wall time </option>
-    +|      <option value="1" #selected="true"> Wall time </option>
+    -|      <option value="1" #selected="false"> Wall time (UTC) </option>
+    +|      <option value="1" #selected="true"> Wall time (UTC) </option>
+            <option value="2" #selected="false"> Wall time (UTC+1) </option>
+          </select>
+        </div>
+      </div>
+    |}]
+;;
+
+let%expect_test "change view to wall time local" =
+  let handle = mk_handle () in
+  Handle.store_view handle;
+  Handle.change handle ~selector:".graph-x-axis-label select" ~value:"2" ~get_vdom;
+  Handle.show_diff handle;
+  [%expect
+    {|
+      <div id="filter-graph-and-controls">
+        <div id="filter-graph-container">
+          <div id="filter-graph-sizer" size_tracker=<fun>>
+            <svg id="filter-graph" viewBox="0 0 450 225" preserveAspectRatio="none" class="graph">
+    -|        <g x="0" y="0" width="390" height="195" class="graph-data">
+    +|        <g x="0" y="0" width="390" height="170" class="graph-data">
+    -|          <rect x="50" y="5" width="390" height="195" class="graph-border"> </rect>
+    +|          <rect x="50" y="5" width="390" height="170" class="graph-border"> </rect>
+                <g>
+    -|            <polyline points="50,200 70.52631578947368,193.5 91.05263157894737,187 111.57894736842105,180.5 132.10526315789474,174 152.63157894736844,167.5 173.1578947368421,161 193.68421052631578,154.5 214.21052631578948,148 234.73684210526318,141.5 255.26315789473685,135 275.7894736842105,128.5 296.3157894736842,122 316.8421052631579,115.5 337.36842105263156,109 357.89473684210526,102.5 378.42105263157896,96 398.94736842105266,89.5 419.47368421052636,83 440,76.5"
+    +|            <polyline points="50,175 70.52631578947368,169.33333333333334 91.05263157894737,163.66666666666666 111.57894736842105,158 132.10526315789474,152.33333333333334 152.63157894736844,146.66666666666666 173.1578947368421,141 193.68421052631578,135.33333333333331 214.21052631578948,129.66666666666666 234.73684210526318,124 255.26315789473685,118.33333333333333 275.7894736842105,112.66666666666666 296.3157894736842,107 316.8421052631579,101.33333333333333 337.36842105263156,95.66666666666666 357.89473684210526,90 378.42105263157896,84.33333333333333 398.94736842105266,78.66666666666666 419.47368421052636,73 440,67.33333333333333"
+                            class="graph-line series-a"> </polyline>
+    -|            <polyline points="50,5 70.52631578947368,13.125 91.05263157894737,21.25 111.57894736842105,29.375 132.10526315789474,37.5 152.63157894736844,45.625 173.1578947368421,53.75 193.68421052631578,61.875 214.21052631578948,70 234.73684210526318,78.125 255.26315789473685,86.25 275.7894736842105,94.375 296.3157894736842,102.5 316.8421052631579,110.625 337.36842105263156,118.75 357.89473684210526,126.875 378.42105263157896,135 398.94736842105266,143.125 419.47368421052636,151.25 440,159.375"
+    +|            <polyline points="50,5 70.52631578947368,12.083333333333314 91.05263157894737,19.166666666666657 111.57894736842105,26.25 132.10526315789474,33.333333333333314 152.63157894736844,40.41666666666666 173.1578947368421,47.5 193.68421052631578,54.58333333333333 214.21052631578948,61.66666666666666 234.73684210526318,68.75 255.26315789473685,75.83333333333333 275.7894736842105,82.91666666666666 296.3157894736842,90 316.8421052631579,97.08333333333333 337.36842105263156,104.16666666666666 357.89473684210526,111.25 378.42105263157896,118.33333333333333 398.94736842105266,125.41666666666666 419.47368421052636,132.5 440,139.58333333333331"
+                            class="graph-line series-b"> </polyline>
+                </g>
+                <g>
+                  <line x1="91.05263157894737"
+    -|                  y1="190.25"
+    +|                  y1="166.5"
+                        x2="91.05263157894737"
+    -|                  y2="200"
+    +|                  y2="175"
+                        class="graph-tick-mark"> </line>
+                  <line x1="132.10526315789474"
+    -|                  y1="190.25"
+    +|                  y1="166.5"
+                        x2="132.10526315789474"
+    -|                  y2="200"
+    +|                  y2="175"
+                        class="graph-tick-mark"> </line>
+                  <line x1="173.1578947368421"
+    -|                  y1="190.25"
+    +|                  y1="166.5"
+                        x2="173.1578947368421"
+    -|                  y2="200"
+    +|                  y2="175"
+                        class="graph-tick-mark"> </line>
+                  <line x1="214.21052631578948"
+    -|                  y1="190.25"
+    +|                  y1="166.5"
+                        x2="214.21052631578948"
+    -|                  y2="200"
+    +|                  y2="175"
+                        class="graph-tick-mark"> </line>
+                  <line x1="255.26315789473685"
+    -|                  y1="190.25"
+    +|                  y1="166.5"
+                        x2="255.26315789473685"
+    -|                  y2="200"
+    +|                  y2="175"
+                        class="graph-tick-mark"> </line>
+                  <line x1="296.3157894736842"
+    -|                  y1="190.25"
+    +|                  y1="166.5"
+                        x2="296.3157894736842"
+    -|                  y2="200"
+    +|                  y2="175"
+                        class="graph-tick-mark"> </line>
+                  <line x1="337.36842105263156"
+    -|                  y1="190.25"
+    +|                  y1="166.5"
+                        x2="337.36842105263156"
+    -|                  y2="200"
+    +|                  y2="175"
+                        class="graph-tick-mark"> </line>
+                  <line x1="378.42105263157896"
+    -|                  y1="190.25"
+    +|                  y1="166.5"
+                        x2="378.42105263157896"
+    -|                  y2="200"
+    +|                  y2="175"
+                        class="graph-tick-mark"> </line>
+                  <line x1="419.47368421052636"
+    -|                  y1="190.25"
+    +|                  y1="166.5"
+                        x2="419.47368421052636"
+    -|                  y2="200"
+    +|                  y2="175"
+                        class="graph-tick-mark"> </line>
+                </g>
+                <g>
+    -|            <line x1="59.75" y1="167.5" x2="50" y2="167.5" class="graph-tick-mark"> </line>
+    +|            <line x1="58.5"
+    +|                  y1="146.66666666666666"
+    +|                  x2="50"
+    +|                  y2="146.66666666666666"
+    +|                  class="graph-tick-mark"> </line>
+    -|            <line x1="59.75" y1="135" x2="50" y2="135" class="graph-tick-mark"> </line>
+    +|            <line x1="58.5"
+    +|                  y1="118.33333333333333"
+    +|                  x2="50"
+    +|                  y2="118.33333333333333"
+    +|                  class="graph-tick-mark"> </line>
+    -|            <line x1="59.75" y1="102.5" x2="50" y2="102.5" class="graph-tick-mark"> </line>
+    +|            <line x1="58.5" y1="90" x2="50" y2="90" class="graph-tick-mark"> </line>
+    -|            <line x1="59.75" y1="70" x2="50" y2="70" class="graph-tick-mark"> </line>
+    +|            <line x1="58.5"
+    +|                  y1="61.66666666666666"
+    +|                  x2="50"
+    +|                  y2="61.66666666666666"
+    +|                  class="graph-tick-mark"> </line>
+    -|            <line x1="59.75" y1="37.5" x2="50" y2="37.5" class="graph-tick-mark"> </line>
+    +|            <line x1="58.5"
+    +|                  y1="33.333333333333314"
+    +|                  x2="50"
+    +|                  y2="33.333333333333314"
+    +|                  class="graph-tick-mark"> </line>
+    -|            <line x1="59.75" y1="5" x2="50" y2="5" class="graph-tick-mark"> </line>
+    +|            <line x1="58.5" y1="5" x2="50" y2="5" class="graph-tick-mark"> </line>
+                </g>
+              </g>
+              <g>
+    -|          <text x="50" y="215" class="graph-label graph-label-x"> 0 </text>
+    +|          <text x="45"
+    +|                y="190"
+    +|                transform="rotate(20, 45, 190)"
+    +|                class="graph-label graph-label-long graph-label-x"> 13:00 </text>
+    -|          <text x="91.05263157894737" y="215" class="graph-label graph-label-x"> 2 </text>
+    +|          <text x="86.05263157894737"
+    +|                y="190"
+    +|                transform="rotate(20, 86.05263157894737, 190)"
+    +|                class="graph-label graph-label-long graph-label-x"> 13:00:02 </text>
+    -|          <text x="132.10526315789474" y="215" class="graph-label graph-label-x"> 4 </text>
+    +|          <text x="127.10526315789474"
+    +|                y="190"
+    +|                transform="rotate(20, 127.10526315789474, 190)"
+    +|                class="graph-label graph-label-long graph-label-x"> 13:00:04 </text>
+    -|          <text x="173.1578947368421" y="215" class="graph-label graph-label-x"> 6 </text>
+    +|          <text x="168.1578947368421"
+    +|                y="190"
+    +|                transform="rotate(20, 168.1578947368421, 190)"
+    +|                class="graph-label graph-label-long graph-label-x"> 13:00:06 </text>
+    -|          <text x="214.21052631578948" y="215" class="graph-label graph-label-x"> 8 </text>
+    +|          <text x="209.21052631578948"
+    +|                y="190"
+    +|                transform="rotate(20, 209.21052631578948, 190)"
+    +|                class="graph-label graph-label-long graph-label-x"> 13:00:08 </text>
+    -|          <text x="255.26315789473685" y="215" class="graph-label graph-label-x"> 10 </text>
+    +|          <text x="250.26315789473685"
+    +|                y="190"
+    +|                transform="rotate(20, 250.26315789473685, 190)"
+    +|                class="graph-label graph-label-long graph-label-x"> 13:00:10 </text>
+    -|          <text x="296.3157894736842" y="215" class="graph-label graph-label-x"> 12 </text>
+    +|          <text x="291.3157894736842"
+    +|                y="190"
+    +|                transform="rotate(20, 291.3157894736842, 190)"
+    +|                class="graph-label graph-label-long graph-label-x"> 13:00:12 </text>
+    -|          <text x="337.36842105263156" y="215" class="graph-label graph-label-x"> 14 </text>
+    +|          <text x="332.36842105263156"
+    +|                y="190"
+    +|                transform="rotate(20, 332.36842105263156, 190)"
+    +|                class="graph-label graph-label-long graph-label-x"> 13:00:14 </text>
+    -|          <text x="378.42105263157896" y="215" class="graph-label graph-label-x"> 16 </text>
+    +|          <text x="373.42105263157896"
+    +|                y="190"
+    +|                transform="rotate(20, 373.42105263157896, 190)"
+    +|                class="graph-label graph-label-long graph-label-x"> 13:00:16 </text>
+    -|          <text x="419.47368421052636" y="215" class="graph-label graph-label-x"> 18 </text>
+    +|          <text x="414.47368421052636"
+    +|                y="190"
+    +|                transform="rotate(20, 414.47368421052636, 190)"
+    +|                class="graph-label graph-label-long graph-label-x"> 13:00:18 </text>
+    -|        </g>
+    -|        <g>
+    -|          <text x="45" y="200" class="graph-label graph-label-y"> 0B </text>
+    +|        </g>
+    +|        <g>
+    +|          <text x="45" y="175" class="graph-label graph-label-y"> 0B </text>
+    -|          <text x="45" y="167.5" class="graph-label graph-label-y"> 5.00M </text>
+    +|          <text x="45" y="146.66666666666666" class="graph-label graph-label-y"> 5.00M </text>
+    -|          <text x="45" y="135" class="graph-label graph-label-y"> 10.0M </text>
+    +|          <text x="45" y="118.33333333333333" class="graph-label graph-label-y"> 10.0M </text>
+    -|          <text x="45" y="102.5" class="graph-label graph-label-y"> 15.0M </text>
+    +|          <text x="45" y="90" class="graph-label graph-label-y"> 15.0M </text>
+    -|          <text x="45" y="70" class="graph-label graph-label-y"> 20.0M </text>
+    +|          <text x="45" y="61.66666666666666" class="graph-label graph-label-y"> 20.0M </text>
+    -|          <text x="45" y="37.5" class="graph-label graph-label-y"> 25.0M </text>
+    +|          <text x="45" y="33.333333333333314" class="graph-label graph-label-y"> 25.0M </text>
+                <text x="45" y="5" class="graph-label graph-label-y"> 30.0M </text>
+              </g>
+              <g>
+                <g class="graph-region region-a">
+                  <rect x="50"
+                        y="5"
+                        width="82.10526315789474"
+    -|                  height="195"
+    +|                  height="170"
+                        class="graph-region-interior"> </rect>
+                  <g> </g>
+                  <line x1="132.10526315789474"
+                        y1="5"
+                        x2="132.10526315789474"
+    -|                  y2="200"
+    +|                  y2="175"
+                        class="graph-region-bound graph-region-bound-closed"> </line>
+                </g>
+                <g class="graph-region region-b">
+                  <rect x="398.94736842105266"
+                        y="5"
+                        width="41.05263157894734"
+    -|                  height="195"
+    +|                  height="170"
+                        class="graph-region-interior"> </rect>
+                  <line x1="398.94736842105266"
+                        y1="5"
+                        x2="398.94736842105266"
+    -|                  y2="200"
+    +|                  y2="175"
+                        class="graph-region-bound graph-region-bound-closed"> </line>
+                  <g> </g>
+                </g>
+              </g>
+            </svg>
+          </div>
+        </div>
+        <div class="graph-x-axis-label">
+          <select class="widget-dropdown" @on_change>
+    -|      <option value="0" #selected="true"> Elapsed time (s) </option>
+    +|      <option value="0" #selected="false"> Elapsed time (s) </option>
+            <option value="1" #selected="false"> Wall time (UTC) </option>
+    -|      <option value="2" #selected="false"> Wall time (UTC+1) </option>
+    +|      <option value="2" #selected="true"> Wall time (UTC+1) </option>
           </select>
         </div>
       </div>
@@ -671,7 +919,8 @@ let%expect_test "resize graph" =
         <div class="graph-x-axis-label">
           <select class="widget-dropdown" @on_change>
             <option value="0" #selected="true"> Elapsed time (s) </option>
-            <option value="1" #selected="false"> Wall time </option>
+            <option value="1" #selected="false"> Wall time (UTC) </option>
+            <option value="2" #selected="false"> Wall time (UTC+1) </option>
           </select>
         </div>
       </div>

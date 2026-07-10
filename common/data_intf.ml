@@ -94,8 +94,8 @@ module type Data = sig
     (* (time, major heap size) pairs *)
     type t [@@deriving sexp, bin_io]
 
-    val create : (Time_ns.Span.t * Byte_units.t) list -> t
-    val points : t -> (Time_ns.Span.t * Byte_units.t) list
+    val create : (Time_ns.Span.t * Byte_units.t) Queue.t -> t
+    val points : t -> (Time_ns.Span.t * Byte_units.t) Queue.t
     val max_x : t -> Time_ns.Span.t
     val max_y : t -> Byte_units.t
   end
