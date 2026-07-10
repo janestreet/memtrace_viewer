@@ -36,6 +36,9 @@ module type S = sig
       its upper bound is either [No_bound] or greater than [upper]. *)
   val covers_points : t -> lower:Point.t -> upper:Point.t -> bool
 
+  (** Returns whether the range has no upper_bound *)
+  val is_endless : t -> bool
+
   val disjoint : t -> t -> bool
 
   module Or_empty : sig
@@ -51,6 +54,9 @@ module type S = sig
     val empty : t
     val is_empty : t -> bool
     val contains_point : t -> Point.t -> bool
+
+    (** Returns whether the range has no upper_bound *)
+    val is_endless : t -> bool
 
     (** Return the join of two ranges. See caveat on [Make.join]. *)
     val join : t -> t -> t

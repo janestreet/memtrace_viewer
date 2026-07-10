@@ -36,11 +36,14 @@ depends: [
   "cohttp"                {>= "2.5.6"}
   "cohttp-async"          {>= "2.5.7" & < "3.0.0" | >= "5.1.1" & < "6.0.0"}
   "dune"                  {>= "3.17.0"}
-  "js_of_ocaml"           {= "6.0.1+ox"}
-  "js_of_ocaml-ppx"       {= "6.0.1+ox"}
+  "js_of_ocaml"           {>= "6.0.0"}
+  "js_of_ocaml-ppx"       {>= "6.0.0"}
   "uri"                   {>= "3.0.0"}
 ]
 available: arch != "x86_32"
+conflicts: [
+  "oxcaml-compiler" {< "5.2.0minus39"}
+]
 synopsis: "Interactive memory profiler based on Memtrace"
 description: "
 Processes traces produced by the Memtrace library and displays the

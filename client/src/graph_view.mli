@@ -9,7 +9,7 @@ module Series : sig
     :  ?css_class:string
     -> max_x:Time_ns.Span.t
     -> max_y:Byte_units.t
-    -> (Time_ns.Span.t * Byte_units.t) list
+    -> (Time_ns.Span.t * Byte_units.t) Queue.t
     -> t
 end
 
@@ -19,10 +19,17 @@ module Region : sig
   val create : ?css_class:string -> Range.Time_ns_span.Or_empty.t -> t
 end
 
+module UTC_or_local : sig
+  type t =
+    | UTC
+    | Local
+  [@@deriving equal, sexp]
+end
+
 module Time_view : sig
   type t =
     | Elapsed_seconds
-    | Wall_time
+    | Wall_time of UTC_or_local.t
   [@@deriving sexp, equal]
 end
 

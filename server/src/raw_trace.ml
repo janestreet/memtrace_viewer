@@ -92,7 +92,7 @@ let iter t ~parse_backtraces f =
   Memtrace.Trace.Reader.iter t.trace ~parse_backtraces (fun time event ->
     let time = time |> time_span_of_timedelta in
     let event = event |> Event.of_memtrace_event t in
-    last_time := time;
+    last_time := Time_ns.Span.max !last_time time;
     f time event);
   f !last_time End
 ;;

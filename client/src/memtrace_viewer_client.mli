@@ -7,4 +7,5 @@ module Server_state = Server_state
 
 module For_testing : sig
   module Graph_view = Graph_view
+  module Util = Util
 end

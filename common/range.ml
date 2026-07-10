@@ -115,6 +115,12 @@ module Make (Point : Point) = struct
     in_bound ~which:Lower lower lower_bound && in_bound ~which:Upper upper upper_bound
   ;;
 
+  let is_endless { lower_bound = _; upper_bound } =
+    match upper_bound with
+    | No_bound -> true
+    | Closed _ | Open _ -> false
+  ;;
+
   let min_by ~f x y = if f x y < 0 then x else y
   let max_by ~f x y = if f x y > 0 then x else y
 
@@ -156,6 +162,12 @@ module Make (Point : Point) = struct
       match t with
       | Empty -> true
       | Non_empty _ -> false
+    ;;
+
+    let is_endless t =
+      match t with
+      | Empty -> false
+      | Non_empty range -> is_endless range
     ;;
 
     let contains_point t point =

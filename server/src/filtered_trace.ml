@@ -168,12 +168,8 @@ let should_keep_object_collected_at time ({ collected_range; _ } : Filter.t) =
     collected". In other words, "collected at or after" includes "collected never". This
     is important because "live at t" is interpreted as "allocated at or before t and
     collected after t". *)
-let should_keep_objects_that_are_never_collected
-  ~time_at_end
-  ({ collected_range; _ } : Filter.t)
-  =
-  Range.Time_ns_span.Or_empty.(
-    is_empty collected_range || contains_point collected_range time_at_end)
+let should_keep_objects_that_are_never_collected ({ collected_range; _ } : Filter.t) =
+  Range.Time_ns_span.Or_empty.(is_empty collected_range || is_endless collected_range)
 ;;
 
 let obj_ids_matching_filter ~trace ~loc_cache (filter : Filter.t) =
@@ -251,7 +247,7 @@ let obj_ids_matching_filter ~trace ~loc_cache (filter : Filter.t) =
       deallocate obj_id
     | End ->
       let time_at_end = time in
-      if should_keep_objects_that_are_never_collected filter ~time_at_end
+      if should_keep_objects_that_are_never_collected filter
       then
         Hashtbl.iteri live ~f:(fun ~key:obj_id ~data:alloc_time ->
           let lifetime = Time_ns.Span.( - ) time_at_end alloc_time in

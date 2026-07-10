@@ -260,18 +260,21 @@ end
 
 module Graph = struct
   type t =
-    { points : (Time_ns.Span.t * Byte_units.Stable.V2.t) list
+    { points : (Time_ns.Span.t * Byte_units.Stable.V2.t) Queue.t
     ; max_x : Time_ns.Span.t
     ; max_y : Byte_units.Stable.V2.t
     }
   [@@deriving sexp, bin_io, fields ~getters]
 
   let create points =
-    let max_x, max_y =
-      List.fold_left
-        points
-        ~init:(Time_ns.Span.zero, Byte_units.zero)
-        ~f:(fun (_, max_y) (x, y) -> x, Byte_units.max max_y y)
+    let max_y =
+      Queue.fold points ~init:Byte_units.zero ~f:(stack_ fun max_y (_, y) ->
+        Byte_units.max max_y y)
+    in
+    let max_x =
+      match Queue.last points with
+      | Some (x, _) -> x
+      | None -> Time_ns.Span.zero
     in
     { points; max_x; max_y }
   ;;
@@ -496,7 +499,7 @@ include
     end)
 
 let empty =
-  { graph = Graph.create []
+  { graph = Graph.create (Queue.create ~capacity:0 ())
   ; filtered_graph = None
   ; trie = Fragment_trie.empty
   ; total_allocations_unfiltered = Byte_units.zero

@@ -1,66 +1,80 @@
 open! Core
 open Memtrace_viewer_common
 
-type obj_info = { size : Byte_units.t }
+type obj_info = { size : Byte_units.t } [@@unboxed]
 
-let full_graph_and_max_time ~trace : (Time_ns.Span.t * Byte_units.t) list * Time_ns.Span.t
+let full_graph_and_max_time ~trace
+  : (Time_ns.Span.t * Byte_units.t) iarray * Time_ns.Span.t
   =
-  let all_events = ref [] in
+  let all_events = Queue.create ~capacity:128 () in
   Filtered_trace.iter trace ~mode:Preserve_times (fun time event ->
-    all_events := (time, event) :: !all_events);
-  let all_events_ordered =
-    List.sort
-      ~compare:(fun (t1, _) (t2, _) -> Time_ns.Span.compare t1 t2)
-      (List.rev !all_events)
+    Queue.enqueue all_events (time, event));
+  let all_events = Queue.to_array all_events in
+  let () =
+    (* In practice it appears the events are pre-sorted, and [Array.is_sorted] is *much*
+       faster than [Array.sort] in this case, saving us a considerable amount of time on
+       large traces. *)
+    let[@inline always] compare (t1, _) (t2, _) = Time_ns.Span.compare t1 t2 in
+    if not ((Array.is_sorted [@inlined hint]) all_events ~compare)
+    then Array.sort all_events ~compare
   in
   let total_size = ref Byte_units.zero in
-  let objects : obj_info Obj_id.Table.t = Obj_id.Table.create () in
   let max_time = ref Time_ns.Span.zero in
   let points =
-    List.map
-      ~f:(fun (time, event) ->
-        (match event with
-         | Alloc { obj_id; size; _ } ->
-           Hashtbl.add_exn objects ~key:obj_id ~data:{ size };
-           total_size := Byte_units.(!total_size + size)
-         | Promote _ -> ()
-         | Collect obj_id ->
-           let obj_info = Hashtbl.find_exn objects obj_id in
-           Hashtbl.remove objects obj_id;
-           total_size := Byte_units.(!total_size - obj_info.size)
-         | End -> max_time := time);
-        time, !total_size)
-      all_events_ordered
+    let objects = Obj_id_table.create () in
+    Array.map all_events ~f:(stack_ fun (time, event) ->
+      (match event with
+       | Alloc { obj_id; size; _ } ->
+         Obj_id_table.add_exn objects ~key:obj_id ~data:{ size };
+         total_size := Byte_units.(!total_size + size)
+       | Promote _ -> ()
+       | Collect obj_id ->
+         let obj_info = Obj_id_table.find_and_remove_exn objects obj_id in
+         total_size := Byte_units.(!total_size - obj_info.size)
+       | End -> max_time := time);
+      time, !total_size)
   in
+  let points = Iarray.unsafe_of_array__promise_no_mutation points in
   points, !max_time
 ;;
 
-let take_samples ~full_graph ~max_time ~count : (Time_ns.Span.t * Byte_units.t) list =
+let take_samples ~full_graph ~max_time ~count : (Time_ns.Span.t * Byte_units.t) Queue.t =
   let count_float = count |> Float.of_int in
   let sample_time ~index =
     let frac_done = (index |> Float.of_int) /. count_float in
     Time_ns.Span.scale max_time frac_done
   in
-  let rec sample ~index ~total_size ~points =
+  let rec sample ~index ~total_size ~points ~offset ~samples =
     if index > count
-    then (
-      assert (List.is_empty points);
-      [])
+    then assert (offset = Iarray.length points)
     else (
       let sample_time = sample_time ~index in
-      let window, points =
-        List.split_while points ~f:(fun (time, _) -> Time_ns.Span.(time <= sample_time))
+      let[@inline always] is_before_sample_time (time, _) =
+        Time_ns.Span.O.(time <= sample_time)
       in
+      let length = Iarray.length points in
+      let starting_offset = offset in
+      let offset = ref offset in
+      while
+        !offset < length && is_before_sample_time (Iarray.unsafe_get points !offset)
+      do
+        offset := !offset + 1
+      done;
+      let offset = !offset in
       let total_size =
-        match List.last window with
-        | Some (_, total_size) -> total_size
-        | None -> total_size
+        if offset > starting_offset
+        then (
+          let _, total_size' = Iarray.get points (offset - 1) in
+          total_size')
+        else total_size
       in
       let index = index + 1 in
-      (sample_time, total_size) :: sample ~index ~total_size ~points)
+      Queue.enqueue samples (sample_time, total_size);
+      sample ~index ~total_size ~points ~offset ~samples)
   in
-  let samples = sample ~index:1 ~points:full_graph ~total_size:Byte_units.zero in
-  assert (List.length samples = count);
+  let samples = Queue.create ~capacity:count () in
+  sample ~index:1 ~points:full_graph ~total_size:Byte_units.zero ~offset:0 ~samples;
+  assert (Queue.length samples = count);
   samples
 ;;
 

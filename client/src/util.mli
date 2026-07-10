@@ -23,3 +23,19 @@ module Option_model (T : sig
   end) : sig
   type t = T.t option [@@deriving sexp_of]
 end
+
+(** Returns the local zone used by wall-time controls. Defaults to [Timezone.local], but
+    can be changed with [override_local_zone]. *)
+val local_zone : unit -> Time_float.Zone.t
+
+(** Overrides the local zone used by [local_zone] and [local_zone_abbreviation]. This is
+    intended for tests. *)
+val override_local_zone : Time_float.Zone.t -> unit
+
+(** Best-effort short name (e.g. "EDT", "BST") for the local time zone at the given time.
+
+    When [override_local_zone] has been called, this uses [Time_float.Zone.abbreviation]
+    on the overridden zone. Otherwise, it uses the browser's [Intl.DateTimeFormat]
+    [timeZoneName: "short"] formatter when available, falling back to
+    [Time_float.Zone.abbreviation] applied to [Timezone.local]. *)
+val local_zone_abbreviation : Time_ns.t -> string

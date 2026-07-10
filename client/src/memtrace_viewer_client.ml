@@ -60,4 +60,5 @@ module Server_state = Server_state
 
 module For_testing = struct
   module Graph_view = Graph_view
+  module Util = Util
 end

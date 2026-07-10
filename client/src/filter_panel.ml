@@ -26,25 +26,22 @@ let graph_view
     in
     let series_of_data_graph css_class (graph : Data.Graph.t) =
       let max_y = Data.Graph.max_y graph in
-      let points_rev = List.rev (Data.Graph.points graph) in
+      let points = Data.Graph.points graph in
       (* Make sure the graph has points at x=0 and x=max_x so that it ranges through the
          whole timeline. We can assume that the total allocations start at 0 and don't
          change after the last reported point. *)
-      let last_x, last_y =
-        match points_rev with
-        | last_point :: _ -> last_point
-        | [] -> Time_ns.Span.zero, Byte_units.zero
-      in
-      let points_rev =
-        if Time_ns.Span.(last_x < max_x)
-        then (max_x, last_y) :: points_rev
-        else points_rev
-      in
-      let points = List.rev points_rev in
       let points =
-        match points with
-        | (x, _) :: _ when Time_ns.Span.(x = zero) -> points
-        | _ -> (Time_ns.Span.zero, Byte_units.zero) :: points
+        match Queue.peek points, Queue.peek_back points with
+        | None, Some _ | Some _, None -> assert false
+        | None, None -> Queue.of_array [| Time_ns.Span.zero, Byte_units.zero |]
+        | Some (first_x, _), Some (last_x, _)
+          when Time_ns.Span.(first_x = zero && last_x >= max_x) -> points
+        | Some (first_x, _), Some (last_x, last_y) ->
+          let points = Queue.copy points in
+          if Time_ns.Span.(first_x <> zero)
+          then Queue.enqueue_front points (Time_ns.Span.zero, Byte_units.zero);
+          if Time_ns.Span.(last_x < max_x) then Queue.enqueue points (max_x, last_y);
+          points
       in
       Graph_view.Series.create ~css_class ~max_x ~max_y points
     in
@@ -111,7 +108,7 @@ module Submission_handling = struct
            ~attrs:
              [ Attr.type_ "submit"
              ; Attr.class_ "flat-button"
-             ; Attr.value "Apply"
+             ; Attr.value_attr "Apply"
              ; Attr.title "Set current filter and redraw views"
              ; (if not enabled then Attr.disabled else Attr.empty)
              ]
